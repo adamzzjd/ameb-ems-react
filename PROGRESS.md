@@ -64,6 +64,20 @@
 | Toast system upgrade | ✅ Done | Replaced custom toasts with sonner for better UX |
 | Scroll animations | ✅ Done | Framer-motion fade-in animations on Landing page |
 
+## ✅ Phase 6: Deployment & Performance (Complete)
+
+| Step | Status | Notes |
+|------|--------|-------|
+| UUID auto-generation | ✅ Done | All insert/upsert operations generate crypto.randomUUID() client-side |
+| localStorage CMS caching | ✅ Done | `useCmsData` caches data — instant render on return visits |
+| 30s auto-refresh | ✅ Done | Landing page auto-refreshes CMS data in background every 30s |
+| CMS cache invalidation | ✅ Done | All 6 CMS pages call `clearCmsCache()` after save/delete/reorder |
+| Landing page scroll fix | ✅ Done | Native body scrolling, scrollMarginTop on all sections, fixed header offset |
+| Hero "ALL" text fix | ✅ Done | Uppercase + bold + letter-spacing on gold gradient hero title |
+| Git + GitHub setup | ✅ Done | Repo initialized, branch renamed `master` → `main`, pushed |
+| Vercel deployment config | ✅ Done | SPA rewrites, build script fixed, auto-deploy from GitHub |
+| Supabase env security | ✅ Done | `.env` added to `.gitignore`, secrets never committed |
+
 ---
 
 ## 📁 Source Files Created/Modified
@@ -82,7 +96,7 @@
 - `src/supabase/centres.ts` ✅ — Centres CRUD
 - `src/supabase/cms.ts` ✅ — CMS tables CRUD (site_content, programs, news, team, gallery, downloads, contacts)
 
-### Pages (18 files)
+### Pages (21 files)
 - `src/pages/Landing.tsx` ✅ — Public website with framer-motion animations
 - `src/pages/Login.tsx` ✅ — Email/password auth
 - `src/pages/Dashboard.tsx` ✅ — Stats overview
@@ -120,7 +134,7 @@
 ### Hooks (5 files)
 - `src/hooks/useAuth.tsx` ✅ — Supabase auth context
 - `src/hooks/useEmployees.ts` ✅ — Employee data management
-- `src/hooks/useCmsData.ts` ✅ — CMS data with fallback defaults
+- `src/hooks/useCmsData.ts` ✅ — CMS data with localStorage caching + 30s auto-refresh
 - `src/hooks/useTheme.tsx` ✅ — Dark/light theme toggle
 - `src/hooks/useToast.tsx` ✅ — Toast notifications (via sonner)
 
@@ -132,15 +146,21 @@
 - `src/components/__tests__/ErrorBoundary.test.tsx` — Error boundary tests
 - `src/hooks/__tests__/useToast.test.tsx` — Toast context tests
 
+### Config Files
+- `vercel.json` ✅ — SPA rewrites, Vite framework preset
+- `.gitignore` ✅ — Excludes .env, .docx, temp files
+- `tsconfig.app.json` ✅ — TS 6 strict mode with ignoreDeprecations
+- `vite.config.ts` ✅ — React + Tailwind v4 + path alias
+
 ---
 
 ## 🚀 How to Run
 
 ```bash
 cd ameb-ems-react
-npm run dev     # Development server
-npm test         # Run tests
-npm run build    # Production build
+npm run dev       # Development server (localhost:5173)
+npm test          # Run 37 tests
+npm run build     # Production build
 ```
 
 Make sure you have a `.env` file with:
@@ -148,3 +168,10 @@ Make sure you have a `.env` file with:
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+## 🌐 Deployment
+
+- **GitHub:** https://github.com/adamzzjd/ameb-ems-react
+- **Vercel:** Auto-deploys from `main` branch
+- **Required env vars:** `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+- **Branch:** `main` (renamed from `master`)
