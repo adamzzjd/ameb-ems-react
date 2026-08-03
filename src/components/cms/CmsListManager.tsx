@@ -193,7 +193,7 @@ export function CmsListManager<T extends CmsItem>({
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={e => { if (e.target === e.currentTarget) setShowForm(false); }}
         >
-          <div className="bg-card border border-border rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="bg-card border border-border rounded-xl shadow-sm w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="bg-navy text-white px-5 py-4 rounded-t-xl flex items-center justify-between sticky top-0 z-10">
               <div>
                 <div className="text-sm font-bold">{editing ? 'Edit' : 'Add'} {title}</div>
@@ -221,7 +221,7 @@ export function CmsListManager<T extends CmsItem>({
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={e => { if (e.target === e.currentTarget) setShowDelete(null); }}
         >
-          <div className="bg-card border border-border rounded-xl shadow-lg w-full max-w-sm">
+          <div className="bg-card border border-border rounded-xl shadow-sm w-full max-w-sm">
             <div className="bg-destructive text-white px-5 py-4 rounded-t-xl">
               <div className="text-sm font-bold">Delete Item</div>
             </div>

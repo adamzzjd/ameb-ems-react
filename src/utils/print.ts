@@ -29,25 +29,25 @@ function calcAge(dob: string | null | undefined): string {
 
 const PRINT_STYLES = `
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Inter',sans-serif;padding:20px;font-size:12px;color:#1e2a3a;}
+  body{font-family:'Inter',sans-serif;padding:20px;font-size:12px;color:#27313b;}
   .hdr{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
-  .org{font-size:16px;font-weight:800;color:#0f2744;}
+  .org{font-size:16px;font-weight:800;color:#0f6e56;}
   .sub{font-size:11px;color:#64748b;margin-top:2px;}
-  h2{font-size:13px;font-weight:700;color:#0f2744;margin:10px 0 3px;}
+  h2{font-size:13px;font-weight:700;color:#0f6e56;margin:10px 0 3px;}
   p{font-size:11px;color:#64748b;margin-bottom:12px;}
   table{width:100%;border-collapse:collapse;font-size:11px;}
-  th{background:#0f2744;color:#fff;padding:7px 9px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px;}
+  th{background:#0f6e56;color:#fff;padding:7px 9px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px;}
   td{padding:7px 9px;border-bottom:1px solid #eef0f6;vertical-align:middle;}
   tr:nth-child(even) td{background:#f7f8fc;}
   .foot{margin-top:14px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;display:flex;justify-content:space-between;}
-  .psn{font-family:monospace;font-size:11px;color:#b8892a;font-weight:600;}
+  .psn{font-family:monospace;font-size:11px;color:#0f6e56;font-weight:600;}
   @media print{body{padding:0;}@page{margin:.8cm;size:A4 landscape;}}
 `;
 
 function getPrintHeader(title: string, subtitle: string, count: number): string {
   return `
   <div class="hdr">
-    <div style="width:54px;height:54px;background:#0f2744;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;">🏛</div>
+    <div style="width:54px;height:54px;background:#0f6e56;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:22px;">🏛</div>
     <div>
       <div class="org">Adamawa State Mass Education Board</div>
       <div class="sub">Permanent & Pensionable Officers Register — EMIS</div>
@@ -100,8 +100,8 @@ export function printEmployees(emps: Employee[], title: string, subtitle: string
 
 export function printEmployee(e: Employee) {
   const photoHTML = e.photo
-    ? `<img src="${e.photo}" style="width:90px;height:104px;object-fit:cover;border-radius:6px;border:3px solid #b8892a;" alt="${e.name}"/>`
-    : `<div style="width:90px;height:104px;border-radius:6px;background:#1a3a5c;border:3px solid #b8892a;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;">${initials(e.name)}</div>`;
+    ? `<img src="${e.photo}" style="width:90px;height:104px;object-fit:cover;border-radius:6px;border:3px solid #0f6e56;" alt="${e.name}"/>`
+    : `<div style="width:90px;height:104px;border-radius:6px;background:#0f6e56;border:3px solid #0f6e56;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;">${initials(e.name)}</div>`;
 
   const w = window.open('', '_blank');
   if (!w) return;
@@ -112,21 +112,21 @@ export function printEmployee(e: Employee) {
     <style>
       *{box-sizing:border-box;margin:0;padding:0;}
       body{font-family:'Inter',sans-serif;background:#fff;padding:20px;}
-      .sheet{max-width:680px;margin:0 auto;border:2px solid #0f2744;border-radius:8px;overflow:hidden;}
-      .hdr{background:linear-gradient(135deg,#0f2744,#1a3a5c);padding:20px;display:flex;gap:18px;align-items:flex-start;}
-      .org-name{font-size:10px;font-weight:800;color:#b8892a;text-transform:uppercase;letter-spacing:1.5px;}
+      .sheet{max-width:680px;margin:0 auto;border:2px solid #0f6e56;border-radius:8px;overflow:hidden;}
+      .hdr{background:#0f6e56;padding:20px;display:flex;gap:18px;align-items:flex-start;}
+      .org-name{font-size:10px;font-weight:800;color:#0f6e56;text-transform:uppercase;letter-spacing:1.5px;}
       .emp-name{font-size:20px;font-weight:800;color:#fff;line-height:1.2;}
       .emp-cadre{font-size:13px;color:rgba(255,255,255,.55);margin-top:4px;}
       .badges{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap;}
       .badge{padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
-      .bp{background:#b8892a;color:#1a0f00;}
+      .bp{background:#0f6e56;color:#ffffff;}
       .bg{background:rgba(255,255,255,.15);color:#fff;}
       .bs{background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);}
       .fields{display:grid;grid-template-columns:1fr 1fr;}
       .field{padding:10px 16px;border-bottom:1px solid #eef0f6;}
       .field:nth-child(odd){border-right:1px solid #eef0f6;}
       .fl{font-size:10px;font-weight:700;color:#8e99b0;text-transform:uppercase;letter-spacing:.4px;}
-      .fv{font-size:13px;font-weight:600;color:#1e2a3a;margin-top:2px;font-family:'JetBrains Mono',monospace;}
+      .fv{font-size:13px;font-weight:600;color:#27313b;margin-top:2px;font-family:'JetBrains Mono',monospace;}
       .foot{background:#f7f8fc;border-top:1px solid #dde1ec;padding:9px 16px;font-size:10px;color:#8e99b0;display:flex;justify-content:space-between;}
       @media print{body{padding:0;}@page{margin:.8cm;size:A4 portrait;}}
     </style>

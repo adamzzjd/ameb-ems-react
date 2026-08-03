@@ -1,0 +1,119 @@
+-- ============================================================================
+-- AMEB EMS — EMS Register Database Setup
+-- ----------------------------------------------------------------------------
+-- Creates the core staff-register tables used by the Staff Portal:
+--   employees  (staff register — REQUIRED, app shows "Database Setup Required")
+--   stations   (posting stations — auto-seeded by the app on first load)
+--   cadres     (staff cadres — auto-seeded by the app on first load)
+--   centres    (learning centres register)
+--
+-- HOW TO RUN:
+--   1. Open your Supabase project dashboard
+--   2. Go to "SQL Editor" → "New query"
+--   3. Paste this entire file and click "Run"
+--   4. (Safe to run multiple times — uses IF NOT EXISTS)
+--
+-- NOTE: RLS is disabled on these tables to match the app's architecture, which
+-- performs all reads/writes with the Supabase anon key. The `employees` table
+-- contains sensitive staff data — see the security warning at the bottom.
+-- ============================================================================
+
+-- ── Employees (staff register) ───────────────────────────────────────────────
+-- `psn` has a UNIQUE constraint: the app rejects duplicate PSNs on save.
+create table if not exists public.employees (
+  id                uuid primary key,
+  name              text not null default '',
+  grade             text,
+  cadre             text,
+  date_first_appt   text,
+  date_present_appt text,
+  dob               text,
+  phone             text,
+  lga               text,
+  psn               text,
+  station           text,
+  photo             text,
+  remarks           text not null default '',
+  created_at        timestamptz not null default now(),
+  updated_at        timestamptz not null default now()
+);
+
+-- Guarantee the unique PSN constraint even if an `employees` table already
+-- exists without it (CREATE TABLE IF NOT EXISTS won't retrofit constraints).
+-- PostgreSQL has no "ADD CONSTRAINT IF NOT EXISTS", so we check pg_constraint
+-- first. If this step fails with a duplicate-key error, your existing data has
+-- duplicate PSNs — clean those up first, then re-run.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'employees_psn_key'
+      and conrelid = 'public.employees'::regclass
+  ) then
+    alter table public.employees add constraint employees_psn_key unique (psn);
+  end if;
+end $$;
+
+-- ── Stations (posting stations) ──────────────────────────────────────────────
+-- The app auto-seeds the standard station list from src/data/constants.ts the
+-- first time this table is empty, so no seed rows are needed here.
+create table if not exists public.stations (
+  id         uuid primary key,
+  name       text not null default '',
+  lga        text,
+  type       text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ── Cadres (staff cadres) ────────────────────────────────────────────────────
+-- The app auto-seeds the standard cadre list from src/data/constants.ts the
+-- first time this table is empty, so no seed rows are needed here.
+create table if not exists public.cadres (
+  id         uuid primary key,
+  name       text not null default '',
+  category   text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ── Centres (learning centres) ───────────────────────────────────────────────
+create table if not exists public.centres (
+  id           uuid primary key,
+  name         text not null default '',
+  lga          text not null default '',
+  ward         text,
+  community    text,
+  type         text,
+  status       text not null default 'Active',
+  capacity     integer,
+  phone        text,
+  facilitator  text,
+  ngo_partner  text,
+  remarks      text,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+-- ── Access ───────────────────────────────────────────────────────────────────
+-- The app uses the Supabase anon key directly for all reads/writes, so RLS is
+-- disabled to match that design (same as the CMS tables in setup.sql).
+alter table public.employees disable row level security;
+alter table public.stations  disable row level security;
+alter table public.cadres    disable row level security;
+alter table public.centres   disable row level security;
+
+-- ⚠️ SECURITY WARNING
+-- The `employees` table holds personal staff data (name, phone, DOB, LGA,
+-- PSN, photo). With RLS disabled, anyone with the anon key can read and
+-- modify it. If you want to protect this data:
+--   1. Enable RLS:  alter table public.employees enable row level security;
+--   2. Allow the public site (if needed) and logged-in staff to access it via
+--      policies, e.g.:
+--        create policy "employees_read_authenticated" on public.employees
+--          for select using (auth.role() = 'authenticated');
+--        create policy "employees_write_authenticated" on public.employees
+--          for all using (auth.role() = 'authenticated')
+--          with check (auth.role() = 'authenticated');
+--   3. Remove the "disable row level security" line above for employees.
+-- Note: changing this may affect existing app functionality.

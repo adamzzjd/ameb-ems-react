@@ -35,12 +35,12 @@ export function Modal({ open, onClose, title, subtitle, children, footer, maxWid
       <div style={{
         background: '#fff', borderRadius: 12, maxWidth, width: '100%',
         maxHeight: '94vh', overflowY: 'auto',
-        boxShadow: '0 20px 60px rgba(0,0,0,.18)',
+        boxShadow: '0 2px 10px rgba(15,110,86,0.08), 0 1px 2px rgba(15,110,86,0.05)',
       }}>
         {/* Header */}
         {(title || subtitle) && (
           <div style={{
-            background: 'linear-gradient(145deg,#0b0b14,#12121f)',
+            background: '#0f6e56',
             color: '#fff', padding: '18px 22px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             position: 'sticky', top: 0, zIndex: 1,
@@ -70,9 +70,9 @@ export function Modal({ open, onClose, title, subtitle, children, footer, maxWid
         {/* Footer */}
         {footer && (
           <div style={{
-            padding: '14px 22px', borderTop: '1px solid #efebe4',
+            padding: '14px 22px', borderTop: '1px solid #e2eae6',
             display: 'flex', gap: 8, justifyContent: 'flex-end',
-            background: '#f8f6f2', position: 'sticky', bottom: 0,
+            background: '#f7faf8', position: 'sticky', bottom: 0,
           }}>
             {footer}
           </div>

@@ -44,7 +44,7 @@ export function Appointment({ employees, onViewEmployee }: AppointmentProps) {
 
   if (groups.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: '#948d7e' }}>
+      <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>📅</div>
         <div style={{ fontSize: 14 }}>No employees yet.</div>
       </div>
@@ -57,13 +57,13 @@ export function Appointment({ employees, onViewEmployee }: AppointmentProps) {
         <div
           key={group.year}
           style={{
-            background: '#fff', border: '1px solid #efebe4', borderRadius: 12,
-            overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
+            background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
+            overflow: 'hidden', boxShadow: 'none',
           }}
         >
           {/* Year header */}
           <div style={{
-            background: 'linear-gradient(145deg,#0b0b14,#12121f)',
+            background: '#0f6e56',
             padding: '11px 16px',
           }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -94,9 +94,9 @@ export function Appointment({ employees, onViewEmployee }: AppointmentProps) {
                 {group.employees.map(e => (
                   <tr
                     key={e.id}
-                    style={{ borderBottom: '1px solid #efebe4', cursor: 'pointer' }}
+                    style={{ borderBottom: '1px solid #e2eae6', cursor: 'pointer' }}
                     onClick={() => onViewEmployee(e.id)}
-                    onMouseEnter={el => { (el.currentTarget as HTMLElement).style.background = '#f8f6f2'; }}
+                    onMouseEnter={el => { (el.currentTarget as HTMLElement).style.background = '#f7faf8'; }}
                     onMouseLeave={el => { (el.currentTarget as HTMLElement).style.background = ''; }}
                   >
                     <td style={{ ...tdStyle, width: 42 }}>
@@ -107,13 +107,13 @@ export function Appointment({ employees, onViewEmployee }: AppointmentProps) {
                         </AvatarFallback>
                       </Avatar>
                     </td>
-                    <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#c9a84c', fontWeight: 600 }}>
+                    <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#0f6e56', fontWeight: 600 }}>
                       {esc(e.psn || '—')}
                     </td>
-                    <td style={{ ...tdStyle, fontWeight: 700, color: '#0b0b14' }}>
+                    <td style={{ ...tdStyle, fontWeight: 700, color: '#27313b' }}>
                       {esc(e.name)}
                     </td>
-                    <td style={{ ...tdStyle, fontSize: 12, color: '#5c5648' }}>
+                    <td style={{ ...tdStyle, fontSize: 12, color: '#475569' }}>
                       {esc(e.cadre || '—')}
                     </td>
                     <td style={tdStyle}>
@@ -141,8 +141,8 @@ export function Appointment({ employees, onViewEmployee }: AppointmentProps) {
 
 const thStyle: React.CSSProperties = {
   padding: '9px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-  color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px',
-  background: '#f8f6f2', borderBottom: '1px solid #dad3c8', whiteSpace: 'nowrap',
+  color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px',
+  background: '#f7faf8', borderBottom: '1px solid #d3ded9', whiteSpace: 'nowrap',
 };
 
 const tdStyle: React.CSSProperties = {

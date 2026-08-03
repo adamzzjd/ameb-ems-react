@@ -19,16 +19,16 @@ function gradeColor(g: string | null | undefined): string {
   const n = parseInt((g || '').replace(/\D/g, ''));
   if (n >= 15) return '#991b1b';
   if (n >= 12) return '#92400e';
-  if (n >= 8)  return '#1e3a5f';
-  return '#5c5648';
+  if (n >= 8)  return '#0f6e56';
+  return '#475569';
 }
 
 function gradeBg(g: string | null | undefined): string {
   const n = parseInt((g || '').replace(/\D/g, ''));
   if (n >= 15) return '#fde8e8';
   if (n >= 12) return '#fef9c3';
-  if (n >= 8)  return '#dbeafe';
-  return '#efebe4';
+  if (n >= 8)  return '#e1f5ee';
+  return '#e2eae6';
 }
 
 export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardProps) {
@@ -69,17 +69,17 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
           { label: 'Grade Levels', value: Object.keys(stats.byGrade).length, sub: 'In this register' },
         ].map(stat => (
           <div key={stat.label} style={{
-            background: '#fff', border: '1px solid #efebe4', borderRadius: 12,
+            background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
             padding: '14px 18px', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
-            ...(stat.accent ? { borderTop: '3px solid #c9a84c' } : {}),
+            ...(stat.accent ? { borderTop: '3px solid #0f6e56' } : {}),
           }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px' }}>
               {stat.label}
             </div>
-            <div style={{ fontSize: 28, fontWeight: 800, color: '#0b0b14', marginTop: 4, lineHeight: 1 }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: '#27313b', marginTop: 4, lineHeight: 1 }}>
               {stat.value}
             </div>
-            <div style={{ fontSize: 11, color: '#948d7e', marginTop: 3 }}>{stat.sub}</div>
+            <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>{stat.sub}</div>
           </div>
         ))}
       </div>
@@ -90,14 +90,14 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
       }} className="lg:grid-cols-2">
         {/* By Grade */}
         <div style={{
-          background: '#fff', border: '1px solid #efebe4', borderRadius: 12,
+          background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
           overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
         }}>
           <div style={{
             padding: '11px 16px', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', borderBottom: '1px solid #efebe4',
+            justifyContent: 'space-between', borderBottom: '1px solid #e2eae6',
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#0b0b14' }}>By Grade Level</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#27313b' }}>By Grade Level</span>
           </div>
           <div style={{ padding: '10px 16px' }}>
             {Object.entries(stats.byGrade)
@@ -105,22 +105,22 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
               .map(([k, v]) => (
                 <div key={k} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
-                  borderBottom: '1px solid #efebe4',
+                  borderBottom: '1px solid #e2eae6',
                 }}>
                   <div style={{
-                    fontSize: 12, color: '#5c5648', width: 150, flexShrink: 0,
+                    fontSize: 12, color: '#475569', width: 150, flexShrink: 0,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>{k}</div>
-                  <div style={{ flex: 1, height: 7, background: '#efebe4', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, height: 7, background: '#e2eae6', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 4,
-                      background: '#c9a84c',
+                      background: '#0f6e56',
                       width: `${Math.round((v / stats.maxG) * 100)}%`,
                       transition: 'width .4s',
                     }} />
                   </div>
                   <div style={{
-                    fontSize: 12, fontWeight: 700, color: '#0b0b14', width: 26, textAlign: 'right',
+                    fontSize: 12, fontWeight: 700, color: '#27313b', width: 26, textAlign: 'right',
                   }}>{v}</div>
                 </div>
               ))}
@@ -129,14 +129,14 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
 
         {/* By LGA */}
         <div style={{
-          background: '#fff', border: '1px solid #efebe4', borderRadius: 12,
+          background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
           overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
         }}>
           <div style={{
             padding: '11px 16px', display: 'flex', alignItems: 'center',
-            justifyContent: 'space-between', borderBottom: '1px solid #efebe4',
+            justifyContent: 'space-between', borderBottom: '1px solid #e2eae6',
           }}>
-            <span style={{ fontSize: 13, fontWeight: 700, color: '#0b0b14' }}>By LGA of Origin</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#27313b' }}>By LGA of Origin</span>
           </div>
           <div style={{ padding: '10px 16px', maxHeight: 300, overflowY: 'auto' }}>
             {Object.entries(stats.byLGA)
@@ -144,13 +144,13 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
               .map(([k, v]) => (
                 <div key={k} style={{
                   display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0',
-                  borderBottom: '1px solid #efebe4',
+                  borderBottom: '1px solid #e2eae6',
                 }}>
                   <div style={{
-                    fontSize: 12, color: '#5c5648', width: 150, flexShrink: 0,
+                    fontSize: 12, color: '#475569', width: 150, flexShrink: 0,
                     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   }}>{k}</div>
-                  <div style={{ flex: 1, height: 7, background: '#efebe4', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ flex: 1, height: 7, background: '#e2eae6', borderRadius: 4, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%', borderRadius: 4,
                       background: '#1a56a0',
@@ -159,7 +159,7 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
                     }} />
                   </div>
                   <div style={{
-                    fontSize: 12, fontWeight: 700, color: '#0b0b14', width: 26, textAlign: 'right',
+                    fontSize: 12, fontWeight: 700, color: '#27313b', width: 26, textAlign: 'right',
                   }}>{v}</div>
                 </div>
               ))}
@@ -169,21 +169,21 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
 
       {/* Recent Employees */}
       <div style={{
-        background: '#fff', border: '1px solid #efebe4', borderRadius: 12,
+        background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
         overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
       }}>
         <div style={{
           padding: '11px 16px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', borderBottom: '1px solid #efebe4',
+          justifyContent: 'space-between', borderBottom: '1px solid #e2eae6',
         }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#0b0b14' }}>Recently Added</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#27313b' }}>Recently Added</span>
           <button
             onClick={() => onNavigate('employees')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-              border: '1px solid #dad3c8', cursor: 'pointer',
-              background: 'transparent', color: '#5c5648', whiteSpace: 'nowrap',
+              border: '1px solid #d3ded9', cursor: 'pointer',
+              background: 'transparent', color: '#475569', whiteSpace: 'nowrap',
             }}
           >
             View All →
@@ -206,24 +206,24 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
                 <tr>
                   <td colSpan={6} style={{ textAlign: 'center', padding: 44 }}>
                     <div style={{ fontSize: 38, marginBottom: 10 }}>👥</div>
-                    <div style={{ fontWeight: 600, color: '#5c5648', marginBottom: 5 }}>No employees yet.</div>
-                    <div style={{ fontSize: 12, color: '#948d7e' }}>Click + Add Employee or Import from Register.</div>
+                    <div style={{ fontWeight: 600, color: '#475569', marginBottom: 5 }}>No employees yet.</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>Click + Add Employee or Import from Register.</div>
                   </td>
                 </tr>
               ) : stats.recent.map(e => (
                 <tr
                   key={e.id}
                   onClick={() => onViewEmployee(e.id)}
-                  style={{ borderBottom: '1px solid #efebe4', cursor: 'pointer' }}
+                  style={{ borderBottom: '1px solid #e2eae6', cursor: 'pointer' }}
                 >
                   <td style={tdStyle}>{/* Avatar placeholder */}</td>
-                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, color: '#c9a84c', fontWeight: 600 }}>
+                  <td style={{ ...tdStyle, fontFamily: 'monospace', fontSize: 11, color: '#0f6e56', fontWeight: 600 }}>
                     {esc(e.psn || '—')}
                   </td>
-                  <td style={{ ...tdStyle, fontWeight: 700, color: '#0b0b14' }}>
+                  <td style={{ ...tdStyle, fontWeight: 700, color: '#27313b' }}>
                     {esc(e.name)}
                   </td>
-                  <td style={{ ...tdStyle, fontSize: 12, color: '#5c5648' }}>
+                  <td style={{ ...tdStyle, fontSize: 12, color: '#475569' }}>
                     {esc(e.cadre || '—')}
                   </td>
                   <td style={tdStyle}>
@@ -248,8 +248,8 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
 
 const thStyle: React.CSSProperties = {
   padding: '9px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-  color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px',
-  background: '#f8f6f2', borderBottom: '1px solid #dad3c8', whiteSpace: 'nowrap',
+  color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px',
+  background: '#f7faf8', borderBottom: '1px solid #d3ded9', whiteSpace: 'nowrap',
 };
 
 const tdStyle: React.CSSProperties = {

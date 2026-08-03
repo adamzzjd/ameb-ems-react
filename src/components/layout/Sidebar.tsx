@@ -98,7 +98,7 @@ export function Sidebar({
     <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-full overflow-hidden overflow-y-auto scrollbar-thin">
       {/* Logo */}
       <div className="flex items-center gap-3 px-4 py-[18px] border-b border-sidebar-border shrink-0">
-        <div className="w-[42px] h-[42px] rounded-md border-2 border-gold bg-navy-light flex items-center justify-center text-lg shrink-0">
+        <div className="w-[42px] h-[42px] rounded-md border border-white/30 bg-primary text-white flex items-center justify-center text-lg shrink-0">
           🏛
         </div>
         <div>
@@ -125,13 +125,13 @@ export function Sidebar({
               className={cn(
                 'flex items-center gap-2.5 px-3.5 py-[9px] mx-2 rounded-md text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 border-none cursor-pointer',
                 currentPage === item.page
-                  ? 'bg-gold/10 text-gold font-medium border-l-[3px] border-gold pl-[11px]'
-                  : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                  ? 'bg-white/10 text-white font-medium border-l-[3px] border-gold-light pl-[11px]'
+                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
               )}
             >
               <span className={cn(
                 'text-[15px] w-[18px] text-center shrink-0',
-                currentPage === item.page ? 'text-gold' : ''
+                currentPage === item.page ? 'text-gold-light' : ''
               )}>
                 {item.icon}
               </span>
@@ -140,8 +140,8 @@ export function Sidebar({
                 <span className={cn(
                   'ml-auto text-[10px] font-bold px-[7px] py-[1px] rounded-full',
                   currentPage === item.page
-                    ? 'bg-gold text-navy'
-                    : 'bg-sidebar-accent text-sidebar-foreground/50'
+                    ? 'bg-gold-light text-navy'
+                    : 'bg-sidebar-accent text-sidebar-foreground/70'
                 )}>
                   {employeeCount === 0 ? '—' : employeeCount}
                 </span>
@@ -200,7 +200,7 @@ export function Sidebar({
       <div
         className={cn(
           'fixed left-0 top-0 bottom-0 z-[100] transition-all duration-250 md:hidden',
-          mobileOpen ? 'left-0 shadow-xl' : '-left-[260px]'
+          mobileOpen ? 'left-0 shadow-sm' : '-left-[260px]'
         )}
       >
         {sidebarContent}

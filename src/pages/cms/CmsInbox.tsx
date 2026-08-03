@@ -178,7 +178,7 @@ export function CmsInbox() {
           className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={e => { if (e.target === e.currentTarget) setShowDelete(null); }}
         >
-          <div className="bg-card border border-border rounded-xl shadow-lg w-full max-w-sm">
+          <div className="bg-card border border-border rounded-xl shadow-sm w-full max-w-sm">
             <div className="bg-destructive text-white px-5 py-4 rounded-t-xl">
               <div className="text-sm font-bold">Delete Message</div>
             </div>

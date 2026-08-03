@@ -129,8 +129,8 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              border: '1px solid #dad3c8', cursor: 'pointer',
-              background: 'transparent', color: '#5c5648',
+              border: '1px solid #d3ded9', cursor: 'pointer',
+              background: 'transparent', color: '#475569',
             }}
           >
             Cancel
@@ -142,7 +142,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
               border: 'none', cursor: saving ? 'not-allowed' : 'pointer',
-              background: '#0b0b14', color: '#fff', opacity: saving ? 0.6 : 1,
+              background: '#0f6e56', color: '#fff', opacity: saving ? 0.6 : 1,
             }}
           >
             {saving ? 'Saving…' : isEdit ? '💾 Save Changes' : '➕ Add Employee'}
@@ -153,20 +153,20 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
         {/* Photo */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '1.2px', padding: '4px 0', borderBottom: '2px solid #e8d5a3', marginBottom: 8 }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: '#0f6e56', textTransform: 'uppercase', letterSpacing: '1.2px', padding: '4px 0', borderBottom: '2px solid #c8e8dc', marginBottom: 8 }}>
             Passport Photograph
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: 14, background: '#f8f6f2', borderRadius: 8, border: '1px solid #dad3c8' }}>
-            <div style={{ width: 84, height: 96, borderRadius: 6, border: '2px solid #c9a84c', background: '#0b0b14', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: 14, background: '#f7faf8', borderRadius: 8, border: '1px solid #d3ded9' }}>
+            <div style={{ width: 84, height: 96, borderRadius: 6, border: '2px solid #57c2a2', background: '#0f6e56', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, flexShrink: 0, overflow: 'hidden' }}>
               {photoPreview ? <img src={photoPreview} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ color: '#fff' }}>📷</span>}
             </div>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: '#2a251c', marginBottom: 5 }}>Upload passport photograph</div>
-              <div style={{ fontSize: 12, color: '#948d7e', marginBottom: 10 }}>JPG or PNG · Passport size</div>
+              <div style={{ fontSize: 13, fontWeight: 600, color: '#27313b', marginBottom: 5 }}>Upload passport photograph</div>
+              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 10 }}>JPG or PNG · Passport size</div>
               <label style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '7px 13px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                border: '1.5px dashed #c2b9aa', cursor: 'pointer', background: '#fff', color: '#5c5648',
+                border: '1.5px dashed #c6d4cd', cursor: 'pointer', background: '#fff', color: '#475569',
               }}>
                 📂 Choose Photo
                 <input type="file" accept="image/*" onChange={handlePhotoChange} style={{ display: 'none' }} />
@@ -185,40 +185,40 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
 
         {/* Section label */}
         <div style={{ gridColumn: '1 / -1' }}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: '#c9a84c', textTransform: 'uppercase', letterSpacing: '1.2px', padding: '4px 0', borderBottom: '2px solid #e8d5a3' }}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: '#0f6e56', textTransform: 'uppercase', letterSpacing: '1.2px', padding: '4px 0', borderBottom: '2px solid #c8e8dc' }}>
             Personal & Service Details
           </div>
         </div>
 
         {/* Name */}
         <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
             1. Full Name <span style={{ color: '#c0392b' }}>*</span>
           </label>
           <input
             value={name} onChange={e => setName(e.target.value)}
             placeholder="Surname Firstname Middlename"
             style={{
-              padding: '9px 11px', border: `1px solid ${errors.name ? '#c0392b' : '#dad3c8'}`,
-              borderRadius: 6, fontSize: 13, color: '#2a251c', outline: 'none', width: '100%',
+              padding: '9px 11px', border: `1px solid ${errors.name ? '#c0392b' : '#d3ded9'}`,
+              borderRadius: 6, fontSize: 13, color: '#27313b', outline: 'none', width: '100%',
               background: '#fff',
             }}
-            onFocus={e => { e.target.style.borderColor = '#c9a84c'; }}
-            onBlur={e => { e.target.style.borderColor = errors.name ? '#c0392b' : '#dad3c8'; }}
+            onFocus={e => { e.target.style.borderColor = '#0f6e56'; }}
+            onBlur={e => { e.target.style.borderColor = errors.name ? '#c0392b' : '#d3ded9'; }}
           />
           {errors.name && <div style={{ fontSize: 11, color: '#c0392b' }}>{errors.name}</div>}
         </div>
 
         {/* Grade */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
             2. Grade Level <span style={{ color: '#c0392b' }}>*</span>
           </label>
           <select
             value={grade} onChange={e => setGrade(e.target.value)}
             style={{
-              padding: '9px 11px', border: `1px solid ${errors.grade ? '#c0392b' : '#dad3c8'}`,
-              borderRadius: 6, fontSize: 13, color: '#2a251c', outline: 'none', width: '100%',
+              padding: '9px 11px', border: `1px solid ${errors.grade ? '#c0392b' : '#d3ded9'}`,
+              borderRadius: 6, fontSize: 13, color: '#27313b', outline: 'none', width: '100%',
               appearance: 'none', paddingRight: 26, background: '#fff',
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
@@ -232,14 +232,14 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
 
         {/* Cadre */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>
             3. Cadre / Role <span style={{ color: '#c0392b' }}>*</span>
           </label>
           <select
             value={cadre} onChange={e => setCadre(e.target.value)}
             style={{
-              padding: '9px 11px', border: `1px solid ${errors.cadre ? '#c0392b' : '#dad3c8'}`,
-              borderRadius: 6, fontSize: 13, color: '#2a251c', outline: 'none', width: '100%',
+              padding: '9px 11px', border: `1px solid ${errors.cadre ? '#c0392b' : '#d3ded9'}`,
+              borderRadius: 6, fontSize: 13, color: '#27313b', outline: 'none', width: '100%',
               appearance: 'none', paddingRight: 26, background: '#fff',
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
@@ -253,26 +253,26 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
 
         {/* Date fields */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>4. Date of First Appointment</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>4. Date of First Appointment</label>
           <input type="date" value={dateFirstAppt} onChange={e => setDateFirstAppt(e.target.value)}
-            style={{ padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }} />
+            style={{ padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>5. Date of Present Appointment</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>5. Date of Present Appointment</label>
           <input type="date" value={datePresentAppt} onChange={e => setDatePresentAppt(e.target.value)}
-            style={{ padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }} />
+            style={{ padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }} />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>6. Date of Birth</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>6. Date of Birth</label>
           <input type="date" value={dob} onChange={e => setDob(e.target.value)}
-            style={{ padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }} />
+            style={{ padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }} />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>7. Phone Number</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>7. Phone Number</label>
           <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="080XXXXXXXXX"
             style={{
-              padding: '9px 11px', border: `1px solid ${errors.phone ? '#c0392b' : '#dad3c8'}`,
+              padding: '9px 11px', border: `1px solid ${errors.phone ? '#c0392b' : '#d3ded9'}`,
               borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff',
             }} />
           {errors.phone && <div style={{ fontSize: 11, color: '#c0392b' }}>{errors.phone}</div>}
@@ -280,10 +280,10 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
 
         {/* LGA */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>8. LGA of Origin</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>8. LGA of Origin</label>
           <select value={lga} onChange={e => setLga(e.target.value)}
             style={{
-              padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13,
+              padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13,
               outline: 'none', width: '100%', appearance: 'none', paddingRight: 26, background: '#fff',
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
@@ -295,17 +295,17 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
 
         {/* PSN */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>9. PSN (Personnel Serial No.)</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>9. PSN (Personnel Serial No.)</label>
           <input value={psn} onChange={e => setPsn(e.target.value)} placeholder="PS/AM/XXXX"
-            style={{ padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }} />
+            style={{ padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }} />
         </div>
 
         {/* Station */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>10. Present Station</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>10. Present Station</label>
           <select value={station} onChange={e => setStation(e.target.value)}
             style={{
-              padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13,
+              padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13,
               outline: 'none', width: '100%', appearance: 'none', paddingRight: 26, background: '#fff',
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
@@ -317,9 +317,9 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
 
         {/* Remarks */}
         <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Remarks / Notes</label>
+          <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Remarks / Notes</label>
           <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={2} placeholder="Optional notes…"
-            style={{ padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff', resize: 'vertical', fontFamily: 'inherit' }} />
+            style={{ padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff', resize: 'vertical', fontFamily: 'inherit' }} />
         </div>
       </div>
     </Modal>

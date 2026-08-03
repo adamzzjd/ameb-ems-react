@@ -37,9 +37,9 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete }: E
   if (!employee) return null;
 
   const photo = employee.photo ? (
-    <img src={employee.photo} alt={employee.name} style={{ width: 88, height: 100, objectFit: 'cover', borderRadius: 8, border: '3px solid #b8892a' }} />
+    <img src={employee.photo} alt={employee.name} style={{ width: 88, height: 100, objectFit: 'cover', borderRadius: 8, border: '3px solid #0f6e56' }} />
   ) : (
-    <div style={{ width: 88, height: 100, borderRadius: 8, background: '#243f6a', border: '3px solid #b8892a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#fff' }}>
+    <div style={{ width: 88, height: 100, borderRadius: 8, background: '#0f6e56', border: '3px solid #0f6e56', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 800, color: '#fff' }}>
       {initials(employee.name)}
     </div>
   );
@@ -57,7 +57,7 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete }: E
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
               border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(145deg,#c9a84c,#dbb668)', color: '#0b0b14',
+              background: '#0f6e56', color: '#fff',
             }}
           >
             ✏️ Edit
@@ -78,8 +78,8 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete }: E
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              border: '1px solid #dad3c8', cursor: 'pointer', marginLeft: 'auto',
-              background: 'transparent', color: '#5c5648',
+              border: '1px solid #d3ded9', cursor: 'pointer', marginLeft: 'auto',
+              background: 'transparent', color: '#475569',
             }}
           >
             ✕ Close
@@ -89,13 +89,13 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete }: E
     >
       {/* Header with photo */}
       <div style={{
-        background: 'linear-gradient(145deg,#0b0b14,#12121f)',
+        background: '#0f6e56',
         padding: 22, display: 'flex', gap: 18, alignItems: 'flex-start',
         borderRadius: 8, marginBottom: 0,
       }}>
         {photo}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 9, fontWeight: 800, color: '#c9a84c', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>
+          <div style={{ fontSize: 9, fontWeight: 800, color: '#0f6e56', letterSpacing: '1.5px', textTransform: 'uppercase', marginBottom: 5 }}>
             Adamawa State Mass Education Board
           </div>
           <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', lineHeight: 1.2 }}>
@@ -105,7 +105,7 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete }: E
             {esc(employee.cadre || '—')}
           </div>
           <div style={{ display: 'flex', gap: 7, marginTop: 9, flexWrap: 'wrap' }}>
-            <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#c9a84c', color: '#0b0b14' }}>
+            <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: '#0f6e56', color: '#fff' }}>
               {esc(employee.psn || 'No PSN')}
             </span>
             <span style={{ padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: 'rgba(255,255,255,.12)', color: '#fff' }}>
@@ -129,13 +129,13 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete }: E
           { label: 'Present Station', value: employee.station || '—' },
         ].map(field => (
           <div key={field.label} style={{
-            padding: '10px 16px', borderBottom: '1px solid #efebe4',
-            borderRight: field.label === 'Date of Present Appointment' || field.label === 'Phone Number' ? 'none' : '1px solid #efebe4',
+            padding: '10px 16px', borderBottom: '1px solid #e2eae6',
+            borderRight: field.label === 'Date of Present Appointment' || field.label === 'Phone Number' ? 'none' : '1px solid #e2eae6',
           }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px' }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px' }}>
               {field.label}
             </div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#2a251c', marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: '#27313b', marginTop: 2, fontFamily: "'JetBrains Mono', monospace" }}>
               {field.value}
             </div>
           </div>
@@ -150,7 +150,7 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete }: E
       )}
 
       {/* Footer info */}
-      <div style={{ padding: '9px 16px', background: '#f8f6f2', borderTop: '1px solid #efebe4', fontSize: 10, color: '#948d7e', display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ padding: '9px 16px', background: '#f7faf8', borderTop: '1px solid #e2eae6', fontSize: 10, color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
         <span>AMEB — Permanent & Pensionable Officers Register</span>
         <span>Viewed: {new Date().toLocaleDateString('en-GB')}</span>
       </div>

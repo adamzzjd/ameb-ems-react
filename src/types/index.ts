@@ -47,6 +47,7 @@ export interface CmsNews {
   excerpt: string;
   date: string;
   icon: string;
+  image?: string;
   sort_order: number;
 }
 
@@ -55,6 +56,7 @@ export interface CmsTeam {
   name: string;
   initials: string;
   role: string;
+  photo?: string;
   sort_order: number;
 }
 
@@ -120,6 +122,9 @@ export interface SiteContent {
   contact_tag: string;
   contact_title: string;
   contact_sub: string;
+  logo_url?: string;
+  hero_image?: string;
+  about_image?: string;
 }
 
 export interface CmsData {

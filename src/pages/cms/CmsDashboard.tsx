@@ -39,7 +39,7 @@ export function CmsDashboard({ onNavigate }: CmsDashboardProps) {
   }, []);
 
   const sections = [
-    { page: 'cms-content', icon: '⚙️', title: 'Site Content', sub: 'Hero, About, Mission, Vision, contact details', action: 'Edit →', color: 'from-navy to-navy-light' },
+    { page: 'cms-content', icon: '⚙️', title: 'Site Content', sub: 'Hero, About, Mission, Vision, contact details', action: 'Edit →' },
     { page: 'cms-programs', icon: '📚', title: 'Programs', sub: `${stats.programs} program${stats.programs !== 1 ? 's' : ''} configured`, action: 'Manage →' },
     { page: 'cms-news', icon: '📰', title: 'News & Announcements', sub: `${stats.news} article${stats.news !== 1 ? 's' : ''} published`, action: 'Manage →' },
     { page: 'cms-team', icon: '👥', title: 'Team / Leadership', sub: `${stats.team} team member${stats.team !== 1 ? 's' : ''}`, action: 'Manage →' },
@@ -87,7 +87,7 @@ export function CmsDashboard({ onNavigate }: CmsDashboardProps) {
           >
             <CardContent className="p-5">
               <div className="flex items-start gap-4">
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${s.color || 'from-navy to-navy-light'} flex items-center justify-center text-lg shrink-0`}>
+                <div className="w-10 h-10 rounded-lg bg-navy flex items-center justify-center text-lg shrink-0">
                   {s.icon}
                 </div>
                 <div className="flex-1 min-w-0">

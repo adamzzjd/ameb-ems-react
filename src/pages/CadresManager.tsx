@@ -111,8 +111,8 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: '#948d7e' }}>
-        <div style={{ width: 24, height: 24, border: '3px solid #dad3c8', borderTopColor: '#0b0b14', borderRadius: '50%', animation: 'spin 0.6s linear infinite', margin: '0 auto 16px' }} />
+      <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+        <div style={{ width: 24, height: 24, border: '3px solid #d3ded9', borderTopColor: '#0f6e56', borderRadius: '50%', animation: 'spin 0.6s linear infinite', margin: '0 auto 16px' }} />
         Loading cadres…
       </div>
     );
@@ -121,7 +121,7 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-        <div style={{ fontSize: 13, color: '#5c5648' }}>
+        <div style={{ fontSize: 13, color: '#475569' }}>
           Manage cadres for all AMEB staff. Cadres added here appear in the employee form automatically.
         </div>
         <button
@@ -130,7 +130,7 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
             border: 'none', cursor: 'pointer',
-            background: 'linear-gradient(145deg,#c9a84c,#dbb668)', color: '#0b0b14',
+            background: '#0f6e56', color: '#fff',
           }}
         >
           + Add Cadre
@@ -138,12 +138,12 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
       </div>
 
       <div style={{
-        background: '#fff', border: '1px solid #efebe4', borderRadius: 12,
+        background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
         overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
       }}>
-        <div style={{ padding: '9px 14px', borderBottom: '1px solid #efebe4' }}>
-          <div style={{ fontSize: 12, color: '#948d7e' }}>
-            <strong style={{ color: '#2a251c' }}>{cadres.length}</strong> cadre{cadres.length !== 1 ? 's' : ''} configured
+        <div style={{ padding: '9px 14px', borderBottom: '1px solid #e2eae6' }}>
+          <div style={{ fontSize: 12, color: '#64748b' }}>
+            <strong style={{ color: '#27313b' }}>{cadres.length}</strong> cadre{cadres.length !== 1 ? 's' : ''} configured
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -160,17 +160,17 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
                 <tr>
                   <td colSpan={3} style={{ textAlign: 'center', padding: 44 }}>
                     <div style={{ fontSize: 38, marginBottom: 10 }}>📋</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#5c5648', marginBottom: 5 }}>No cadres yet.</div>
-                    <div style={{ fontSize: 12, color: '#948d7e' }}>Click "Add Cadre" to get started.</div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 5 }}>No cadres yet.</div>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>Click "Add Cadre" to get started.</div>
                   </td>
                 </tr>
               ) : cadres.map((c, i) => (
-                <tr key={c.id} style={{ borderBottom: '1px solid #efebe4', background: i % 2 === 0 ? '#fff' : '#f8f6f2' }}>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: '#0b0b14' }}>{esc(c.name)}</td>
+                <tr key={c.id} style={{ borderBottom: '1px solid #e2eae6', background: i % 2 === 0 ? '#fff' : '#f7faf8' }}>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: '#27313b' }}>{esc(c.name)}</td>
                   <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.category || '—')}</td>
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 5 }}>
-                      <button onClick={() => openEdit(c)} title="Edit" style={{ ...actionBtnStyle, background: 'linear-gradient(145deg,#c9a84c,#dbb668)', color: '#0b0b14' }}>✏️</button>
+                      <button onClick={() => openEdit(c)} title="Edit" style={{ ...actionBtnStyle, background: '#0f6e56', color: '#fff' }}>✏️</button>
                       <button onClick={() => setShowDelete(c.id)} title="Delete" style={{ ...actionBtnStyle, color: '#c0392b' }}>🗑</button>
                     </div>
                   </td>
@@ -192,14 +192,14 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
           <>
             <button
               onClick={() => setShowForm(false)}
-              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'transparent', color: '#5c5648' }}
+              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: 'transparent', color: '#475569' }}
             >
               Cancel
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', background: editing ? '#0b0b14' : 'linear-gradient(145deg,#c9a84c,#dbb668)', color: editing ? '#fff' : '#0b0b14', opacity: saving ? 0.6 : 1 }}
+              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', background: '#0f6e56', color: '#fff', opacity: saving ? 0.6 : 1 }}
             >
               {saving ? 'Saving…' : editing ? '💾 Save Changes' : '+ Add Cadre'}
             </button>
@@ -213,18 +213,18 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
             </div>
           )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Cadre Name <span style={{ color: '#c0392b' }}>*</span></label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Cadre Name <span style={{ color: '#c0392b' }}>*</span></label>
             <input
               value={formName} onChange={e => setFormName(e.target.value)}
               placeholder="e.g. Adult Education Officer III"
-              style={{ padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }}
+              style={{ padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }}
             />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Category</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Category</label>
             <select
               value={formCategory} onChange={e => setFormCategory(e.target.value)}
-              style={{ padding: '9px 11px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff', appearance: 'none', paddingRight: 26, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center' }}
+              style={{ padding: '9px 11px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff', appearance: 'none', paddingRight: 26, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center' }}
             >
               <option value="">— Select Category —</option>
               {CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -242,7 +242,7 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
           <>
             <button
               onClick={() => setShowDelete(null)}
-              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'transparent', color: '#5c5648' }}
+              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: 'transparent', color: '#475569' }}
             >
               Cancel
             </button>
@@ -260,7 +260,7 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
             Delete this cadre?
           </div>
-          <div style={{ fontSize: 13, color: '#948d7e' }}>
+          <div style={{ fontSize: 13, color: '#64748b' }}>
             {cadres.find(c => c.id === showDelete)?.name || 'Unknown'}<br />
             This cadre will be removed from the system.
           </div>
@@ -272,8 +272,8 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
 
 const thStyle: React.CSSProperties = {
   padding: '9px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-  color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px',
-  background: '#f8f6f2', borderBottom: '1px solid #dad3c8', whiteSpace: 'nowrap',
+  color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px',
+  background: '#f7faf8', borderBottom: '1px solid #d3ded9', whiteSpace: 'nowrap',
 };
 
 const tdStyle: React.CSSProperties = {
@@ -283,7 +283,7 @@ const tdStyle: React.CSSProperties = {
 const actionBtnStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   padding: '4px 8px', borderRadius: 6, fontSize: 13,
-  border: '1px solid #dad3c8', cursor: 'pointer',
-  background: 'transparent', color: '#5c5648',
+  border: '1px solid #d3ded9', cursor: 'pointer',
+  background: 'transparent', color: '#475569',
   width: 30, height: 28, lineHeight: 1,
 };

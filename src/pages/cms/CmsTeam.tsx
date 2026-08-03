@@ -3,6 +3,7 @@ import { CmsListManager } from '@/components/cms/CmsListManager';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { dbLoadTeam, dbSaveTeamMember, dbDeleteTeamMember } from '@/supabase/cms';
 import { clearCmsCache } from '@/hooks/useCmsData';
 import type { CmsTeam } from '@/types';
@@ -55,7 +56,11 @@ export function CmsTeam() {
       onReorder={handleReorder}
       searchPlaceholder="Search team members…"
       renderItem={(t) => (
-        <span><strong>{t.name}</strong><span className="text-muted-foreground ml-2">— {t.role}</span></span>
+        <span className="inline-flex items-center gap-2">
+          {t.photo ? <img src={t.photo} alt="" className="w-6 h-6 rounded-full object-cover border border-border" /> : null}
+          <strong>{t.name}</strong>
+          <span className="text-muted-foreground ml-1">— {t.role}</span>
+        </span>
       )}
       renderForm={({ item, onSave }) => (
         <TeamForm item={item} onSave={onSave} />
@@ -68,13 +73,14 @@ function TeamForm({ item, onSave }: { item: Partial<CmsTeam> | null; onSave: (da
   const [name, setName] = useState(item?.name || '');
   const [role, setRole] = useState(item?.role || '');
   const [initials, setInitials] = useState(item?.initials || '');
+  const [photo, setPhoto] = useState(item?.photo || '');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
     if (!name.trim()) return;
     const genInitials = initials || name.split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
     setSaving(true);
-    await onSave({ name: name.trim(), role: role.trim(), initials: genInitials });
+    await onSave({ name: name.trim(), role: role.trim(), initials: genInitials, photo: photo || undefined });
     setSaving(false);
   };
 
@@ -91,6 +97,17 @@ function TeamForm({ item, onSave }: { item: Partial<CmsTeam> | null; onSave: (da
       <div className="space-y-1.5">
         <Label>Initials</Label>
         <Input value={initials} onChange={e => setInitials(e.target.value)} placeholder="Auto-generated if empty" />
+      </div>
+      <div className="space-y-1.5">
+        <ImageUpload
+          label="Photo"
+          folder="team"
+          maxDim={400}
+          round
+          value={photo}
+          onChange={v => setPhoto(v || '')}
+          hint="Optional — shown instead of the initials avatar on the public site"
+        />
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="gold" onClick={handleSubmit} disabled={saving || !name.trim()}>

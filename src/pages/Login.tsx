@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
+import { supabase } from '../supabase/client';
 
 interface LoginProps {
   onBackToSite: () => void;
 }
+
+const green = '#0f6e56';
+const greenDark = '#0b5c47';
+const ink = '#27313b';
+const slate = '#64748b';
+const border = '#e2eae6';
 
 export function Login({ onBackToSite }: LoginProps) {
   const { signIn, loading: authLoading } = useAuth();
@@ -13,6 +20,21 @@ export function Login({ onBackToSite }: LoginProps) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Load the board logo from site content so the login card matches the public site
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data } = await supabase.from('site_content').select('logo_url').single();
+        if (!cancelled && data?.logo_url) setLogoUrl(data.logo_url);
+      } catch {
+        // site_content may not exist yet — keep the 🏛 fallback
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,38 +63,44 @@ export function Login({ onBackToSite }: LoginProps) {
   return (
     <div style={{
       position: 'fixed', inset: 0, display: 'flex',
-      background: 'linear-gradient(165deg,#080812 0%,#0d0d1a 50%,#12121f 100%)',
+      background: '#eef5f1',
       alignItems: 'center', justifyContent: 'center', zIndex: 999,
+      padding: 16,
     }}>
       <div style={{
-        background: 'rgba(255,255,255,.04)', border: '1px solid rgba(255,255,255,.08)',
-        borderRadius: 20, padding: 44, width: '100%', maxWidth: 420,
-        backdropFilter: 'blur(20px)', boxShadow: '0 20px 60px rgba(0,0,0,.4)',
+        background: '#ffffff', border: `1px solid ${border}`,
+        borderRadius: 12, padding: 44, width: '100%', maxWidth: 420,
+        boxShadow: '0 2px 10px rgba(15,110,86,0.06)',
       }}>
         <div style={{ textAlign: 'center', marginBottom: 28 }}>
           <div style={{
-            width: 64, height: 64,
-            background: 'linear-gradient(145deg,#c9a84c,#dbb668 50%,#b8860b)',
-            borderRadius: 16, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: 28, margin: '0 auto 14px',
-            color: '#0b0b14', boxShadow: '0 4px 20px rgba(201,168,76,.2)',
+            width: 60, height: 60,
+            background: logoUrl ? '#fff' : green,
+            borderRadius: 12, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: 26, margin: '0 auto 14px',
+            color: '#fff', overflow: 'hidden',
+            border: logoUrl ? `1px solid ${border}` : 'none',
           }}>
-            🏛
+            {logoUrl ? (
+              <img src={logoUrl} alt="AMEB logo" style={{ width: '100%', height: '100%', objectFit: 'contain', padding: 6 }} />
+            ) : (
+              '🏛'
+            )}
           </div>
           <div style={{
-            fontSize: 10, fontWeight: 700, color: '#dbb668',
+            fontSize: 10, fontWeight: 700, color: green,
             letterSpacing: 2.5, textTransform: 'uppercase',
           }}>
             Adamawa State Government
           </div>
           <div style={{
-            fontSize: 20, fontWeight: 800, color: '#fff',
+            fontSize: 20, fontWeight: 800, color: ink,
             marginTop: 6, letterSpacing: '-.4px',
           }}>
             AMEB — Staff Register
           </div>
           <div style={{
-            fontSize: 13, color: 'rgba(255,255,255,.3)', marginTop: 4,
+            fontSize: 13, color: slate, marginTop: 4,
           }}>
             Employee Management System
           </div>
@@ -82,12 +110,12 @@ export function Login({ onBackToSite }: LoginProps) {
           <a
             onClick={onBackToSite}
             style={{
-              color: 'rgba(255,255,255,.3)', fontSize: 12,
+              color: slate, fontSize: 12,
               cursor: 'pointer', transition: 'color .2s',
               textDecoration: 'none',
             }}
-            onMouseEnter={e => (e.currentTarget.style.color = '#dbb668')}
-            onMouseLeave={e => (e.currentTarget.style.color = 'rgba(255,255,255,.3)')}
+            onMouseEnter={e => (e.currentTarget.style.color = green)}
+            onMouseLeave={e => (e.currentTarget.style.color = slate)}
           >
             ← Back to Website
           </a>
@@ -96,7 +124,7 @@ export function Login({ onBackToSite }: LoginProps) {
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 18 }}>
             <label style={{
-              fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.45)',
+              fontSize: 12, fontWeight: 600, color: ink,
               marginBottom: 7, display: 'block', letterSpacing: '.3px',
             }}>
               Email Address
@@ -109,19 +137,19 @@ export function Login({ onBackToSite }: LoginProps) {
               autoComplete="username"
               style={{
                 width: '100%', padding: '12px 16px',
-                background: 'rgba(255,255,255,.05)',
-                border: '1px solid rgba(255,255,255,.08)',
-                borderRadius: 10, color: '#fff', fontSize: 15,
-                outline: 'none', transition: 'all .2s',
+                background: '#fff',
+                border: `1px solid ${border}`,
+                borderRadius: 8, color: ink, fontSize: 15,
+                outline: 'none', transition: 'border-color .2s',
               }}
-              onFocus={e => { e.target.style.borderColor = '#c9a84c'; e.target.style.boxShadow = '0 0 0 4px rgba(201,168,76,.08)'; }}
-              onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,.08)'; e.target.style.boxShadow = 'none'; }}
+              onFocus={e => { e.target.style.borderColor = green; }}
+              onBlur={e => { e.target.style.borderColor = border; }}
             />
           </div>
 
           <div style={{ marginBottom: 18 }}>
             <label style={{
-              fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,.45)',
+              fontSize: 12, fontWeight: 600, color: ink,
               marginBottom: 7, display: 'block', letterSpacing: '.3px',
             }}>
               Password
@@ -134,13 +162,13 @@ export function Login({ onBackToSite }: LoginProps) {
               autoComplete="current-password"
               style={{
                 width: '100%', padding: '12px 16px',
-                background: 'rgba(255,255,255,.05)',
-                border: '1px solid rgba(255,255,255,.08)',
-                borderRadius: 10, color: '#fff', fontSize: 15,
-                outline: 'none', transition: 'all .2s',
+                background: '#fff',
+                border: `1px solid ${border}`,
+                borderRadius: 8, color: ink, fontSize: 15,
+                outline: 'none', transition: 'border-color .2s',
               }}
-              onFocus={e => { e.target.style.borderColor = '#c9a84c'; e.target.style.boxShadow = '0 0 0 4px rgba(201,168,76,.08)'; }}
-              onBlur={e => { e.target.style.borderColor = 'rgba(255,255,255,.08)'; e.target.style.boxShadow = 'none'; }}
+              onFocus={e => { e.target.style.borderColor = green; }}
+              onBlur={e => { e.target.style.borderColor = border; }}
             />
           </div>
 
@@ -149,15 +177,14 @@ export function Login({ onBackToSite }: LoginProps) {
             disabled={submitting || authLoading}
             style={{
               width: '100%', padding: 13,
-              background: submitting || authLoading
-                ? 'linear-gradient(145deg,#c9a84c,#dbb668 50%,#b8860b)'
-                : 'linear-gradient(145deg,#c9a84c,#dbb668 50%,#b8860b)',
-              color: '#0b0b14', border: 'none', borderRadius: 10,
-              fontSize: 15, fontWeight: 800, cursor: submitting || authLoading ? 'not-allowed' : 'pointer',
-              marginTop: 6, transition: 'all .3s', letterSpacing: '.3px',
-              boxShadow: '0 4px 16px rgba(201,168,76,.2)',
+              background: green,
+              color: '#fff', border: 'none', borderRadius: 8,
+              fontSize: 15, fontWeight: 700, cursor: submitting || authLoading ? 'not-allowed' : 'pointer',
+              marginTop: 6, transition: 'background .2s', letterSpacing: '.3px',
               opacity: submitting || authLoading ? 0.6 : 1,
             }}
+            onMouseEnter={e => { if (!submitting && !authLoading) e.currentTarget.style.background = greenDark; }}
+            onMouseLeave={e => { e.currentTarget.style.background = green; }}
           >
             {submitting ? 'Signing in…' : 'Sign In'}
           </button>
@@ -165,8 +192,8 @@ export function Login({ onBackToSite }: LoginProps) {
 
         {error && (
           <div style={{
-            background: 'rgba(192,57,43,.12)', border: '1px solid rgba(192,57,43,.2)',
-            color: '#fca5a5', padding: '10px 14px', borderRadius: 8,
+            background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.25)',
+            color: '#dc2626', padding: '10px 14px', borderRadius: 8,
             fontSize: 13, marginTop: 14,
           }}>
             {error}

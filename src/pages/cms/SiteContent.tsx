@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { useToast } from '@/hooks/useToast';
 import { clearCmsCache } from '@/hooks/useCmsData';
 import { dbLoadSiteContent, dbSaveSiteContent } from '@/supabase/cms';
@@ -96,6 +97,41 @@ export function SiteContent({ onNavigate }: SiteContentProps) {
       </div>
 
       <div className="space-y-6">
+        {/* Logo & Photos */}
+        <Card>
+          <CardContent className="p-5 space-y-4">
+            <h3 className="text-sm font-bold text-navy">🖼 Logo & Photos</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ImageUpload
+                label="Board Logo"
+                folder="logo"
+                maxDim={512}
+                value={content.logo_url}
+                onChange={v => update('logo_url', v || '')}
+                hint="PNG with transparent background preferred — replaces the 🏛 emblem"
+              />
+              <ImageUpload
+                label="Hero Photo"
+                folder="hero"
+                maxDim={1920}
+                value={content.hero_image}
+                onChange={v => update('hero_image', v || '')}
+                hint="Wide photo — appears behind the hero text (dark overlay keeps text readable)"
+              />
+              <div className="md:col-span-2">
+                <ImageUpload
+                  label="About Photo"
+                  folder="about"
+                  maxDim={1400}
+                  value={content.about_image}
+                  onChange={v => update('about_image', v || '')}
+                  hint="Optional photo shown at the top of the About section"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Hero Section */}
         <Card>
           <CardContent className="p-5 space-y-4">

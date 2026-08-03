@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { dbLoadNews, dbSaveNewsArticle, dbDeleteNews } from '@/supabase/cms';
 import { clearCmsCache } from '@/hooks/useCmsData';
 import type { CmsNews } from '@/types';
@@ -70,12 +71,13 @@ function NewsForm({ item, onSave }: { item: Partial<CmsNews> | null; onSave: (da
   const [excerpt, setExcerpt] = useState(item?.excerpt || '');
   const [date, setDate] = useState(item?.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
   const [icon, setIcon] = useState(item?.icon || '📰');
+  const [image, setImage] = useState(item?.image || '');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    await onSave({ title: title.trim(), excerpt: excerpt.trim(), date, icon });
+    await onSave({ title: title.trim(), excerpt: excerpt.trim(), date, icon, image: image || undefined });
     setSaving(false);
   };
 
@@ -96,6 +98,16 @@ function NewsForm({ item, onSave }: { item: Partial<CmsNews> | null; onSave: (da
       <div className="space-y-1.5">
         <Label>Icon</Label>
         <Input value={icon} onChange={e => setIcon(e.target.value)} placeholder="📰" />
+      </div>
+      <div className="space-y-1.5">
+        <ImageUpload
+          label="Image"
+          folder="news"
+          maxDim={1000}
+          value={image}
+          onChange={v => setImage(v || '')}
+          hint="Optional thumbnail — replaces the icon banner on the public site"
+        />
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="gold" onClick={handleSubmit} disabled={saving || !title.trim()}>

@@ -48,8 +48,8 @@ const SORT_OPTIONS: { value: keyof Employee; label: string }[] = [
 
 const thStyle: React.CSSProperties = {
   padding: '9px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-  color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px',
-  background: '#f8f6f2', borderBottom: '1px solid #dad3c8',
+  color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px',
+  background: '#f7faf8', borderBottom: '1px solid #d3ded9',
   whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none',
 };
 
@@ -85,12 +85,12 @@ export function EmployeesPage({
     <div>
       {/* ── Filter Bar ── */}
       <div style={{
-        background: '#fff', border: '1px solid #efebe4', borderRadius: 12,
+        background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
         padding: '13px 14px', display: 'flex', gap: 10, flexWrap: 'wrap',
         alignItems: 'flex-end', marginBottom: 14, boxShadow: '0 2px 8px rgba(0,0,0,.06)',
       }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 2, minWidth: 200 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#5c5648', textTransform: 'uppercase', letterSpacing: '.3px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
             Search
           </div>
           <input
@@ -98,29 +98,29 @@ export function EmployeesPage({
             value={filter.search}
             onChange={e => onFilterChange({ search: e.target.value })}
             style={{
-              padding: '8px 10px', border: '1px solid #dad3c8', borderRadius: 6,
-              fontSize: 13, background: '#f8f6f2', color: '#2a251c',
+              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
+              fontSize: 13, background: '#f7faf8', color: '#27313b',
               outline: 'none', width: '100%',
             }}
-            onFocus={e => { e.target.style.borderColor = '#c9a84c'; e.target.style.background = '#fff'; }}
-            onBlur={e => { e.target.style.borderColor = '#dad3c8'; e.target.style.background = '#f8f6f2'; }}
+            onFocus={e => { e.target.style.borderColor = '#0f6e56'; e.target.style.background = '#fff'; }}
+            onBlur={e => { e.target.style.borderColor = '#d3ded9'; e.target.style.background = '#f7faf8'; }}
           />
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#5c5648', textTransform: 'uppercase', letterSpacing: '.3px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
             LGA
           </div>
           <select
             value={filter.lga}
             onChange={e => onFilterChange({ lga: e.target.value })}
             style={{
-              padding: '8px 10px', border: '1px solid #dad3c8', borderRadius: 6,
-              fontSize: 13, background: '#f8f6f2', color: '#2a251c', outline: 'none',
+              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
+              fontSize: 13, background: '#f7faf8', color: '#27313b', outline: 'none',
               appearance: 'none', paddingRight: 26,
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
-              backgroundColor: '#f8f6f2',
+              backgroundColor: '#f7faf8',
             }}
           >
             <option value="">All LGAs</option>
@@ -129,19 +129,19 @@ export function EmployeesPage({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#5c5648', textTransform: 'uppercase', letterSpacing: '.3px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
             Station
           </div>
           <select
             value={filter.station}
             onChange={e => onFilterChange({ station: e.target.value })}
             style={{
-              padding: '8px 10px', border: '1px solid #dad3c8', borderRadius: 6,
-              fontSize: 13, background: '#f8f6f2', color: '#2a251c', outline: 'none',
+              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
+              fontSize: 13, background: '#f7faf8', color: '#27313b', outline: 'none',
               appearance: 'none', paddingRight: 26,
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
-              backgroundColor: '#f8f6f2',
+              backgroundColor: '#f7faf8',
             }}
           >
             <option value="">All Stations</option>
@@ -150,19 +150,19 @@ export function EmployeesPage({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#5c5648', textTransform: 'uppercase', letterSpacing: '.3px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
             Grade
           </div>
           <select
             value={filter.grade}
             onChange={e => onFilterChange({ grade: e.target.value })}
             style={{
-              padding: '8px 10px', border: '1px solid #dad3c8', borderRadius: 6,
-              fontSize: 13, background: '#f8f6f2', color: '#2a251c', outline: 'none',
+              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
+              fontSize: 13, background: '#f7faf8', color: '#27313b', outline: 'none',
               appearance: 'none', paddingRight: 26,
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
-              backgroundColor: '#f8f6f2',
+              backgroundColor: '#f7faf8',
             }}
           >
             <option value="">All Grades</option>
@@ -171,19 +171,19 @@ export function EmployeesPage({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#5c5648', textTransform: 'uppercase', letterSpacing: '.3px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
             Sort by
           </div>
           <select
             value={sortField}
             onChange={e => onFilterChange({ sortField: e.target.value as keyof Employee })}
             style={{
-              padding: '8px 10px', border: '1px solid #dad3c8', borderRadius: 6,
-              fontSize: 13, background: '#f8f6f2', color: '#2a251c', outline: 'none',
+              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
+              fontSize: 13, background: '#f7faf8', color: '#27313b', outline: 'none',
               appearance: 'none', paddingRight: 26,
               backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
               backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
-              backgroundColor: '#f8f6f2',
+              backgroundColor: '#f7faf8',
             }}
           >
             {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -196,8 +196,8 @@ export function EmployeesPage({
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-              border: '1px solid #dad3c8', cursor: 'pointer',
-              background: 'transparent', color: '#5c5648', whiteSpace: 'nowrap',
+              border: '1px solid #d3ded9', cursor: 'pointer',
+              background: 'transparent', color: '#475569', whiteSpace: 'nowrap',
             }}
           >
             Clear
@@ -208,7 +208,7 @@ export function EmployeesPage({
               display: 'inline-flex', alignItems: 'center', gap: 6,
               padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
               border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-              background: '#0b0b14', color: '#fff',
+              background: '#27313b', color: '#fff',
             }}
           >
             🖨 Print
@@ -218,18 +218,18 @@ export function EmployeesPage({
 
       {/* ── Results Table ── */}
       <div style={{
-        background: '#fff', border: '1px solid #efebe4', borderRadius: 12,
+        background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
         overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
       }}>
         <div style={{
-          padding: '9px 14px', borderBottom: '1px solid #efebe4',
+          padding: '9px 14px', borderBottom: '1px solid #e2eae6',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
-          <div style={{ fontSize: 12, color: '#948d7e' }}>
+          <div style={{ fontSize: 12, color: '#64748b' }}>
             {filtered.length > 0 ? (
-              <>Showing <strong style={{ color: '#2a251c' }}>{from}–{to}</strong> of {filtered.length} officers ({employees.length} total)</>
+              <>Showing <strong style={{ color: '#27313b' }}>{from}–{to}</strong> of {filtered.length} officers ({employees.length} total)</>
             ) : (
-              <><strong style={{ color: '#2a251c' }}>0</strong> of {employees.length} officers</>
+              <><strong style={{ color: '#27313b' }}>0</strong> of {employees.length} officers</>
             )}
           </div>
         </div>
@@ -271,13 +271,13 @@ export function EmployeesPage({
                 <tr>
                   <td colSpan={10} style={{ textAlign: 'center', padding: 44 }}>
                     <div style={{ fontSize: 38, marginBottom: 10 }}>🔍</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#5c5648', marginBottom: 5 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 5 }}>
                       {employees.length === 0 ? 'No employees on record yet.' : 'No employees match your filters.'}
                     </div>
-                    <div style={{ fontSize: 12, color: '#948d7e' }}>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>
                       {employees.length === 0
                         ? 'Click "+ Add Employee" or "Import from Register" to get started.'
-                        : <a onClick={onClearFilters} style={{ color: '#c9a84c', cursor: 'pointer' }}>Clear all filters</a>
+                        : <a onClick={onClearFilters} style={{ color: '#0f6e56', cursor: 'pointer' }}>Clear all filters</a>
                       }
                     </div>
                   </td>
@@ -285,8 +285,8 @@ export function EmployeesPage({
               ) : paginated.map(e => (
                 <tr
                   key={e.id}
-                  style={{ borderBottom: '1px solid #efebe4', transition: 'background .1s' }}
-                  onMouseEnter={e2 => { (e2.currentTarget as HTMLElement).style.background = '#f8f6f2'; }}
+                  style={{ borderBottom: '1px solid #e2eae6', transition: 'background .1s' }}
+                  onMouseEnter={e2 => { (e2.currentTarget as HTMLElement).style.background = '#f7faf8'; }}
                   onMouseLeave={e2 => { (e2.currentTarget as HTMLElement).style.background = ''; }}
                 >
                   <td style={{ ...tdStyle, width: 44 }}>
@@ -297,16 +297,16 @@ export function EmployeesPage({
                       </AvatarFallback>
                     </Avatar>
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#c9a84c', fontWeight: 600 }}>
+                  <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#0f6e56', fontWeight: 600 }}>
                     {esc(e.psn || '—')}
                   </td>
                   <td
-                    style={{ ...tdStyle, fontWeight: 700, color: '#0b0b14', cursor: 'pointer' }}
+                    style={{ ...tdStyle, fontWeight: 700, color: '#27313b', cursor: 'pointer' }}
                     onClick={() => onViewEmployee(e.id)}
                   >
                     {esc(e.name)}
                   </td>
-                  <td style={{ ...tdStyle, fontSize: 12, color: '#5c5648' }}>
+                  <td style={{ ...tdStyle, fontSize: 12, color: '#475569' }}>
                     {esc(e.cadre || '—')}
                   </td>
                   <td style={tdStyle}>
@@ -336,7 +336,7 @@ export function EmployeesPage({
                       <button
                         onClick={() => onEditEmployee(e.id)}
                         title="Edit"
-                        style={{ ...actionBtnStyle, background: 'linear-gradient(145deg,#c9a84c,#dbb668)', color: '#0b0b14' }}
+                        style={{ ...actionBtnStyle, background: '#0f6e56', color: '#fff' }}
                       >
                         ✏️
                       </button>
@@ -359,7 +359,7 @@ export function EmployeesPage({
         {totalPages > 1 && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 14px', borderTop: '1px solid #efebe4',
+            padding: '8px 14px', borderTop: '1px solid #e2eae6',
           }}>
             <button
               onClick={() => onFilterChange({ page: Math.max(1, filter.page - 1) })}
@@ -367,14 +367,14 @@ export function EmployeesPage({
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                border: '1px solid #dad3c8', cursor: filter.page <= 1 ? 'not-allowed' : 'pointer',
-                background: 'transparent', color: filter.page <= 1 ? '#dad3c8' : '#5c5648',
+                border: '1px solid #d3ded9', cursor: filter.page <= 1 ? 'not-allowed' : 'pointer',
+                background: 'transparent', color: filter.page <= 1 ? '#d3ded9' : '#475569',
                 opacity: filter.page <= 1 ? 0.4 : 1,
               }}
             >
               ‹ Prev
             </button>
-            <span style={{ fontSize: 12, color: '#5c5648' }}>
+            <span style={{ fontSize: 12, color: '#475569' }}>
               Page {filter.page} of {totalPages}
             </span>
             <button
@@ -383,8 +383,8 @@ export function EmployeesPage({
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                border: '1px solid #dad3c8', cursor: filter.page >= totalPages ? 'not-allowed' : 'pointer',
-                background: 'transparent', color: filter.page >= totalPages ? '#dad3c8' : '#5c5648',
+                border: '1px solid #d3ded9', cursor: filter.page >= totalPages ? 'not-allowed' : 'pointer',
+                background: 'transparent', color: filter.page >= totalPages ? '#d3ded9' : '#475569',
                 opacity: filter.page >= totalPages ? 0.4 : 1,
               }}
             >
@@ -400,7 +400,7 @@ export function EmployeesPage({
 const actionBtnStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   padding: '4px 8px', borderRadius: 6, fontSize: 13,
-  border: '1px solid #dad3c8', cursor: 'pointer',
-  background: 'transparent', color: '#5c5648',
+  border: '1px solid #d3ded9', cursor: 'pointer',
+  background: 'transparent', color: '#475569',
   width: 30, height: 28, lineHeight: 1,
 };

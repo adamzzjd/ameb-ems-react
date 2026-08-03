@@ -251,19 +251,19 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
     w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Learning Centres Register</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
     <style>
-      *{box-sizing:border-box;}body{font-family:'Inter',sans-serif;padding:20px;font-size:11px;color:#1e2a3a;}
+      *{box-sizing:border-box;}body{font-family:'Inter',sans-serif;padding:20px;font-size:11px;color:#27313b;}
       .hdr{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
-      .org{font-size:16px;font-weight:800;color:#0f2744;}.sub{font-size:11px;color:#64748b;}
-      h2{font-size:13px;font-weight:700;color:#0f2744;margin:10px 0 3px;}
+      .org{font-size:16px;font-weight:800;color:#0f6e56;}.sub{font-size:11px;color:#64748b;}
+      h2{font-size:13px;font-weight:700;color:#0f6e56;margin:10px 0 3px;}
       p{font-size:11px;color:#64748b;margin-bottom:12px;}
       table{width:100%;border-collapse:collapse;}
-      th{background:#0f2744;color:#fff;padding:7px 8px;text-align:left;font-size:10px;font-weight:700;}
+      th{background:#0f6e56;color:#fff;padding:7px 8px;text-align:left;font-size:10px;font-weight:700;}
       td{padding:6px 8px;border-bottom:1px solid #eef0f6;}
       tr:nth-child(even) td{background:#f7f8fc;}
       .foot{margin-top:14px;font-size:10px;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:8px;display:flex;justify-content:space-between;}
       @media print{body{padding:0;}@page{margin:.8cm;size:A4 landscape;}}
     </style></head><body>
-    <div class="hdr"><div style="width:44px;height:44px;background:#0f2744;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#b8892a;">🏛</div>
+    <div class="hdr"><div style="width:44px;height:44px;background:#0f6e56;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:18px;color:#e1f5ee;">🏛</div>
       <div><div class="org">Adamawa State Mass Education Board</div>
       <div class="sub">Learning Centres Register — EMIS</div></div>
     </div>
@@ -285,14 +285,14 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet"/>
     <style>
       *{box-sizing:border-box;margin:0;padding:0;}body{font-family:'Inter',sans-serif;padding:20px;}
-      .sheet{max-width:600px;margin:0 auto;border:2px solid #0f2744;border-radius:8px;overflow:hidden;}
-      .hdr{background:linear-gradient(135deg,#0f2744,#1a3a5c);padding:18px 20px;}
-      .org-name{font-size:10px;font-weight:800;color:#b8892a;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
+      .sheet{max-width:600px;margin:0 auto;border:2px solid #0f6e56;border-radius:8px;overflow:hidden;}
+      .hdr{background:#0f6e56;padding:18px 20px;}
+      .org-name{font-size:10px;font-weight:800;color:#e1f5ee;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;}
       .cname{font-size:18px;font-weight:800;color:#fff;}.ctype{font-size:12px;color:rgba(255,255,255,.55);margin-top:3px;}
       .fields{display:grid;grid-template-columns:1fr 1fr;}
       .field{padding:9px 16px;border-bottom:1px solid #eef0f6;}.field:nth-child(odd){border-right:1px solid #eef0f6;}
       .fl{font-size:10px;font-weight:700;color:#8e99b0;text-transform:uppercase;letter-spacing:.4px;}
-      .fv{font-size:13px;font-weight:600;color:#1e2a3a;margin-top:2px;}
+      .fv{font-size:13px;font-weight:600;color:#27313b;margin-top:2px;}
       .foot{background:#f7f8fc;border-top:1px solid #dde1ec;padding:9px 16px;font-size:10px;color:#8e99b0;display:flex;justify-content:space-between;}
       .rem{background:#fffbeb;border-top:1px solid #fde68a;padding:10px 16px;font-size:12px;color:#78350f;}
       @media print{body{padding:0;}@page{margin:.8cm;size:A4 portrait;}}
@@ -322,8 +322,8 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
 
   if (loading) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: '#948d7e' }}>
-        <div style={{ width: 24, height: 24, border: '3px solid #dad3c8', borderTopColor: '#0b0b14', borderRadius: '50%', animation: 'spin 0.6s linear infinite', margin: '0 auto 16px' }} />
+      <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+        <div style={{ width: 24, height: 24, border: '3px solid #d3ded9', borderTopColor: '#0f6e56', borderRadius: '50%', animation: 'spin 0.6s linear infinite', margin: '0 auto 16px' }} />
         Loading centres…
       </div>
     );
@@ -333,90 +333,90 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
     <div>
       {/* ── Stats Cards ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 16 }}>
-        <div style={{ background: 'linear-gradient(135deg,#0f2744,#1a3a5c)', borderRadius: 10, padding: '14px 16px', color: '#fff' }}>
+        <div style={{ background: '#0f6e56', borderRadius: 10, padding: '14px 16px', color: '#fff' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,.5)', textTransform: 'uppercase', letterSpacing: '.4px' }}>Total Centres</div>
           <div style={{ fontSize: 26, fontWeight: 800, marginTop: 2 }}>{stats.total}</div>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,.4)', marginTop: 2 }}>Across all LGAs</div>
         </div>
-        <div style={{ background: '#fff', border: '1px solid #efebe4', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px' }}>Active</div>
+        <div style={{ background: '#fff', border: '1px solid #e2eae6', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px' }}>Active</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: '#16a34a', marginTop: 2 }}>{stats.active}</div>
-          <div style={{ fontSize: 11, color: '#948d7e', marginTop: 2 }}>Currently operating</div>
+          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Currently operating</div>
         </div>
-        <div style={{ background: '#fff', border: '1px solid #efebe4', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px' }}>LGAs Covered</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f2744', marginTop: 2 }}>{stats.lgasCovered}</div>
-          <div style={{ fontSize: 11, color: '#948d7e', marginTop: 2 }}>of {LGAs.length} LGAs</div>
+        <div style={{ background: '#fff', border: '1px solid #e2eae6', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px' }}>LGAs Covered</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f6e56', marginTop: 2 }}>{stats.lgasCovered}</div>
+          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>of {LGAs.length} LGAs</div>
         </div>
-        <div style={{ background: '#fff', border: '1px solid #efebe4', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px' }}>With NGO Partner</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: '#c9a84c', marginTop: 2 }}>{stats.withNgo}</div>
-          <div style={{ fontSize: 11, color: '#948d7e', marginTop: 2 }}>Supported centres</div>
+        <div style={{ background: '#fff', border: '1px solid #e2eae6', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px' }}>With NGO Partner</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: '#0f6e56', marginTop: 2 }}>{stats.withNgo}</div>
+          <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>Supported centres</div>
         </div>
       </div>
 
       {/* ── Filter Bar ── */}
       <div style={{
         display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 14,
-        padding: '11px 14px', background: '#fff', border: '1px solid #efebe4',
+        padding: '11px 14px', background: '#fff', border: '1px solid #e2eae6',
         borderRadius: 10, alignItems: 'flex-end',
       }}>
         <div style={{ flex: '1 1 200px', display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.3px' }}>Search</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.3px' }}>Search</div>
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Name, community, facilitator, NGO…"
-            style={{ padding: '7px 10px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 12, outline: 'none', width: '100%', background: '#faf8f5' }}
+            style={{ padding: '7px 10px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 12, outline: 'none', width: '100%', background: '#f7faf8' }}
           />
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 130 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.3px' }}>LGA</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.3px' }}>LGA</div>
           <select
             value={filterLGA} onChange={e => setFilterLGA(e.target.value)}
-            style={{ padding: '7px 10px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 12, outline: 'none', background: '#faf8f5', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            style={{ padding: '7px 10px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 12, outline: 'none', background: '#f7faf8', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
           >
             <option value="">All LGAs</option>
             {LGAs.map(l => <option key={l} value={l}>{l}</option>)}
           </select>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 130 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.3px' }}>Type</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.3px' }}>Type</div>
           <select
             value={filterType} onChange={e => setFilterType(e.target.value)}
-            style={{ padding: '7px 10px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 12, outline: 'none', background: '#faf8f5', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            style={{ padding: '7px 10px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 12, outline: 'none', background: '#f7faf8', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
           >
             <option value="">All Types</option>
             {CENTRE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 130 }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.3px' }}>Status</div>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.3px' }}>Status</div>
           <select
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            style={{ padding: '7px 10px', border: '1px solid #dad3c8', borderRadius: 6, fontSize: 12, outline: 'none', background: '#faf8f5', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            style={{ padding: '7px 10px', border: '1px solid #d3ded9', borderRadius: 6, fontSize: 12, outline: 'none', background: '#f7faf8', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
           >
             <option value="">All Statuses</option>
             {CENTRE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
         <div style={{ display: 'flex', gap: 5 }}>
-          <button onClick={clearFilters} style={{ padding: '7px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'transparent', color: '#5c5648', whiteSpace: 'nowrap' }}>
+          <button onClick={clearFilters} style={{ padding: '7px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: 'transparent', color: '#475569', whiteSpace: 'nowrap' }}>
             Clear
           </button>
-          <button onClick={() => handlePrintCentres(filtered)} style={{ padding: '7px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'transparent', color: '#5c5648' }}>
+          <button onClick={() => handlePrintCentres(filtered)} style={{ padding: '7px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: 'transparent', color: '#475569' }}>
             🖨 Print
           </button>
-          <button onClick={openAdd} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'linear-gradient(145deg,#c9a84c,#dbb668)', color: '#0b0b14', whiteSpace: 'nowrap' }}>
+          <button onClick={openAdd} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#0f6e56', color: '#fff', whiteSpace: 'nowrap' }}>
             + Add Centre
           </button>
         </div>
       </div>
 
       {/* ── Table ── */}
-      <div style={{ background: '#fff', border: '1px solid #efebe4', borderRadius: 12, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)' }}>
-        <div style={{ padding: '9px 14px', borderBottom: '1px solid #efebe4' }}>
-          <div style={{ fontSize: 12, color: '#948d7e' }}>
-            Showing <strong style={{ color: '#2a251c' }}>{filtered.length}</strong> of {stats.total} centres
+      <div style={{ background: '#fff', border: '1px solid #e2eae6', borderRadius: 12, overflow: 'hidden', boxShadow: 'none' }}>
+        <div style={{ padding: '9px 14px', borderBottom: '1px solid #e2eae6' }}>
+          <div style={{ fontSize: 12, color: '#64748b' }}>
+            Showing <strong style={{ color: '#27313b' }}>{filtered.length}</strong> of {stats.total} centres
           </div>
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -439,19 +439,19 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
                 <tr>
                   <td colSpan={9} style={{ textAlign: 'center', padding: 44 }}>
                     <div style={{ fontSize: 38, marginBottom: 10 }}>🏫</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#5c5648', marginBottom: 5 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 5 }}>
                       {centres.length > 0 ? 'No centres match your filters.' : 'No centres yet.'}
                     </div>
-                    <div style={{ fontSize: 12, color: '#948d7e' }}>
+                    <div style={{ fontSize: 12, color: '#64748b' }}>
                       {centres.length > 0
-                        ? <span onClick={clearFilters} style={{ color: '#c9a84c', cursor: 'pointer', fontWeight: 600 }}>Clear filters</span>
+                        ? <span onClick={clearFilters} style={{ color: '#0f6e56', cursor: 'pointer', fontWeight: 600 }}>Clear filters</span>
                         : 'Click "+ Add Centre" to register your first learning centre.'}
                     </div>
                   </td>
                 </tr>
               ) : filtered.map((c, i) => (
-                <tr key={c.id} style={{ borderBottom: '1px solid #efebe4', background: i % 2 === 0 ? '#fff' : '#f8f6f2' }}>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: '#0b0b14', cursor: 'pointer' }}
+                <tr key={c.id} style={{ borderBottom: '1px solid #e2eae6', background: i % 2 === 0 ? '#fff' : '#f7faf8' }}>
+                  <td style={{ ...tdStyle, fontWeight: 600, color: '#27313b', cursor: 'pointer' }}
                     onClick={() => openView(c.id)}>
                     {esc(c.name)}
                   </td>
@@ -473,7 +473,7 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 4 }}>
                       <button onClick={() => openView(c.id)} title="View" style={actionBtnStyle}>👁</button>
-                      <button onClick={() => openEdit(c)} title="Edit" style={{ ...actionBtnStyle, background: 'linear-gradient(145deg,#c9a84c,#dbb668)', color: '#0b0b14' }}>✏️</button>
+                      <button onClick={() => openEdit(c)} title="Edit" style={{ ...actionBtnStyle, background: '#0f6e56', color: '#fff' }}>✏️</button>
                       <button onClick={() => setShowDelete({ id: c.id, name: c.name })} title="Delete" style={{ ...actionBtnStyle, color: '#c0392b' }}>🗑</button>
                     </div>
                   </td>
@@ -493,10 +493,10 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
         maxWidth="560px"
         footer={
           <>
-            <button onClick={() => setShowForm(false)} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'transparent', color: '#5c5648' }}>
+            <button onClick={() => setShowForm(false)} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: 'transparent', color: '#475569' }}>
               Cancel
             </button>
-            <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', background: editing ? '#0b0b14' : 'linear-gradient(145deg,#c9a84c,#dbb668)', color: editing ? '#fff' : '#0b0b14', opacity: saving ? 0.6 : 1 }}>
+            <button onClick={handleSave} disabled={saving} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: saving ? 'not-allowed' : 'pointer', background: '#0f6e56', color: '#fff', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Saving…' : editing ? '💾 Save Changes' : '+ Add Centre'}
             </button>
           </>
@@ -509,70 +509,70 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
             </div>
           )}
 
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px', paddingBottom: 2, borderBottom: '1px solid #efebe4' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px', paddingBottom: 2, borderBottom: '1px solid #e2eae6' }}>
             Centre Information
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Centre Name <span style={{ color: '#c0392b' }}>*</span></label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Centre Name <span style={{ color: '#c0392b' }}>*</span></label>
               <input value={formName} onChange={e => setFormName(e.target.value)} placeholder="e.g. Yola Adult Literacy Centre" style={inputStyle} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>LGA <span style={{ color: '#c0392b' }}>*</span></label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>LGA <span style={{ color: '#c0392b' }}>*</span></label>
               <select value={formLga} onChange={e => setFormLga(e.target.value)} style={selectStyle}>
                 <option value="">— Select LGA —</option>
                 {LGAs.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Ward</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Ward</label>
               <input value={formWard} onChange={e => setFormWard(e.target.value)} placeholder="e.g. Doubeli Ward" style={inputStyle} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Community</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Community</label>
               <input value={formCommunity} onChange={e => setFormCommunity(e.target.value)} placeholder="e.g. Jambutu" style={inputStyle} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Centre Type</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Centre Type</label>
               <select value={formType} onChange={e => setFormType(e.target.value)} style={selectStyle}>
                 <option value="">— Select Type —</option>
                 {CENTRE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Status</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Status</label>
               <select value={formStatus} onChange={e => setFormStatus(e.target.value)} style={selectStyle}>
                 {CENTRE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Capacity (learners)</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Capacity (learners)</label>
               <input type="number" value={formCapacity} onChange={e => setFormCapacity(e.target.value)} placeholder="e.g. 50" style={inputStyle} min={0} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Phone Number</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Phone Number</label>
               <input value={formPhone} onChange={e => setFormPhone(e.target.value)} placeholder="080XXXXXXXXX" style={inputStyle} />
             </div>
           </div>
 
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px', paddingBottom: 2, borderBottom: '1px solid #efebe4', marginTop: 4 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px', paddingBottom: 2, borderBottom: '1px solid #e2eae6', marginTop: 4 }}>
             Facilitator & Partner
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Assigned Facilitator</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Assigned Facilitator</label>
               <input value={formFacilitator} onChange={e => setFormFacilitator(e.target.value)} placeholder="Facilitator name" style={inputStyle} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>NGO Partner</label>
+              <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>NGO Partner</label>
               <input value={formNgo} onChange={e => setFormNgo(e.target.value)} placeholder="e.g. UNICEF, Save the Children" style={inputStyle} />
             </div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: '#5c5648' }}>Remarks</label>
+            <label style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>Remarks</label>
             <textarea value={formRemarks} onChange={e => setFormRemarks(e.target.value)} rows={2} placeholder="Optional notes…" style={{ ...inputStyle, resize: 'vertical', minHeight: 50 }} />
           </div>
         </div>
@@ -587,13 +587,13 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
           <div style={{ display: 'flex', gap: 6, width: '100%' }}>
             {viewCentre && (
               <>
-                <button onClick={() => handlePrintSingle(viewCentre)} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'transparent', color: '#5c5648' }}>
+                <button onClick={() => handlePrintSingle(viewCentre)} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: 'transparent', color: '#475569' }}>
                   🖨 Print
                 </button>
-                <button onClick={() => { setShowView(false); openEdit(viewCentre); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'linear-gradient(145deg,#c9a84c,#dbb668)', color: '#0b0b14' }}>
+                <button onClick={() => { setShowView(false); openEdit(viewCentre); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: '#0f6e56', color: '#fff' }}>
                   ✏️ Edit
                 </button>
-                <button onClick={() => { setShowView(false); setShowDelete({ id: viewCentre.id, name: viewCentre.name }); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'transparent', color: '#c0392b', marginLeft: 'auto' }}>
+                <button onClick={() => { setShowView(false); setShowDelete({ id: viewCentre.id, name: viewCentre.name }); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: 'transparent', color: '#c0392b', marginLeft: 'auto' }}>
                   🗑 Delete
                 </button>
               </>
@@ -604,8 +604,8 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
         {viewCentre && (
           <div>
             {/* Header */}
-            <div style={{ background: 'linear-gradient(135deg,#0f2744,#1a3a5c)', margin: '-16px -16px 16px', padding: '18px 20px', borderRadius: '12px 12px 0 0' }}>
-              <div style={{ fontSize: 9, fontWeight: 800, color: '#c9a84c', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
+            <div style={{ background: '#0f6e56', margin: '-16px -16px 16px', padding: '18px 20px', borderRadius: '12px 12px 0 0' }}>
+              <div style={{ fontSize: 9, fontWeight: 800, color: '#e1f5ee', letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 6 }}>
                 Adamawa State Mass Education Board
               </div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#fff' }}>{esc(viewCentre.name)}</div>
@@ -618,7 +618,7 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
                   📍 {esc(viewCentre.lga || '—')}
                 </span>
                 {viewCentre.ngo_partner && (
-                  <span style={{ background: 'rgba(201,168,76,.3)', color: '#f5e9c0', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                  <span style={{ background: 'rgba(225,245,238,.15)', color: '#e1f5ee', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
                     🤝 {esc(viewCentre.ngo_partner)}
                   </span>
                 )}
@@ -637,9 +637,9 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
                 ['NGO Partner', viewCentre.ngo_partner],
                 ['Status', viewCentre.status],
               ].map(([label, val]) => (
-                <div key={String(label)} style={{ padding: '9px 14px', borderBottom: '1px solid #efebe4', borderRight: label === 'LGA' || label === 'Community' || label === 'Phone' || label === 'Status' ? '1px solid #efebe4' : 'none' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: '#8e99b0', textTransform: 'uppercase', letterSpacing: '.4px' }}>{String(label)}</div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1e2a3a', marginTop: 2 }}>{val ? esc(val) : '—'}</div>
+                <div key={String(label)} style={{ padding: '9px 14px', borderBottom: '1px solid #e2eae6', borderRight: label === 'LGA' || label === 'Community' || label === 'Phone' || label === 'Status' ? '1px solid #e2eae6' : 'none' }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px' }}>{String(label)}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#27313b', marginTop: 2 }}>{val ? esc(val) : '—'}</div>
                 </div>
               ))}
             </div>
@@ -650,7 +650,7 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
               </div>
             )}
 
-            <div style={{ padding: '7px 14px 0', fontSize: 10, color: '#8e99b0', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #efebe4', marginTop: 12, paddingTop: 8 }}>
+            <div style={{ padding: '7px 14px 0', fontSize: 10, color: '#64748b', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2eae6', marginTop: 12, paddingTop: 8 }}>
               <span>AMEB — Learning Centres Register</span>
               <span>Viewed: {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
             </div>
@@ -665,7 +665,7 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
         maxWidth="420px"
         footer={
           <>
-            <button onClick={() => setShowDelete(null)} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid #dad3c8', cursor: 'pointer', background: 'transparent', color: '#5c5648' }}>
+            <button onClick={() => setShowDelete(null)} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid #d3ded9', cursor: 'pointer', background: 'transparent', color: '#475569' }}>
               Cancel
             </button>
             <button onClick={handleDelete} style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer', background: '#c0392b', color: '#fff' }}>
@@ -679,7 +679,7 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
             Delete "{showDelete?.name}"?
           </div>
-          <div style={{ fontSize: 13, color: '#948d7e' }}>
+          <div style={{ fontSize: 13, color: '#64748b' }}>
             This will permanently remove the centre from the register.
           </div>
         </div>
@@ -690,8 +690,8 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
 
 const thStyle: React.CSSProperties = {
   padding: '9px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-  color: '#948d7e', textTransform: 'uppercase', letterSpacing: '.4px',
-  background: '#f8f6f2', borderBottom: '1px solid #dad3c8', whiteSpace: 'nowrap',
+  color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px',
+  background: '#f7faf8', borderBottom: '1px solid #d3ded9', whiteSpace: 'nowrap',
 };
 
 const tdStyle: React.CSSProperties = {
@@ -701,18 +701,18 @@ const tdStyle: React.CSSProperties = {
 const actionBtnStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   padding: '4px 8px', borderRadius: 6, fontSize: 12,
-  border: '1px solid #dad3c8', cursor: 'pointer',
-  background: 'transparent', color: '#5c5648',
+  border: '1px solid #d3ded9', cursor: 'pointer',
+  background: 'transparent', color: '#475569',
   width: 30, height: 28, lineHeight: 1,
 };
 
 const inputStyle: React.CSSProperties = {
-  padding: '8px 10px', border: '1px solid #dad3c8', borderRadius: 6,
+  padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
   fontSize: 13, outline: 'none', width: '100%', background: '#fff',
 };
 
 const selectStyle: React.CSSProperties = {
-  padding: '8px 10px', border: '1px solid #dad3c8', borderRadius: 6,
+  padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
   fontSize: 13, outline: 'none', width: '100%', background: '#fff',
   appearance: 'none', paddingRight: 24,
   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,

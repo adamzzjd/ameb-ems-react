@@ -171,8 +171,8 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
               onClick={onClose}
               style={{
                 padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                border: '1px solid #dad3c8', cursor: 'pointer',
-                background: 'transparent', color: '#5c5648',
+                border: '1px solid #d3ded9', cursor: 'pointer',
+                background: 'transparent', color: '#475569',
               }}
             >
               Cancel
@@ -182,7 +182,7 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
               style={{
                 padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
                 border: 'none', cursor: 'pointer',
-                background: '#0f6e4f', color: '#fff',
+                background: '#0f6e56', color: '#fff',
               }}
             >
               📥 Import All {rows.length} Records
@@ -193,8 +193,8 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
             onClick={onClose}
             style={{
               padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              border: '1px solid #dad3c8', cursor: 'pointer',
-              background: 'transparent', color: '#5c5648',
+              border: '1px solid #d3ded9', cursor: 'pointer',
+              background: 'transparent', color: '#475569',
             }}
           >
             {step === 'importing' ? 'Importing…' : 'Cancel'}
@@ -216,24 +216,24 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
       {step === 'upload' && (
         <div
           style={{
-            border: '2px dashed #c2b9aa', borderRadius: 12, padding: 32, textAlign: 'center',
-            background: '#f8f6f2', cursor: 'pointer', transition: 'all .2s',
+            border: '2px dashed #c6d4cd', borderRadius: 12, padding: 32, textAlign: 'center',
+            background: '#f7faf8', cursor: 'pointer', transition: 'all .2s',
           }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#c9a84c'; e.currentTarget.style.background = '#fff'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#c2b9aa'; e.currentTarget.style.background = '#f8f6f2'; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = '#0f6e56'; e.currentTarget.style.background = '#fff'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = '#c6d4cd'; e.currentTarget.style.background = '#f7faf8'; }}
         >
           <div style={{ fontSize: 40, marginBottom: 8 }}>📄</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#2a251c', marginBottom: 4 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#27313b', marginBottom: 4 }}>
             Choose a CSV file
           </div>
-          <div style={{ fontSize: 12, color: '#948d7e', marginBottom: 12 }}>
+          <div style={{ fontSize: 12, color: '#64748b', marginBottom: 12 }}>
             Accepted columns: Name, Grade, Cadre, Phone, Station, LGA, PSN, DOB, Appointment Dates, Remarks
           </div>
           <label style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             padding: '10px 22px', borderRadius: 8, fontSize: 13, fontWeight: 700,
             cursor: 'pointer',
-            background: 'linear-gradient(145deg,#c9a84c,#dbb668)', color: '#0b0b14',
+            background: '#0f6e56', color: '#fff',
           }}>
             📂 Browse Files
             <input type="file" accept=".csv,.tsv" onChange={handleFile} style={{ display: 'none' }} />
@@ -246,39 +246,39 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
         <div>
           {/* Summary */}
           <div style={{
-            background: '#f8f6f2', border: '1px solid #dad3c8', borderRadius: 8,
+            background: '#f7faf8', border: '1px solid #d3ded9', borderRadius: 8,
             padding: '12px 16px', marginBottom: 12,
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
               <div>
-                <strong style={{ fontSize: 14, color: '#2a251c' }}>{rows.length}</strong>
-                <span style={{ fontSize: 12, color: '#5c5648' }}> records found</span>
-                <span style={{ fontSize: 12, color: '#948d7e', marginLeft: 8 }}>·</span>
-                <strong style={{ fontSize: 14, color: '#2a251c' }}>{mappedEntries.length}</strong>
-                <span style={{ fontSize: 12, color: '#5c5648' }}> of {headers.length} columns mapped</span>
+                <strong style={{ fontSize: 14, color: '#27313b' }}>{rows.length}</strong>
+                <span style={{ fontSize: 12, color: '#475569' }}> records found</span>
+                <span style={{ fontSize: 12, color: '#64748b', marginLeft: 8 }}>·</span>
+                <strong style={{ fontSize: 14, color: '#27313b' }}>{mappedEntries.length}</strong>
+                <span style={{ fontSize: 12, color: '#475569' }}> of {headers.length} columns mapped</span>
               </div>
             </div>
           </div>
 
           {/* Column mapping */}
           <div style={{ marginBottom: 10 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#5c5648', marginBottom: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 4 }}>
               Column Mapping
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {mappedEntries.map(([csv, sys]) => (
                 <span key={csv} style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
-                  background: '#f8f6f2', border: '1px solid #dad3c8',
+                  background: '#f7faf8', border: '1px solid #d3ded9',
                   borderRadius: 4, padding: '3px 8px', fontSize: 11,
                 }}>
-                  <span style={{ color: '#5c5648' }}>{csv}</span>
-                  <span style={{ color: '#948d7e' }}>→</span>
-                  <span style={{ color: '#1e3a5f', fontWeight: 600 }}>{sys}</span>
+                  <span style={{ color: '#475569' }}>{csv}</span>
+                  <span style={{ color: '#64748b' }}>→</span>
+                  <span style={{ color: '#0f6e56', fontWeight: 600 }}>{sys}</span>
                 </span>
               ))}
               {headers.filter(h => !mapping[h]).length > 0 && (
-                <div style={{ marginTop: 6, fontSize: 11, color: '#948d7e', width: '100%' }}>
+                <div style={{ marginTop: 6, fontSize: 11, color: '#64748b', width: '100%' }}>
                   Unmapped: {headers.filter(h => !mapping[h]).map(h => (
                     <span key={h} style={{ color: '#c0392b' }}>{h} </span>
                   ))}
@@ -288,10 +288,10 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
           </div>
 
           {/* Preview table */}
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#5c5648', marginBottom: 6 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#475569', marginBottom: 6 }}>
             Preview (first 10 rows)
           </div>
-          <div style={{ overflowX: 'auto', border: '1px solid #dad3c8', borderRadius: 8 }}>
+          <div style={{ overflowX: 'auto', border: '1px solid #d3ded9', borderRadius: 8 }}>
             <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#0c1b33', color: '#fff' }}>
@@ -304,7 +304,7 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
               </thead>
               <tbody>
                 {rows.slice(0, 10).map((r, i) => (
-                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f8f6f2' }}>
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#f7faf8' }}>
                     {headers.map(h => (
                       <td key={h} style={{
                         padding: '5px 8px', fontSize: 11, maxWidth: 140,
@@ -317,7 +317,7 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
                 ))}
                 {rows.length > 10 && (
                   <tr>
-                    <td colSpan={headers.length} style={{ padding: '6px 8px', textAlign: 'center', fontSize: 11, color: '#948d7e' }}>
+                    <td colSpan={headers.length} style={{ padding: '6px 8px', textAlign: 'center', fontSize: 11, color: '#64748b' }}>
                       … and {rows.length - 10} more rows
                     </td>
                   </tr>
@@ -338,13 +338,13 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
 
       {/* Progress */}
       {step === 'importing' && (
-        <div style={{ background: '#f8f6f2', border: '1px solid #dad3c8', borderRadius: 8, padding: 16 }}>
-          <div style={{ fontSize: 12, color: '#5c5648', textAlign: 'center', marginBottom: 8 }}>
+        <div style={{ background: '#f7faf8', border: '1px solid #d3ded9', borderRadius: 8, padding: 16 }}>
+          <div style={{ fontSize: 12, color: '#475569', textAlign: 'center', marginBottom: 8 }}>
             Importing… {imported} of {totalToImport}
           </div>
-          <div style={{ height: 10, background: '#dad3c8', borderRadius: 5, overflow: 'hidden' }}>
+          <div style={{ height: 10, background: '#d3ded9', borderRadius: 5, overflow: 'hidden' }}>
             <div style={{
-              height: '100%', background: '#c9a84c', borderRadius: 5,
+              height: '100%', background: '#0f6e56', borderRadius: 5,
               width: `${progress}%`, transition: 'width .3s',
             }} />
           </div>
