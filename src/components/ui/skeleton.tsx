@@ -1,3 +1,6 @@
+/* Restyled from scratch - Adamawa State Mass Education Board
+   Official Government Website */
+
 import { cn } from '@/lib/utils';
 
 interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -8,7 +11,7 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
       className={cn(
-        'animate-pulse rounded-md bg-muted/60',
+        'animate-pulse rounded-lg bg-muted/60',
         className
       )}
       {...props}

@@ -1,19 +1,17 @@
+/* Restyled from scratch - Adamawa State Mass Education Board
+   Official Government Website */
+
 import { useRef, useState } from 'react';
 import { useToast } from '@/hooks/useToast';
 import { deleteImageFromStorage, uploadImageToStorage } from '@/supabase/storage';
 
 interface ImageUploadProps {
-  /** Current image URL (or base64 data) — shows in the preview box. */
   value: string | null | undefined;
-  /** Called with the new public URL after a successful upload, or null on remove. */
   onChange: (url: string | null) => void;
-  /** Storage folder under the "images" bucket, e.g. "team" | "news" | "hero". */
   folder: string;
-  /** Max pixel dimension the image is downscaled to before upload. */
   maxDim?: number;
   label?: string;
   hint?: string;
-  /** Circular preview (passport-style photos). */
   round?: boolean;
 }
 
@@ -26,7 +24,6 @@ export function ImageUpload({ value, onChange, folder, maxDim, label = 'Image', 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Replacements: remove the previously uploaded file from Storage (no-op for base64/URLs)
     if (value) await deleteImageFromStorage(value);
 
     setUploading(true);
@@ -44,28 +41,28 @@ export function ImageUpload({ value, onChange, folder, maxDim, label = 'Image', 
 
   return (
     <div className="space-y-1.5">
-      {label && <span className="text-xs font-medium text-muted-foreground">{label}</span>}
+      {label && <span className="text-xs font-medium text-text-secondary">{label}</span>}
       <div className="flex items-start gap-4">
         {/* Preview */}
         <div
-          className={`shrink-0 overflow-hidden bg-muted border border-border flex items-center justify-center text-2xl ${
-            round ? 'w-20 h-20 rounded-full' : 'w-32 h-24 rounded-lg'
+          className={`shrink-0 overflow-hidden bg-surface-warm border border-border flex items-center justify-center text-2xl ${
+            round ? 'w-20 h-20 rounded-full' : 'w-32 h-24 rounded-xl'
           }`}
         >
           {uploading ? (
-            <span className="w-5 h-5 border-2 border-border border-t-navy rounded-full animate-spin" />
+            <span className="w-5 h-5 border-2 border-border border-t-primary rounded-full animate-spin" />
           ) : value ? (
             <img src={value} alt="" className={`w-full h-full object-cover ${round ? 'rounded-full' : ''}`} />
           ) : (
-            <span className="opacity-50">🖼</span>
+            <span className="opacity-40">🖼</span>
           )}
         </div>
 
         {/* Controls */}
         <div className="flex flex-col gap-2">
           <label
-            className={`inline-flex items-center gap-2 w-fit px-3 py-2 rounded-md border border-border bg-background text-xs font-semibold transition-colors ${
-              uploading ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:border-navy hover:text-navy'
+            className={`inline-flex items-center gap-2 w-fit px-3 py-2 rounded-lg border border-border bg-surface text-xs font-semibold transition-colors ${
+              uploading ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:border-primary hover:text-primary'
             }`}
           >
             {uploading ? 'Uploading…' : '⬆ Upload'}
@@ -85,7 +82,7 @@ export function ImageUpload({ value, onChange, folder, maxDim, label = 'Image', 
                 void deleteImageFromStorage(value);
                 onChange(null);
               }}
-              className="text-xs text-destructive hover:underline cursor-pointer border-none bg-transparent text-left"
+              className="text-xs text-error hover:underline cursor-pointer border-none bg-transparent text-left"
             >
               ✕ Remove
             </button>

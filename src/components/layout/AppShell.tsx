@@ -1,6 +1,10 @@
+/* Restyled from scratch - Adamawa State Mass Education Board
+   Official Government Website */
+
 import { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
+import { GovernmentHeaderBar } from './GovernmentHeaderBar';
 import { useAuth } from '../../hooks/useAuth';
 
 interface AppShellProps {
@@ -30,7 +34,7 @@ export function AppShell({
   const closeSidebar = () => setSidebarOpen(false);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar
         currentPage={currentPage}
         onNavigate={onNavigate}
@@ -44,15 +48,16 @@ export function AppShell({
         onMobileClose={closeSidebar}
       />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <GovernmentHeaderBar />
         <Topbar
           currentPage={currentPage}
           onToggleSidebar={toggleSidebar}
           onPrint={onPrint}
           onAdd={onAddEmployee}
         />
-        <div className="flex-1 overflow-y-auto p-5 bg-background">
+        <main className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6 bg-background main-scroll">
           {children}
-        </div>
+        </main>
       </div>
     </div>
   );

@@ -1,8 +1,12 @@
+/* Restyled from scratch - Adamawa State Mass Education Board
+   Official Government Website */
+
 import { useMemo } from 'react';
 import type { Employee, FilterState } from '../types';
 import { LGAs, GRADES, STATIONS } from '../data/constants';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
+import { Eye, Pencil, Trash2, Printer, X } from 'lucide-react';
 
 interface EmployeesPageProps {
   employees: Employee[];
@@ -19,333 +23,171 @@ interface EmployeesPageProps {
 }
 
 function esc(s: string | null | undefined): string {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function fmtDate(d: string | null | undefined): string {
   if (!d) return '—';
-  try {
-    return new Date(d).toLocaleDateString('en-GB', {
-      day: '2-digit', month: 'short', year: 'numeric',
-    });
-  } catch { return d; }
+  try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch { return d; }
 }
 
 const SORT_OPTIONS: { value: keyof Employee; label: string }[] = [
-  { value: 'name', label: 'Name (A–Z)' },
-  { value: 'grade', label: 'Grade Level' },
-  { value: 'lga', label: 'LGA of Origin' },
-  { value: 'station', label: 'Station' },
-  { value: 'date_first_appt', label: 'First Appointment' },
-  { value: 'date_present_appt', label: 'Present Appointment' },
-  { value: 'dob', label: 'Date of Birth' },
-  { value: 'psn', label: 'PSN' },
+  { value: 'name', label: 'Name (A–Z)' }, { value: 'grade', label: 'Grade Level' },
+  { value: 'lga', label: 'LGA of Origin' }, { value: 'station', label: 'Station' },
+  { value: 'date_first_appt', label: 'First Appointment' }, { value: 'date_present_appt', label: 'Present Appointment' },
+  { value: 'dob', label: 'Date of Birth' }, { value: 'psn', label: 'PSN' },
 ];
 
-const thStyle: React.CSSProperties = {
-  padding: '9px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-  color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px',
-  background: '#f7faf8', borderBottom: '1px solid #d3ded9',
-  whiteSpace: 'nowrap', cursor: 'pointer', userSelect: 'none',
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: '9px 12px', fontSize: 13, verticalAlign: 'middle',
-};
+const inputStyle: React.CSSProperties = { background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' };
 
 export function EmployeesPage({
   employees, filter, paginated, filtered, totalPages,
-  onFilterChange, onClearFilters, onViewEmployee,
-  onEditEmployee, onDeleteEmployee, onPrint,
+  onFilterChange, onClearFilters, onViewEmployee, onEditEmployee, onDeleteEmployee, onPrint,
 }: EmployeesPageProps) {
   const stationList = useMemo(() => {
     const unique = new Set(employees.map(e => e.station).filter(Boolean) as string[]);
-    const fromData = [...unique].sort();
-    return fromData.length > 0 ? fromData : [...STATIONS];
+    return [...unique].sort().length > 0 ? [...unique].sort() : [...STATIONS];
   }, [employees]);
 
   const sortField = filter.sortField as string;
-
   const handleSort = (field: keyof Employee) => {
-    if (filter.sortField === field) {
-      onFilterChange({ sortDir: (filter.sortDir === 1 ? -1 : 1) as 1 | -1 });
-    } else {
-      onFilterChange({ sortField: field, sortDir: 1 });
-    }
+    if (filter.sortField === field) onFilterChange({ sortDir: (filter.sortDir === 1 ? -1 : 1) as 1 | -1 });
+    else onFilterChange({ sortField: field, sortDir: 1 });
   };
-
   const from = (filter.page - 1) * 50 + 1;
   const to = Math.min(filter.page * 50, filtered.length);
 
+  const chevronSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B8F7E' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`;
+  const filterInput = "h-[38px] w-full px-2.5 rounded-lg border text-[13px] outline-none transition-colors focus:ring-2 focus:ring-ring appearance-none pr-7 bg-no-repeat bg-[right_9px_center]";
+  const filterLabel = "text-[11px] font-bold uppercase tracking-wider";
+
   return (
     <div>
-      {/* ── Filter Bar ── */}
-      <div style={{
-        background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
-        padding: '13px 14px', display: 'flex', gap: 10, flexWrap: 'wrap',
-        alignItems: 'flex-end', marginBottom: 14, boxShadow: '0 2px 8px rgba(0,0,0,.06)',
-      }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 2, minWidth: 200 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
-            Search
-          </div>
-          <input
-            placeholder="Name, PSN, phone, station…"
-            value={filter.search}
-            onChange={e => onFilterChange({ search: e.target.value })}
-            style={{
-              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
-              fontSize: 13, background: '#f7faf8', color: '#27313b',
-              outline: 'none', width: '100%',
-            }}
-            onFocus={e => { e.target.style.borderColor = '#0f6e56'; e.target.style.background = '#fff'; }}
-            onBlur={e => { e.target.style.borderColor = '#d3ded9'; e.target.style.background = '#f7faf8'; }}
-          />
+      {/* Filter Bar */}
+      <div className="rounded-xl border p-3 md:p-3.5 flex gap-2.5 flex-wrap items-end mb-3.5"
+        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        <div className="flex flex-col gap-1 flex-[2] min-w-[200px]">
+          <div className={filterLabel} style={{ color: 'var(--color-text-muted)' }}>Search</div>
+          <input placeholder="Name, PSN, phone, station…" value={filter.search} onChange={e => onFilterChange({ search: e.target.value })}
+            className="h-[38px] w-full px-2.5 rounded-lg border text-[13px] outline-none transition-colors focus:ring-2 focus:ring-ring"
+            style={inputStyle} />
         </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
-            LGA
+        {[
+          { label: 'LGA', value: filter.lga, options: LGAs, key: 'lga' },
+          { label: 'Station', value: filter.station, options: stationList, key: 'station' },
+          { label: 'Grade', value: filter.grade, options: GRADES, key: 'grade' },
+        ].map(f => (
+          <div key={f.key} className="flex flex-col gap-1 flex-1 min-w-[130px]">
+            <div className={filterLabel} style={{ color: 'var(--color-text-muted)' }}>{f.label}</div>
+            <select value={f.value} onChange={e => onFilterChange({ [f.key]: e.target.value })}
+              className={filterInput} style={{ ...inputStyle, backgroundImage: chevronSvg }}>
+              <option value="">All {f.label}s</option>
+              {f.options.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
           </div>
-          <select
-            value={filter.lga}
-            onChange={e => onFilterChange({ lga: e.target.value })}
-            style={{
-              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
-              fontSize: 13, background: '#f7faf8', color: '#27313b', outline: 'none',
-              appearance: 'none', paddingRight: 26,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
-              backgroundColor: '#f7faf8',
-            }}
-          >
-            <option value="">All LGAs</option>
-            {LGAs.map(l => <option key={l} value={l}>{l}</option>)}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
-            Station
-          </div>
-          <select
-            value={filter.station}
-            onChange={e => onFilterChange({ station: e.target.value })}
-            style={{
-              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
-              fontSize: 13, background: '#f7faf8', color: '#27313b', outline: 'none',
-              appearance: 'none', paddingRight: 26,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
-              backgroundColor: '#f7faf8',
-            }}
-          >
-            <option value="">All Stations</option>
-            {stationList.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
-            Grade
-          </div>
-          <select
-            value={filter.grade}
-            onChange={e => onFilterChange({ grade: e.target.value })}
-            style={{
-              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
-              fontSize: 13, background: '#f7faf8', color: '#27313b', outline: 'none',
-              appearance: 'none', paddingRight: 26,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
-              backgroundColor: '#f7faf8',
-            }}
-          >
-            <option value="">All Grades</option>
-            {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
-        </div>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 130 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '.3px' }}>
-            Sort by
-          </div>
-          <select
-            value={sortField}
-            onChange={e => onFilterChange({ sortField: e.target.value as keyof Employee })}
-            style={{
-              padding: '8px 10px', border: '1px solid #d3ded9', borderRadius: 6,
-              fontSize: 13, background: '#f7faf8', color: '#27313b', outline: 'none',
-              appearance: 'none', paddingRight: 26,
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center',
-              backgroundColor: '#f7faf8',
-            }}
-          >
+        ))}
+        <div className="flex flex-col gap-1 flex-1 min-w-[130px]">
+          <div className={filterLabel} style={{ color: 'var(--color-text-muted)' }}>Sort by</div>
+          <select value={sortField} onChange={e => onFilterChange({ sortField: e.target.value as keyof Employee })}
+            className={filterInput} style={{ ...inputStyle, backgroundImage: chevronSvg }}>
             {SORT_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
         </div>
-
-        <div style={{ display: 'flex', gap: 7, alignItems: 'flex-end' }}>
-          <button
-            onClick={onClearFilters}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-              border: '1px solid #d3ded9', cursor: 'pointer',
-              background: 'transparent', color: '#475569', whiteSpace: 'nowrap',
-            }}
-          >
-            Clear
+        <div className="flex gap-1.5 items-end">
+          <button onClick={onClearFilters} className="inline-flex items-center gap-1.5 px-2.5 py-[7px] rounded-lg text-xs font-semibold border"
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+            <X size={14} /> Clear
           </button>
-          <button
-            onClick={onPrint}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-              border: 'none', cursor: 'pointer', whiteSpace: 'nowrap',
-              background: '#27313b', color: '#fff',
-            }}
-          >
-            🖨 Print
+          <button onClick={onPrint} className="inline-flex items-center gap-1.5 px-2.5 py-[7px] rounded-lg text-xs font-semibold text-white"
+            style={{ background: 'var(--color-text-primary)' }}>
+            <Printer size={14} /> Print
           </button>
         </div>
       </div>
 
-      {/* ── Results Table ── */}
-      <div style={{
-        background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
-        overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,.06)',
-      }}>
-        <div style={{
-          padding: '9px 14px', borderBottom: '1px solid #e2eae6',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ fontSize: 12, color: '#64748b' }}>
+      {/* Results Table */}
+      <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        <div className="flex items-center justify-between px-3.5 py-2 border-b"
+          style={{ borderColor: 'var(--color-border)' }}>
+          <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
             {filtered.length > 0 ? (
-              <>Showing <strong style={{ color: '#27313b' }}>{from}–{to}</strong> of {filtered.length} officers ({employees.length} total)</>
+              <>Showing <strong style={{ color: 'var(--color-text-primary)' }}>{from}–{to}</strong> of {filtered.length} officers ({employees.length} total)</>
             ) : (
-              <><strong style={{ color: '#27313b' }}>0</strong> of {employees.length} officers</>
+              <><strong style={{ color: 'var(--color-text-primary)' }}>0</strong> of {employees.length} officers</>
             )}
           </div>
         </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th style={thStyle}></th>
-                <th style={thStyle} onClick={() => handleSort('psn')}>
-                  PSN {sortField === 'psn' ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
-                </th>
-                <th style={thStyle} onClick={() => handleSort('name')}>
-                  Name {sortField === 'name' ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
-                </th>
-                <th style={thStyle} onClick={() => handleSort('cadre')}>
-                  Cadre {sortField === 'cadre' ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
-                </th>
-                <th style={thStyle} onClick={() => handleSort('grade')}>
-                  Grade {sortField === 'grade' ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
-                </th>
-                <th style={thStyle} onClick={() => handleSort('lga')}>
-                  LGA {sortField === 'lga' ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
-                </th>
-                <th style={thStyle} onClick={() => handleSort('station')}>
-                  Station {sortField === 'station' ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
-                </th>
-                <th style={thStyle} onClick={() => handleSort('date_first_appt')}>
-                  First Appt. {sortField === 'date_first_appt' ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
-                </th>
-                <th style={thStyle} onClick={() => handleSort('phone')}>
-                  Phone {sortField === 'phone' ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
-                </th>
-                <th style={{ ...thStyle, cursor: 'default' }}>Actions</th>
+                {['PSN', 'Name', 'Cadre', 'Grade', 'LGA', 'Station', 'First Appt.', 'Phone', 'Actions'].map(h => (
+                  <th key={h} className="text-left text-[11px] font-bold uppercase tracking-wider px-3 py-2.5 border-b whitespace-nowrap cursor-pointer select-none"
+                    style={{ color: 'var(--color-text-muted)', background: 'var(--color-surface-warm)', borderColor: 'var(--color-border)' }}
+                    onClick={() => {
+                      const fieldMap: Record<string, keyof Employee> = { 'PSN': 'psn', 'Name': 'name', 'Cadre': 'cadre', 'Grade': 'grade', 'LGA': 'lga', 'Station': 'station', 'First Appt.': 'date_first_appt', 'Phone': 'phone' };
+                      if (fieldMap[h]) handleSort(fieldMap[h]);
+                    }}>
+                    {h} {sortField === (h === 'First Appt.' ? 'date_first_appt' : h.toLowerCase()) ? (filter.sortDir === 1 ? '↑' : '↓') : ''}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={10} style={{ textAlign: 'center', padding: 44 }}>
-                    <div style={{ fontSize: 38, marginBottom: 10 }}>🔍</div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: '#475569', marginBottom: 5 }}>
+                  <td colSpan={9} className="text-center py-11">
+                    <div className="text-[14px] font-semibold mb-1" style={{ color: 'var(--color-text-secondary)' }}>
                       {employees.length === 0 ? 'No employees on record yet.' : 'No employees match your filters.'}
                     </div>
-                    <div style={{ fontSize: 12, color: '#64748b' }}>
-                      {employees.length === 0
-                        ? 'Click "+ Add Employee" or "Import from Register" to get started.'
-                        : <a onClick={onClearFilters} style={{ color: '#0f6e56', cursor: 'pointer' }}>Clear all filters</a>
-                      }
+                    <div className="text-xs" style={{ color: 'var(--color-text-muted)' }}>
+                      {employees.length === 0 ? 'Click "+ Add Employee" or "Import from Register" to get started.'
+                        : <a onClick={onClearFilters} className="cursor-pointer text-primary hover:underline">Clear all filters</a>}
                     </div>
                   </td>
                 </tr>
               ) : paginated.map(e => (
-                <tr
-                  key={e.id}
-                  style={{ borderBottom: '1px solid #e2eae6', transition: 'background .1s' }}
-                  onMouseEnter={e2 => { (e2.currentTarget as HTMLElement).style.background = '#f7faf8'; }}
-                  onMouseLeave={e2 => { (e2.currentTarget as HTMLElement).style.background = ''; }}
-                >
-                  <td style={{ ...tdStyle, width: 44 }}>
+                <tr key={e.id} className="border-b transition-colors hover:bg-surface-warm cursor-pointer"
+                  style={{ borderColor: 'var(--color-border)' }}>
+                  <td className="px-3 py-2">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={e.photo || undefined} alt={e.name} />
-                      <AvatarFallback className="bg-navy text-white text-xs font-bold">
+                      <AvatarFallback className="text-xs font-bold">
                         {(e.name || '?').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                   </td>
-                  <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#0f6e56', fontWeight: 600 }}>
+                  <td className="px-3 py-2 text-[11px] font-semibold"
+                    style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-primary)' }}>
                     {esc(e.psn || '—')}
                   </td>
-                  <td
-                    style={{ ...tdStyle, fontWeight: 700, color: '#27313b', cursor: 'pointer' }}
-                    onClick={() => onViewEmployee(e.id)}
-                  >
+                  <td className="px-3 py-2 text-[13px] font-bold cursor-pointer" style={{ color: 'var(--color-text-primary)' }}
+                    onClick={() => onViewEmployee(e.id)}>
                     {esc(e.name)}
                   </td>
-                  <td style={{ ...tdStyle, fontSize: 12, color: '#475569' }}>
-                    {esc(e.cadre || '—')}
-                  </td>
-                  <td style={tdStyle}>
-                    <Badge variant="outline">{e.grade || '—'}</Badge>
-                  </td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>
-                    {esc(e.lga || '—')}
-                  </td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>
-                    {esc(e.station || '—')}
-                  </td>
-                  <td style={{ ...tdStyle, fontSize: 12, fontFamily: "'JetBrains Mono', monospace" }}>
-                    {fmtDate(e.date_first_appt)}
-                  </td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>
-                    {esc(e.phone || '—')}
-                  </td>
-                  <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', gap: 5 }}>
-                      <button
-                        onClick={() => onViewEmployee(e.id)}
-                        title="View"
-                        style={actionBtnStyle}
-                      >
-                        👁
+                  <td className="px-3 py-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{esc(e.cadre || '—')}</td>
+                  <td className="px-3 py-2"><Badge variant="outline">{e.grade || '—'}</Badge></td>
+                  <td className="px-3 py-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{esc(e.lga || '—')}</td>
+                  <td className="px-3 py-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{esc(e.station || '—')}</td>
+                  <td className="px-3 py-2 text-xs" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{fmtDate(e.date_first_appt)}</td>
+                  <td className="px-3 py-2 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{esc(e.phone || '—')}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-1">
+                      <button onClick={() => onViewEmployee(e.id)} title="View"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center border transition-colors hover:bg-surface-warm"
+                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
+                        <Eye size={14} />
                       </button>
-                      <button
-                        onClick={() => onEditEmployee(e.id)}
-                        title="Edit"
-                        style={{ ...actionBtnStyle, background: '#0f6e56', color: '#fff' }}
-                      >
-                        ✏️
+                      <button onClick={() => onEditEmployee(e.id)} title="Edit"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
+                        style={{ background: 'var(--color-primary)' }}>
+                        <Pencil size={14} />
                       </button>
-                      <button
-                        onClick={() => onDeleteEmployee(e.id)}
-                        title="Delete"
-                        style={{ ...actionBtnStyle, color: '#c0392b' }}
-                      >
-                        🗑
+                      <button onClick={() => onDeleteEmployee(e.id)} title="Delete"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center border transition-colors hover:bg-surface-warm"
+                        style={{ borderColor: 'var(--color-border)', color: 'var(--color-error)' }}>
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </td>
@@ -355,39 +197,21 @@ export function EmployeesPage({
           </table>
         </div>
 
-        {/* ── Pagination ── */}
+        {/* Pagination */}
         {totalPages > 1 && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            padding: '8px 14px', borderTop: '1px solid #e2eae6',
-          }}>
-            <button
-              onClick={() => onFilterChange({ page: Math.max(1, filter.page - 1) })}
-              disabled={filter.page <= 1}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                border: '1px solid #d3ded9', cursor: filter.page <= 1 ? 'not-allowed' : 'pointer',
-                background: 'transparent', color: filter.page <= 1 ? '#d3ded9' : '#475569',
-                opacity: filter.page <= 1 ? 0.4 : 1,
-              }}
-            >
+          <div className="flex items-center gap-2 px-3.5 py-2 border-t"
+            style={{ borderColor: 'var(--color-border)' }}>
+            <button onClick={() => onFilterChange({ page: Math.max(1, filter.page - 1) })} disabled={filter.page <= 1}
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold border disabled:opacity-40"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
               ‹ Prev
             </button>
-            <span style={{ fontSize: 12, color: '#475569' }}>
+            <span className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
               Page {filter.page} of {totalPages}
             </span>
-            <button
-              onClick={() => onFilterChange({ page: Math.min(totalPages, filter.page + 1) })}
-              disabled={filter.page >= totalPages}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 11px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                border: '1px solid #d3ded9', cursor: filter.page >= totalPages ? 'not-allowed' : 'pointer',
-                background: 'transparent', color: filter.page >= totalPages ? '#d3ded9' : '#475569',
-                opacity: filter.page >= totalPages ? 0.4 : 1,
-              }}
-            >
+            <button onClick={() => onFilterChange({ page: Math.min(totalPages, filter.page + 1) })} disabled={filter.page >= totalPages}
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold border disabled:opacity-40"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
               Next ›
             </button>
           </div>
@@ -396,11 +220,3 @@ export function EmployeesPage({
     </div>
   );
 }
-
-const actionBtnStyle: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-  padding: '4px 8px', borderRadius: 6, fontSize: 13,
-  border: '1px solid #d3ded9', cursor: 'pointer',
-  background: 'transparent', color: '#475569',
-  width: 30, height: 28, lineHeight: 1,
-};

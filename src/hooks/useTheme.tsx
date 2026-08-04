@@ -1,3 +1,6 @@
+/* Restyled from scratch - Adamawa State Mass Education Board
+   Official Government Website */
+
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 
 type Theme = 'light' | 'dark';
@@ -47,6 +50,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
+
+  // Listen for system preference changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handler = (e: MediaQueryListEvent) => {
+      // Only auto-switch if user hasn't manually set a preference
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    };
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
+  }, [setTheme]);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>

@@ -55,7 +55,7 @@ export function GroupView({
 
   if (groups.length === 0) {
     return (
-      <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+      <div style={{ textAlign: 'center', padding: 60, color: 'var(--color-text-muted)' }}>
         <div style={{ fontSize: 48, marginBottom: 12 }}>📂</div>
         <div style={{ fontSize: 14 }}>No employees on record yet.</div>
       </div>
@@ -68,13 +68,13 @@ export function GroupView({
         <div
           key={group.key}
           style={{
-            background: '#fff', border: '1px solid #e2eae6', borderRadius: 12,
+            background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12,
             overflow: 'hidden', boxShadow: 'none',
           }}
         >
           {/* Group header */}
           <div style={{
-            background: '#0f6e56',
+            background: 'var(--color-primary)',
             padding: '11px 16px', display: 'flex', alignItems: 'center',
             justifyContent: 'space-between',
           }}>
@@ -118,8 +118,8 @@ export function GroupView({
                 {group.employees.map(e => (
                   <tr
                     key={e.id}
-                    style={{ borderBottom: '1px solid #e2eae6', cursor: 'pointer' }}
-                    onMouseEnter={el => { (el.currentTarget as HTMLElement).style.background = '#f7faf8'; }}
+                    style={{ borderBottom: '1px solid var(--color-border)', cursor: 'pointer' }}
+                    onMouseEnter={el => { (el.currentTarget as HTMLElement).style.background = 'var(--color-surface-warm)'; }}
                     onMouseLeave={el => { (el.currentTarget as HTMLElement).style.background = ''; }}
                   >
                     <td style={{ ...tdStyle, width: 42 }}>
@@ -130,16 +130,16 @@ export function GroupView({
                         </AvatarFallback>
                       </Avatar>
                     </td>
-                    <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: '#0f6e56', fontWeight: 600 }}>
+                    <td style={{ ...tdStyle, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: 'var(--color-primary)', fontWeight: 600 }}>
                       {esc(e.psn || '—')}
                     </td>
                     <td
-                      style={{ ...tdStyle, fontWeight: 700, color: '#27313b' }}
+                      style={{ ...tdStyle, fontWeight: 700, color: 'var(--color-text-primary)' }}
                       onClick={() => onViewEmployee(e.id)}
                     >
                       {esc(e.name)}
                     </td>
-                    <td style={{ ...tdStyle, fontSize: 12, color: '#475569' }}>
+                    <td style={{ ...tdStyle, fontSize: 12, color: 'var(--color-text-secondary)' }}>
                       {esc(e.cadre || '—')}
                     </td>
                     <td style={tdStyle}>
@@ -166,14 +166,14 @@ export function GroupView({
                         <button
                           onClick={() => onEditEmployee(e.id)}
                           title="Edit"
-                          style={{ ...actionBtnStyle, background: '#0f6e56', color: '#fff' }}
+                          style={{ ...actionBtnStyle, background: 'var(--color-primary)', color: '#fff' }}
                         >
                           ✏️
                         </button>
                         <button
                           onClick={() => onDeleteEmployee(e.id)}
                           title="Delete"
-                          style={{ ...actionBtnStyle, color: '#c0392b' }}
+                          style={{ ...actionBtnStyle, color: 'var(--color-error)' }}
                         >
                           🗑
                         </button>
@@ -192,8 +192,8 @@ export function GroupView({
 
 const thStyle: React.CSSProperties = {
   padding: '9px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-  color: '#64748b', textTransform: 'uppercase', letterSpacing: '.4px',
-  background: '#f7faf8', borderBottom: '1px solid #d3ded9', whiteSpace: 'nowrap',
+  color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px',
+  background: 'var(--color-surface-warm)', borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap',
 };
 
 const tdStyle: React.CSSProperties = {
@@ -203,7 +203,7 @@ const tdStyle: React.CSSProperties = {
 const actionBtnStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   padding: '4px 8px', borderRadius: 6, fontSize: 13,
-  border: '1px solid #d3ded9', cursor: 'pointer',
-  background: 'transparent', color: '#475569',
+  border: '1px solid var(--color-border)', cursor: 'pointer',
+  background: 'transparent', color: 'var(--color-text-secondary)',
   width: 30, height: 28, lineHeight: 1,
 };

@@ -1,5 +1,15 @@
+/* Restyled from scratch - Adamawa State Mass Education Board
+   Official Government Website */
+
 import { useAuth } from '../../hooks/useAuth';
+import { ThemeToggle } from '../ui/ThemeToggle';
 import { cn } from '@/lib/utils';
+import {
+  LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
+  GraduationCap, BookOpen, Building2, Settings, FileText,
+  Download, Printer, Plus, LogOut, ChevronLeft,
+  Newspaper, Image, MessageSquare, Folder, Menu,
+} from 'lucide-react';
 
 interface SidebarProps {
   currentPage: string;
@@ -16,7 +26,7 @@ interface SidebarProps {
 
 interface NavItem {
   page: string;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
   badge?: boolean;
 }
@@ -28,49 +38,49 @@ interface NavSection {
 
 const navSections: NavSection[] = [
   {
-    label: 'Main Menu',
+    label: 'Overview',
     items: [
-      { page: 'dashboard', icon: '📊', label: 'Dashboard' },
-      { page: 'employees', icon: '👥', label: 'All Employees', badge: true },
+      { page: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
+      { page: 'employees', icon: <Users size={18} />, label: 'All Employees', badge: true },
     ],
   },
   {
     label: 'Browse By',
     items: [
-      { page: 'station', icon: '📍', label: 'Present Station' },
-      { page: 'lga', icon: '🗺', label: 'LGA of Origin' },
-      { page: 'grade', icon: '📋', label: 'Grade Level' },
-      { page: 'appointment', icon: '📅', label: 'Appointment Date' },
-      { page: 'centres', icon: '🏫', label: 'Learning Centres' },
+      { page: 'station', icon: <MapPin size={18} />, label: 'Present Station' },
+      { page: 'lga', icon: <Map size={18} />, label: 'LGA of Origin' },
+      { page: 'grade', icon: <BarChart3 size={18} />, label: 'Grade Level' },
+      { page: 'appointment', icon: <Calendar size={18} />, label: 'Appointment Date' },
+      { page: 'centres', icon: <GraduationCap size={18} />, label: 'Learning Centres' },
     ],
   },
   {
     label: 'Settings',
     items: [
-      { page: 'stations', icon: '🏢', label: 'Manage Stations' },
-      { page: 'cadres', icon: '🎓', label: 'Manage Cadres' },
+      { page: 'stations', icon: <Building2 size={18} />, label: 'Manage Stations' },
+      { page: 'cadres', icon: <BookOpen size={18} />, label: 'Manage Cadres' },
     ],
   },
   {
     label: 'Content Manager',
     items: [
-      { page: 'cms-dashboard', icon: '📝', label: 'CMS Dashboard' },
-      { page: 'cms-content', icon: '⚙️', label: 'Site Content' },
-      { page: 'cms-programs', icon: '📚', label: 'Programs' },
-      { page: 'cms-news', icon: '📰', label: 'News' },
-      { page: 'cms-team', icon: '👥', label: 'Team' },
-      { page: 'cms-gallery', icon: '🖼', label: 'Gallery' },
-      { page: 'cms-downloads', icon: '📥', label: 'Downloads' },
-      { page: 'cms-inbox', icon: '✉️', label: 'Contact Inbox' },
+      { page: 'cms-dashboard', icon: <FileText size={18} />, label: 'CMS Dashboard' },
+      { page: 'cms-content', icon: <Settings size={18} />, label: 'Site Content' },
+      { page: 'cms-programs', icon: <BookOpen size={18} />, label: 'Programs' },
+      { page: 'cms-news', icon: <Newspaper size={18} />, label: 'News' },
+      { page: 'cms-team', icon: <Users size={18} />, label: 'Team' },
+      { page: 'cms-gallery', icon: <Image size={18} />, label: 'Gallery' },
+      { page: 'cms-downloads', icon: <Download size={18} />, label: 'Downloads' },
+      { page: 'cms-inbox', icon: <MessageSquare size={18} />, label: 'Contact Inbox' },
     ],
   },
 ];
 
 const actions = [
-  { icon: '➕', label: 'Add Employee', key: 'add' },
-  { icon: '📥', label: 'Import from Register', key: 'import' },
-  { icon: '💾', label: 'Export to CSV', key: 'export' },
-  { icon: '🖨', label: 'Print Full Register', key: 'print' },
+  { icon: <Plus size={18} />, label: 'Add Employee', key: 'add' },
+  { icon: <Download size={18} />, label: 'Import from Register', key: 'import' },
+  { icon: <Download size={18} />, label: 'Export to CSV', key: 'export' },
+  { icon: <Printer size={18} />, label: 'Print Full Register', key: 'print' },
 ];
 
 export function Sidebar({
@@ -95,91 +105,105 @@ export function Sidebar({
   };
 
   const sidebarContent = (
-    <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-full overflow-hidden overflow-y-auto scrollbar-thin">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-[18px] border-b border-sidebar-border shrink-0">
-        <div className="w-[42px] h-[42px] rounded-md border border-white/30 bg-primary text-white flex items-center justify-center text-lg shrink-0">
-          🏛
+    <aside className="w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-full overflow-hidden">
+      {/* Logo / Brand */}
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-sidebar-border shrink-0">
+        <div className="w-10 h-10 rounded-lg bg-gold flex items-center justify-center shrink-0">
+          <GraduationCap className="w-5 h-5 text-primary-dark" />
         </div>
-        <div>
-          <div className="text-[11px] font-bold leading-tight text-white">
-            Adamawa State<br />Mass Education Board
+        <div className="min-w-0">
+          <div className="text-xs font-bold font-heading leading-tight text-sidebar-primary truncate">
+            Adamawa MEB
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] text-sidebar-foreground/50 mt-0.5">
-            <span className="w-[7px] h-[7px] rounded-full bg-green-500 inline-block" />
-            Connected
+          <div className="text-[10px] text-sidebar-foreground/50 mt-0.5 truncate">
+            Admin Portal
           </div>
         </div>
       </div>
 
-      {/* Nav sections */}
-      {navSections.map(section => (
-        <div key={section.label}>
-          <div className="text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/40 px-4 pt-[18px] pb-1.5">
-            {section.label}
-          </div>
-          {section.items.map(item => (
-            <button
-              key={item.page}
-              onClick={() => handleNav(item.page)}
-              className={cn(
-                'flex items-center gap-2.5 px-3.5 py-[9px] mx-2 rounded-md text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 border-none cursor-pointer',
-                currentPage === item.page
-                  ? 'bg-white/10 text-white font-medium border-l-[3px] border-gold-light pl-[11px]'
-                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
-              )}
-            >
-              <span className={cn(
-                'text-[15px] w-[18px] text-center shrink-0',
-                currentPage === item.page ? 'text-gold-light' : ''
-              )}>
-                {item.icon}
-              </span>
-              {item.label}
-              {item.badge && (
-                <span className={cn(
-                  'ml-auto text-[10px] font-bold px-[7px] py-[1px] rounded-full',
+      {/* Navigation sections */}
+      <nav className="flex-1 overflow-y-auto scrollbar-thin py-2">
+        {navSections.map((section) => (
+          <div key={section.label} className="mb-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40 px-4 pt-4 pb-2">
+              {section.label}
+            </div>
+            {section.items.map((item) => (
+              <button
+                key={item.page}
+                onClick={() => handleNav(item.page)}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 border-none cursor-pointer',
                   currentPage === item.page
-                    ? 'bg-gold-light text-navy'
-                    : 'bg-sidebar-accent text-sidebar-foreground/70'
+                    ? 'bg-sidebar-accent text-sidebar-primary border-l-[3px] border-gold pl-[13px]'
+                    : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                )}
+              >
+                <span className={cn(
+                  'w-5 h-5 flex items-center justify-center shrink-0',
+                  currentPage === item.page ? 'text-gold' : 'opacity-70'
                 )}>
-                  {employeeCount === 0 ? '—' : employeeCount}
+                  {item.icon}
                 </span>
-              )}
-            </button>
-          ))}
-        </div>
-      ))}
+                <span className="flex-1 min-w-0 truncate">{item.label}</span>
+                {item.badge && (
+                  <span className={cn(
+                    'text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center',
+                    currentPage === item.page
+                      ? 'bg-gold text-primary-dark'
+                      : 'bg-sidebar-accent text-sidebar-foreground/70'
+                  )}>
+                    {employeeCount === 0 ? '—' : employeeCount}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        ))}
 
-      {/* Actions */}
-      <div className="text-[9px] font-bold uppercase tracking-widest text-sidebar-foreground/40 px-4 pt-[18px] pb-1.5">
-        Actions
-      </div>
-      {actions.map(action => (
-        <button
-          key={action.key}
-          onClick={() => handleAction(action.key)}
-          className="flex items-center gap-2.5 px-3.5 py-[9px] mx-2 rounded-md text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent border-none cursor-pointer"
-        >
-          <span className="text-[15px] w-[18px] text-center shrink-0">{action.icon}</span>
-          {action.label}
-        </button>
-      ))}
+        {/* Actions */}
+        <div className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40 px-4 pt-4 pb-2">
+          Actions
+        </div>
+        {actions.map((action) => (
+          <button
+            key={action.key}
+            onClick={() => handleAction(action.key)}
+            className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent border-none cursor-pointer"
+          >
+            <span className="w-5 h-5 flex items-center justify-center shrink-0 opacity-70">
+              {action.icon}
+            </span>
+            {action.label}
+          </button>
+        ))}
+      </nav>
 
       {/* Footer */}
-      <div className="mt-auto px-4 py-3.5 border-t border-sidebar-border shrink-0">
-        <div className="text-[11px] text-sidebar-foreground/35 leading-relaxed">
-          <strong className="text-sidebar-foreground/55 text-xs">
-            {user?.email || '—'}
-          </strong>
-          <br />EMIS Officer · AMEB
+      <div className="shrink-0 border-t border-sidebar-border px-4 py-3">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 rounded-full bg-sidebar-accent flex items-center justify-center text-xs font-bold text-sidebar-primary">
+            {user?.email?.charAt(0).toUpperCase() || 'U'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-xs font-semibold text-sidebar-foreground truncate">
+              {user?.email || '—'}
+            </div>
+            <div className="text-[10px] text-sidebar-foreground/40">
+              EMIS Officer · AMEB
+            </div>
+          </div>
         </div>
-        <button
-          onClick={onLogout}
-          className="mt-2 w-full py-[7px] bg-sidebar-accent/50 border border-sidebar-border rounded-md text-xs text-sidebar-foreground/40 cursor-pointer transition-all duration-150 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-        >
-          Sign Out
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle compact className="h-8 w-8 border-sidebar-border hover:bg-sidebar-accent" />
+          <button
+            onClick={onLogout}
+            className="flex-1 flex items-center justify-center gap-2 py-2 bg-sidebar-accent/50 border border-sidebar-border rounded-lg text-xs text-sidebar-foreground/60 cursor-pointer transition-all duration-150 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+          >
+            <LogOut size={14} />
+            Sign Out
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -192,15 +216,16 @@ export function Sidebar({
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-[99]"
+          className="fixed inset-0 bg-black/50 z-[99] md:hidden"
           onClick={onMobileClose}
         />
       )}
+
       {/* Mobile sidebar panel */}
       <div
         className={cn(
-          'fixed left-0 top-0 bottom-0 z-[100] transition-all duration-250 md:hidden',
-          mobileOpen ? 'left-0 shadow-sm' : '-left-[260px]'
+          'fixed left-0 top-0 bottom-0 z-[100] transition-all duration-300 md:hidden',
+          mobileOpen ? 'left-0 shadow-xl' : '-left-[264px]'
         )}
       >
         {sidebarContent}
