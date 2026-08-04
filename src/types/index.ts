@@ -38,6 +38,7 @@ export interface CmsProgram {
   title: string;
   icon: string;
   description: string;
+  details?: string;
   sort_order: number;
 }
 
@@ -48,6 +49,7 @@ export interface CmsNews {
   date: string;
   icon: string;
   image?: string;
+  body?: string;
   sort_order: number;
 }
 

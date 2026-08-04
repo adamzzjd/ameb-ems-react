@@ -69,6 +69,7 @@ export function CmsNews() {
 function NewsForm({ item, onSave }: { item: Partial<CmsNews> | null; onSave: (data: Partial<CmsNews>) => Promise<boolean> }) {
   const [title, setTitle] = useState(item?.title || '');
   const [excerpt, setExcerpt] = useState(item?.excerpt || '');
+  const [body, setBody] = useState(item?.body || '');
   const [date, setDate] = useState(item?.date || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
   const [icon, setIcon] = useState(item?.icon || '📰');
   const [image, setImage] = useState(item?.image || '');
@@ -77,7 +78,7 @@ function NewsForm({ item, onSave }: { item: Partial<CmsNews> | null; onSave: (da
   const handleSubmit = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    await onSave({ title: title.trim(), excerpt: excerpt.trim(), date, icon, image: image || undefined });
+    await onSave({ title: title.trim(), excerpt: excerpt.trim(), body: body.trim(), date, icon, image: image || undefined });
     setSaving(false);
   };
 
@@ -88,8 +89,13 @@ function NewsForm({ item, onSave }: { item: Partial<CmsNews> | null; onSave: (da
         <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="News headline" />
       </div>
       <div className="space-y-1.5">
-        <Label>Excerpt</Label>
+        <Label>Excerpt <span className="text-muted-foreground font-normal">(shown on the landing page card)</span></Label>
         <Textarea value={excerpt} onChange={e => setExcerpt(e.target.value)} rows={2} placeholder="Brief summary…" />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Article Body <span className="text-muted-foreground font-normal">(shown on the Read more page)</span></Label>
+        <Textarea value={body} onChange={e => setBody(e.target.value)} rows={8} placeholder="Full article text…&#10;Use blank lines between paragraphs and start lines with '- ' for bullet points." />
+        <p className="text-[11px] text-muted-foreground">Paragraphs separated by blank lines; lines starting with “- ” render as bullets on the article page.</p>
       </div>
       <div className="space-y-1.5">
         <Label>Date</Label>

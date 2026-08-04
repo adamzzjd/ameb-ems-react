@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
   GraduationCap, BookOpen, Building2, Settings, FileText,
-  Download, Printer, Plus, LogOut, ChevronLeft,
-  Newspaper, Image, MessageSquare, Folder, Menu,
+  Download, Printer, Plus, LogOut,
+  Newspaper, Image, MessageSquare,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,6 +20,7 @@ interface SidebarProps {
   onPrint: () => void;
   onLogout: () => void;
   employeeCount: number;
+  canManage?: boolean;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -77,15 +78,15 @@ const navSections: NavSection[] = [
 ];
 
 const actions = [
-  { icon: <Plus size={18} />, label: 'Add Employee', key: 'add' },
-  { icon: <Download size={18} />, label: 'Import from Register', key: 'import' },
+  { icon: <Plus size={18} />, label: 'Add Employee', key: 'add', adminOnly: true },
+  { icon: <Download size={18} />, label: 'Import from Register', key: 'import', adminOnly: true },
   { icon: <Download size={18} />, label: 'Export to CSV', key: 'export' },
   { icon: <Printer size={18} />, label: 'Print Full Register', key: 'print' },
 ];
 
 export function Sidebar({
   currentPage, onNavigate, onAddEmployee, onImportCsv, onExportCsv,
-  onPrint, onLogout, employeeCount, mobileOpen, onMobileClose,
+  onPrint, onLogout, employeeCount, canManage, mobileOpen, onMobileClose,
 }: SidebarProps) {
   const { user } = useAuth();
 
@@ -165,7 +166,7 @@ export function Sidebar({
         <div className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40 px-4 pt-4 pb-2">
           Actions
         </div>
-        {actions.map((action) => (
+        {actions.filter(a => !a.adminOnly || canManage).map((action) => (
           <button
             key={action.key}
             onClick={() => handleAction(action.key)}
@@ -190,7 +191,7 @@ export function Sidebar({
               {user?.email || '—'}
             </div>
             <div className="text-[10px] text-sidebar-foreground/40">
-              EMIS Officer · AMEB
+              {canManage ? 'Administrator · AMEB' : 'Viewer · AMEB'}
             </div>
           </div>
         </div>

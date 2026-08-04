@@ -3,7 +3,8 @@
 
 import { Modal } from '../components/ui/Modal';
 import type { Employee } from '../types';
-import { Pencil, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X, Printer } from 'lucide-react';
+import { printEmployeeProfile } from '../utils/print';
 
 interface EmployeeProfileProps {
   employee: Employee | null;
@@ -11,6 +12,7 @@ interface EmployeeProfileProps {
   onClose: () => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  canManage?: boolean;
 }
 
 function esc(s: string | null | undefined): string {
@@ -35,23 +37,32 @@ function initials(name: string): string {
   return (name || '?').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 }
 
-export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete }: EmployeeProfileProps) {
+export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, canManage }: EmployeeProfileProps) {
   if (!employee) return null;
 
   return (
     <Modal open={open} onClose={onClose} maxWidth="640px"
       footer={
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => onEdit(employee.id)}
+          <button onClick={() => printEmployeeProfile(employee)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white"
             style={{ background: 'var(--color-primary)' }}>
-            <Pencil size={14} /> Edit
+            <Printer size={14} /> Print
           </button>
-          <button onClick={() => { onClose(); setTimeout(() => onDelete(employee.id), 200); }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold border"
-            style={{ borderColor: 'rgba(192,57,43,0.3)', color: 'var(--color-error)' }}>
-            <Trash2 size={14} /> Delete
-          </button>
+          {canManage && (
+            <button onClick={() => onEdit(employee.id)}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white"
+              style={{ background: 'var(--color-primary)' }}>
+              <Pencil size={14} /> Edit
+            </button>
+          )}
+          {canManage && (
+            <button onClick={() => { onClose(); setTimeout(() => onDelete(employee.id), 200); }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold border"
+              style={{ borderColor: 'rgba(192,57,43,0.3)', color: 'var(--color-error)' }}>
+              <Trash2 size={14} /> Delete
+            </button>
+          )}
           <button onClick={onClose}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold border ml-auto"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>

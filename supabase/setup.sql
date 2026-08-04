@@ -103,10 +103,15 @@ create table if not exists public.cms_programs (
   title       text not null default '',
   icon        text not null default '',
   description text not null default '',
+  details     text not null default '',       -- full-length programme details (Learn more page)
   sort_order  integer not null default 0,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+-- Add the details column to databases created before this field existed
+-- (Safe to run multiple times.)
+alter table public.cms_programs add column if not exists details text not null default '';
 
 -- ── News ─────────────────────────────────────────────────────────────────────
 create table if not exists public.cms_news (
@@ -116,10 +121,15 @@ create table if not exists public.cms_news (
   date       text not null default '',
   icon       text not null default '',
   image      text,                          -- thumbnail image URL (optional)
+  body       text not null default '',     -- full-length article body (Read more page)
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Add the body column to databases created before this field existed
+-- (Safe to run multiple times.)
+alter table public.cms_news add column if not exists body text not null default '';
 
 -- ── Team ─────────────────────────────────────────────────────────────────────
 create table if not exists public.cms_team (

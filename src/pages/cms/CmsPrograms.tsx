@@ -22,7 +22,7 @@ export function CmsPrograms() {
   useEffect(() => { load(); }, [load]);
 
   const handleAdd = async (data: Omit<CmsProgram, 'id' | 'sort_order'>) => {
-    const result = await dbSaveProgram({ ...data, sort_order: items.length });
+    const result = await dbSaveProgram({ ...data, details: data.details || '', sort_order: items.length });
     clearCmsCache();
     return result;
   };
@@ -69,12 +69,13 @@ function ProgramForm({ item, onSave }: { item: Partial<CmsProgram> | null; onSav
   const [title, setTitle] = useState(item?.title || '');
   const [icon, setIcon] = useState(item?.icon || '📖');
   const [description, setDescription] = useState(item?.description || '');
+  const [details, setDetails] = useState(item?.details || '');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    await onSave({ title: title.trim(), icon, description: description.trim() });
+    await onSave({ title: title.trim(), icon, description: description.trim(), details: details.trim() });
     setSaving(false);
   };
 
@@ -89,8 +90,13 @@ function ProgramForm({ item, onSave }: { item: Partial<CmsProgram> | null; onSav
         <Input value={icon} onChange={e => setIcon(e.target.value)} placeholder="📖" />
       </div>
       <div className="space-y-1.5">
-        <Label>Description</Label>
-        <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Describe this program…" />
+        <Label>Short Description</Label>
+        <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Short description shown on the landing page card…" />
+      </div>
+      <div className="space-y-1.5">
+        <Label>Full Details <span className="text-muted-foreground font-normal">(shown on the Learn more page)</span></Label>
+        <Textarea value={details} onChange={e => setDetails(e.target.value)} rows={8} placeholder="Full programme information…&#10;Use blank lines between paragraphs and start lines with '- ' for bullet points." />
+        <p className="text-[11px] text-muted-foreground">Paragraphs separated by blank lines; lines starting with “- ” render as bullets on the detail page.</p>
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="gold" onClick={handleSubmit} disabled={saving || !title.trim()}>

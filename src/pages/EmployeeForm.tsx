@@ -1,7 +1,7 @@
 /* Restyled from scratch - Adamawa State Mass Education Board
    Official Government Website */
 
-import { useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../components/ui/Modal';
 import { LGAs, GRADES } from '../data/constants';
 import type { Employee } from '../types';
@@ -40,28 +40,46 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const [name, setName] = useState(employee?.name || '');
-  const [grade, setGrade] = useState(employee?.grade || '');
-  const [cadre, setCadre] = useState(employee?.cadre || '');
-  const [dateFirstAppt, setDateFirstAppt] = useState(employee?.date_first_appt || '');
-  const [datePresentAppt, setDatePresentAppt] = useState(employee?.date_present_appt || '');
-  const [dob, setDob] = useState(employee?.dob || '');
-  const [phone, setPhone] = useState(employee?.phone || '');
-  const [lga, setLga] = useState(employee?.lga || '');
-  const [psn, setPsn] = useState(employee?.psn || '');
-  const [station, setStation] = useState(employee?.station || '');
-  const [remarks, setRemarks] = useState(employee?.remarks || '');
-  const [photo, setPhoto] = useState(employee?.photo || '');
-  const [photoPreview, setPhotoPreview] = useState(employee?.photo || '');
+  const [name, setName] = useState('');
+  const [grade, setGrade] = useState('');
+  const [cadre, setCadre] = useState('');
+  const [dateFirstAppt, setDateFirstAppt] = useState('');
+  const [datePresentAppt, setDatePresentAppt] = useState('');
+  const [dob, setDob] = useState('');
+  const [phone, setPhone] = useState('');
+  const [lga, setLga] = useState('');
+  const [psn, setPsn] = useState('');
+  const [station, setStation] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [photo, setPhoto] = useState('');
+  const [photoPreview, setPhotoPreview] = useState('');
 
-  const resetForm = useCallback(() => {
-    if (!employee) {
-      setName(''); setGrade(''); setCadre(''); setDateFirstAppt(''); setDatePresentAppt('');
-      setDob(''); setPhone(''); setLga(''); setPsn(''); setStation(''); setRemarks('');
-      setPhoto(''); setPhotoPreview('');
-    }
+  // Keep the form in sync with the employee being edited — the component stays
+  // mounted between opens (App.tsx renders it once), so plain useState initializers
+  // would only run on first mount and leave the form blank on edit.
+  useEffect(() => {
+    setName(employee?.name || '');
+    setGrade(employee?.grade || '');
+    setCadre(employee?.cadre || '');
+    setDateFirstAppt(employee?.date_first_appt || '');
+    setDatePresentAppt(employee?.date_present_appt || '');
+    setDob(employee?.dob || '');
+    setPhone(employee?.phone || '');
+    setLga(employee?.lga || '');
+    setPsn(employee?.psn || '');
+    setStation(employee?.station || '');
+    setRemarks(employee?.remarks || '');
+    setPhoto(employee?.photo || '');
+    setPhotoPreview(employee?.photo || '');
     setErrors({}); setSaving(false);
   }, [employee]);
+
+  const resetForm = () => {
+    setName(''); setGrade(''); setCadre(''); setDateFirstAppt(''); setDatePresentAppt('');
+    setDob(''); setPhone(''); setLga(''); setPsn(''); setStation(''); setRemarks('');
+    setPhoto(''); setPhotoPreview('');
+    setErrors({}); setSaving(false);
+  };
 
   const handleClose = () => { resetForm(); onClose(); };
 
@@ -245,7 +263,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
         <div className="col-span-full flex flex-col gap-1">
           <label className={labelClass} style={{ color: 'var(--color-text-secondary)' }}>Remarks / Notes</label>
           <textarea value={remarks} onChange={e => setRemarks(e.target.value)} rows={2} placeholder="Optional notes…"
-            className="w-full px-3 py-2 rounded-lg border text-[13px] outline-none resize-vertical min-h-[60px] transition-colors focus:ring-2 focus:ring-ring"
+            className="w-full px-3 py-2 rounded-lg border text-[13px] outline-none resize-y min-h-[60px] transition-colors focus:ring-2 focus:ring-ring"
             style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
         </div>
       </div>

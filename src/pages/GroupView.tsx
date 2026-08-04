@@ -12,6 +12,7 @@ interface GroupViewProps {
   onViewEmployee: (id: string) => void;
   onEditEmployee: (id: string) => void;
   onDeleteEmployee: (id: string) => void;
+  canManage?: boolean;
 }
 
 function esc(s: string | null | undefined): string {
@@ -31,7 +32,7 @@ function fmtDate(d: string | null | undefined): string {
 
 export function GroupView({
   employees, groupBy, title, icon,
-  onViewEmployee, onEditEmployee, onDeleteEmployee,
+  onViewEmployee, onEditEmployee, onDeleteEmployee, canManage,
 }: GroupViewProps) {
   const altKey = groupBy === 'station' ? 'lga' : 'station';
   const altLabel = groupBy === 'station' ? 'LGA' : 'Station';
@@ -163,20 +164,24 @@ export function GroupView({
                         >
                           👁
                         </button>
-                        <button
-                          onClick={() => onEditEmployee(e.id)}
-                          title="Edit"
-                          style={{ ...actionBtnStyle, background: 'var(--color-primary)', color: '#fff' }}
-                        >
-                          ✏️
-                        </button>
-                        <button
-                          onClick={() => onDeleteEmployee(e.id)}
-                          title="Delete"
-                          style={{ ...actionBtnStyle, color: 'var(--color-error)' }}
-                        >
-                          🗑
-                        </button>
+                        {canManage && (
+                          <button
+                            onClick={() => onEditEmployee(e.id)}
+                            title="Edit"
+                            style={{ ...actionBtnStyle, background: 'var(--color-primary)', color: '#fff' }}
+                          >
+                            ✏️
+                          </button>
+                        )}
+                        {canManage && (
+                          <button
+                            onClick={() => onDeleteEmployee(e.id)}
+                            title="Delete"
+                            style={{ ...actionBtnStyle, color: 'var(--color-error)' }}
+                          >
+                            🗑
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

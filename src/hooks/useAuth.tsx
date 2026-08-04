@@ -6,6 +6,7 @@ interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isAdmin: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -46,8 +47,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   };
 
+  // Role-based access control: a user is an admin only when Supabase Auth
+  // metadata carries role='admin'. Set it via the Supabase dashboard
+  // (Authentication → Users → edit user metadata) or with SQL:
+  //   update auth.users set raw_user_meta_data =
+  //     raw_user_meta_data || '{"role":"admin"}'::jsonb
+  //   where email = 'admin@example.com';
+  const isAdmin =
+    user?.app_metadata?.role === 'admin' ||
+    user?.user_metadata?.role === 'admin';
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, isAdmin, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

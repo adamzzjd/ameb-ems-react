@@ -53,7 +53,7 @@ function LoadingSpinner({ text = 'Loading…' }: { text?: string }) {
 type View = 'landing' | 'login' | 'app';
 
 export default function App() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const { toast } = useToast();
   const [view, setView] = useState<View>('landing');
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -97,15 +97,18 @@ export default function App() {
   }, [employees]);
 
   const handleEditEmployee = useCallback((id: string) => {
+    if (!isAdmin) { toast('Admin access required to edit records.', true); return; }
     const emp = employees.find(e => e.id === id);
     if (emp) { setEditingEmployee(emp); setShowForm(true); }
-  }, [employees]);
+  }, [isAdmin, employees, toast]);
 
   const handleAddEmployee = useCallback(() => {
+    if (!isAdmin) { toast('Admin access required to add records.', true); return; }
     setEditingEmployee(null); setShowForm(true);
-  }, []);
+  }, [isAdmin, toast]);
 
   const handleSaveEmployee = useCallback(async (data: Partial<Employee> & { name: string }) => {
+    if (!isAdmin) { toast('Admin access required.', true); return false; }
     const { data: saved, error } = await saveEmployee(data);
     if (error) {
       let msg = error.message;
@@ -118,6 +121,7 @@ export default function App() {
   }, [saveEmployee, toast]);
 
   const handleDeleteEmployee = useCallback(async (id: string) => {
+    if (!isAdmin) { toast('Admin access required to delete records.', true); return; }
     const success = await deleteEmployee(id);
     if (success) {
       const name = employees.find(e => e.id === id)?.name || 'Employee';
@@ -142,8 +146,9 @@ export default function App() {
   }, [employees, toast]);
 
   const handleImport = useCallback(async (records: Partial<Employee>[]) => {
+    if (!isAdmin) { toast('Admin access required to import records.', true); return 0; }
     return await bulkImport(records);
-  }, [bulkImport]);
+  }, [isAdmin, bulkImport, toast]);
 
   const deletingName = showDeleteConfirm
     ? employees.find(e => e.id === showDeleteConfirm)?.name
@@ -182,14 +187,15 @@ export default function App() {
             onEditEmployee={handleEditEmployee}
             onDeleteEmployee={(id) => setShowDeleteConfirm(id)}
             onPrint={handlePrint}
+            canManage={isAdmin}
           />
         );
       case 'station':
-        return <GroupView employees={employees} groupBy="station" title="Present Station" icon="📍" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} />;
+        return <GroupView employees={employees} groupBy="station" title="Present Station" icon="📍" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canManage={isAdmin} />;
       case 'lga':
-        return <GroupView employees={employees} groupBy="lga" title="LGA of Origin" icon="🗺" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} />;
+        return <GroupView employees={employees} groupBy="lga" title="LGA of Origin" icon="🗺" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canManage={isAdmin} />;
       case 'grade':
-        return <GroupView employees={employees} groupBy="grade" title="Grade Level" icon="📋" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} />;
+        return <GroupView employees={employees} groupBy="grade" title="Grade Level" icon="📋" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canManage={isAdmin} />;
       case 'appointment':
         return <Appointment employees={employees} onViewEmployee={handleViewEmployee} />;
       case 'stations':
@@ -242,6 +248,7 @@ export default function App() {
           onExportCsv={handleExportCSV}
           onPrint={handlePrint}
           employeeCount={employees.length}
+          canManage={isAdmin}
         >
           <Suspense fallback={<LoadingSpinner />}>
             {renderMainContent()}
@@ -265,6 +272,7 @@ export default function App() {
           onClose={() => { setShowProfile(false); setProfileEmployee(null); }}
           onEdit={(id) => { setShowProfile(false); handleEditEmployee(id); }}
           onDelete={(id) => { setShowProfile(false); setShowDeleteConfirm(id); }}
+          canManage={isAdmin}
         />
       </Suspense>
 

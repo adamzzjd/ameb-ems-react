@@ -36,6 +36,7 @@
   --color-overlay:        rgba(15, 61, 37, 0.85);
   --color-shadow:         rgba(0, 0, 0, 0.08);
   --color-glow:           rgba(26, 92, 56, 0);
+  --color-gold-fg:        #0F3D25;   /* text on gold (light theme) */
 
   /* ── Semantic Tokens (Tailwind v4 mapping) ── */
   --background:           var(--color-bg);
@@ -118,6 +119,7 @@
   --color-overlay:        rgba(5, 15, 10, 0.90);
   --color-shadow:         rgba(0, 0, 0, 0.40);
   --color-glow:           rgba(76, 175, 125, 0.15);
+  --color-gold-fg:        #0F3D25;   /* text on gold (dark theme) */
 
   --background:           var(--color-bg);
   --foreground:           var(--color-text-primary);
@@ -205,6 +207,17 @@
   --color-info: var(--color-info);
   --color-navy: var(--color-primary-dark);
   --color-navy-light: var(--color-primary);
+
+  /* Landing/portal palette tokens used as utility classes */
+  --color-primary-dark: var(--color-primary-dark);
+  --color-primary-light: var(--color-primary-light);
+  --color-surface-warm: var(--color-surface-warm);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-text-inverse: var(--color-text-inverse);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-gold-fg: var(--color-gold-fg);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
