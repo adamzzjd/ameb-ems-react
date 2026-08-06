@@ -1,10 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { useToast } from '@/hooks/useToast';
 import { dbLoadGallery, dbSaveGalleryImage, dbDeleteGalleryImage } from '@/supabase/cms';
+import { deleteImageFromStorage } from '@/supabase/storage';
 import { clearCmsCache } from '@/hooks/useCmsData';
 import type { CmsGallery } from '@/types';
 
@@ -20,13 +22,11 @@ export function CmsGallery() {
   const [formWide, setFormWide] = useState(false);
   const [formTall, setFormTall] = useState(false);
   const [formSortOrder, setFormSortOrder] = useState(0);
-  const [formImagePreview, setFormImagePreview] = useState<string | null>(null);
-  const [formImageData, setFormImageData] = useState<string | null>(null);
+  const [formImage, setFormImage] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Delete state
   const [showDelete, setShowDelete] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -43,8 +43,7 @@ export function CmsGallery() {
     setFormWide(false);
     setFormTall(false);
     setFormSortOrder(items.length);
-    setFormImagePreview(null);
-    setFormImageData(null);
+    setFormImage('');
     setShowForm(true);
   };
 
@@ -54,34 +53,26 @@ export function CmsGallery() {
     setFormWide(!!item.wide);
     setFormTall(!!item.tall);
     setFormSortOrder(item.sort_order);
-    setFormImagePreview(item.image || null);
-    setFormImageData(null);
+    setFormImage(item.image || '');
     setShowForm(true);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast('Image too large. Max 5MB.', true);
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = ev => {
-      const dataUrl = ev.target?.result as string;
-      setFormImagePreview(dataUrl);
-      setFormImageData(dataUrl);
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleSave = async () => {
     setSaving(true);
-    const payload: Partial<CmsGallery> = {
+    const payload: {
+      id?: string;
+      label: string;
+      wide: boolean;
+      tall: boolean;
+      image?: string | null; // null clears the photo on update
+      sort_order: number;
+    } = {
       label: formLabel,
       wide: formWide,
       tall: formTall,
-      image: formImageData || formImagePreview || undefined,
+      // `null` clears the image on update (undefined would be dropped by the
+      // update payload spread and the old image would be kept).
+      image: formImage || null,
       sort_order: formSortOrder,
     };
     if (editing) payload.id = editing.id;
@@ -106,6 +97,9 @@ export function CmsGallery() {
   };
 
   const handleDelete = async (id: string) => {
+    const item = items.find(i => i.id === id);
+    // Clean up the hosted file (no-op for legacy base64 / Cloudinary URLs)
+    if (item?.image) void deleteImageFromStorage(item.image);
     const { error } = await dbDeleteGalleryImage(id);
     if (error) { toast('Delete failed: ' + error.message, true); return; }
     clearCmsCache();
@@ -188,34 +182,15 @@ export function CmsGallery() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              {/* Image upload */}
-              <div className="space-y-1.5">
-                <Label>Upload Image</Label>
-                <div className="flex gap-3 items-center">
-                  <div className="w-16 h-16 rounded-lg bg-muted border border-border flex items-center justify-center text-2xl overflow-hidden shrink-0">
-                    {formImagePreview ? (
-                      <img src={formImagePreview} className="w-full h-full object-cover" />
-                    ) : (
-                      formLabel || '📸'
-                    )}
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="flex-1 text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-navy file:text-white hover:file:bg-navy-light"
-                  />
-                </div>
-                {formImagePreview && (
-                  <button
-                    onClick={() => { setFormImagePreview(null); setFormImageData(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                    className="text-xs text-destructive hover:underline cursor-pointer border-none bg-transparent"
-                  >
-                    Remove image
-                  </button>
-                )}
-              </div>
+              {/* Image upload (Cloudinary-first, Supabase fallback) */}
+              <ImageUpload
+                label="Upload Image"
+                folder="gallery"
+                maxDim={1600}
+                value={formImage}
+                onChange={v => setFormImage(v || '')}
+                hint="Stored as a CDN URL — JPG, PNG, WebP or GIF up to 8 MB"
+              />
 
               {/* Label / Emoji */}
               <div className="space-y-1.5">

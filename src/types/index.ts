@@ -190,6 +190,9 @@ export interface AuthState {
   user: import('@supabase/supabase-js').User | null;
   loading: boolean;
   session: import('@supabase/supabase-js').Session | null;
+  role: import('../lib/roles').Role | null;
+  isAdmin: boolean;
+  can: (permission: import('../lib/roles').Permission) => boolean;
 }
 
 // ── Navigation ──────────────────────────────────────────────────────────────────
@@ -215,4 +218,5 @@ export type AppPage =
   | 'cms-team'
   | 'cms-gallery'
   | 'cms-downloads'
-  | 'cms-inbox';
+  | 'cms-inbox'
+  | 'users';

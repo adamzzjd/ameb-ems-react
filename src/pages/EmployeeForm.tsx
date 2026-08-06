@@ -1,9 +1,10 @@
 /* Restyled from scratch - Adamawa State Mass Education Board
    Official Government Website */
 
-import { useState, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Modal } from '../components/ui/Modal';
 import { LGAs, GRADES } from '../data/constants';
+import { deleteImageFromStorage, uploadImageToStorage } from '../supabase/storage';
 import type { Employee } from '../types';
 
 interface EmployeeFormProps {
@@ -22,10 +23,10 @@ function validatePhone(phone: string): string {
 }
 
 const PHOTO_MAX_BYTES = 5 * 1024 * 1024;
-const PHOTO_ALLOWED_TYPES = ['image/jpeg', 'image/png'];
+const PHOTO_ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 function validatePhoto(file: File): string {
   if (!file) return '';
-  if (!PHOTO_ALLOWED_TYPES.includes(file.type)) return 'Only JPEG and PNG files are allowed.';
+  if (!PHOTO_ALLOWED_TYPES.includes(file.type)) return 'Only JPEG, PNG and WebP files are allowed.';
   if (file.size > PHOTO_MAX_BYTES) return 'Photo must be smaller than 5MB.';
   return '';
 }
@@ -53,6 +54,12 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   const [remarks, setRemarks] = useState('');
   const [photo, setPhoto] = useState('');
   const [photoPreview, setPhotoPreview] = useState('');
+  const [photoUploading, setPhotoUploading] = useState(false);
+  // Photo (if any) that was saved in the DB and got replaced/removed in the
+  // form — its hosted file is only deleted AFTER a successful save, so a
+  // cancel never breaks the record's existing photo.
+  const [pendingPhotoDelete, setPendingPhotoDelete] = useState('');
+  const originalPhotoRef = useRef('');
 
   // Keep the form in sync with the employee being edited — the component stays
   // mounted between opens (App.tsx renders it once), so plain useState initializers
@@ -71,6 +78,9 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
     setRemarks(employee?.remarks || '');
     setPhoto(employee?.photo || '');
     setPhotoPreview(employee?.photo || '');
+    setPhotoUploading(false);
+    originalPhotoRef.current = employee?.photo || '';
+    setPendingPhotoDelete('');
     setErrors({}); setSaving(false);
   }, [employee]);
 
@@ -78,19 +88,38 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
     setName(''); setGrade(''); setCadre(''); setDateFirstAppt(''); setDatePresentAppt('');
     setDob(''); setPhone(''); setLga(''); setPsn(''); setStation(''); setRemarks('');
     setPhoto(''); setPhotoPreview('');
+    setPhotoUploading(false);
+    setPendingPhotoDelete('');
     setErrors({}); setSaving(false);
   };
 
   const handleClose = () => { resetForm(); onClose(); };
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Upload the photo immediately on selection — the file is stored on
+  // Cloudinary (preferred) or Supabase Storage and only the public URL is
+  // saved with the record (never base64 in the database).
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || photoUploading) return;
     const err = validatePhoto(file);
     if (err) { alert(err); return; }
-    const reader = new FileReader();
-    reader.onload = ev => { setPhotoPreview(ev.target?.result as string); setPhoto(ev.target?.result as string); };
-    reader.readAsDataURL(file);
+    setPhotoUploading(true);
+    const { url, error } = await uploadImageToStorage(file, 'employees', { maxDim: 600, quality: 0.8 });
+    setPhotoUploading(false);
+    if (error || !url) { alert(error?.message || 'Photo upload failed.'); return; }
+    // Old photo: if it's the one saved in the DB, defer its deletion until the
+    // record is saved (see handleSubmit); a never-saved upload is orphaned now.
+    if (photo && photo === originalPhotoRef.current) setPendingPhotoDelete(photo);
+    else if (photo) void deleteImageFromStorage(photo);
+    setPhoto(url);
+    setPhotoPreview(url);
+  };
+
+  const handlePhotoRemove = () => {
+    if (photo && photo === originalPhotoRef.current) setPendingPhotoDelete(photo);
+    else if (photo) void deleteImageFromStorage(photo);
+    setPhoto('');
+    setPhotoPreview('');
   };
 
   const handleSubmit = async () => {
@@ -110,7 +139,13 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
       photo: photo || null, remarks: remarks.trim(),
     });
     setSaving(false);
-    if (success) handleClose();
+    if (success) {
+      if (pendingPhotoDelete) {
+        void deleteImageFromStorage(pendingPhotoDelete);
+        setPendingPhotoDelete('');
+      }
+      handleClose();
+    }
   };
 
   const selOpts = (arr: readonly string[] | string[]) => arr.map(o => <option key={o} value={o}>{o}</option>);
@@ -148,15 +183,15 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
             </div>
             <div>
               <div className="text-[13px] font-semibold mb-1" style={{ color: 'var(--color-text-primary)' }}>Upload passport photograph</div>
-              <div className="text-xs mb-2.5" style={{ color: 'var(--color-text-muted)' }}>JPG or PNG · Passport size</div>
+              <div className="text-xs mb-2.5" style={{ color: 'var(--color-text-muted)' }}>JPG, PNG or WebP · Passport size</div>
               <div className="flex items-center gap-2">
-                <label className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-dashed cursor-pointer"
+                <label className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-dashed cursor-pointer ${photoUploading ? 'opacity-60 cursor-wait' : ''}`}
                   style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                  📂 Choose Photo
-                  <input type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                  {photoUploading ? '⏳ Uploading…' : '📂 Choose Photo'}
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} className="hidden" />
                 </label>
                 {photo && (
-                  <button onClick={() => { setPhoto(''); setPhotoPreview(''); }}
+                  <button onClick={handlePhotoRemove}
                     className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-dashed"
                     style={{ borderColor: 'rgba(192,57,43,0.3)', color: 'var(--color-error)' }}>
                     Remove

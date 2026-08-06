@@ -12,7 +12,8 @@ interface GroupViewProps {
   onViewEmployee: (id: string) => void;
   onEditEmployee: (id: string) => void;
   onDeleteEmployee: (id: string) => void;
-  canManage?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 function esc(s: string | null | undefined): string {
@@ -32,7 +33,7 @@ function fmtDate(d: string | null | undefined): string {
 
 export function GroupView({
   employees, groupBy, title, icon,
-  onViewEmployee, onEditEmployee, onDeleteEmployee, canManage,
+  onViewEmployee, onEditEmployee, onDeleteEmployee, canEdit, canDelete,
 }: GroupViewProps) {
   const altKey = groupBy === 'station' ? 'lga' : 'station';
   const altLabel = groupBy === 'station' ? 'LGA' : 'Station';
@@ -164,7 +165,7 @@ export function GroupView({
                         >
                           👁
                         </button>
-                        {canManage && (
+                        {canEdit && (
                           <button
                             onClick={() => onEditEmployee(e.id)}
                             title="Edit"
@@ -173,7 +174,7 @@ export function GroupView({
                             ✏️
                           </button>
                         )}
-                        {canManage && (
+                        {canDelete && (
                           <button
                             onClick={() => onDeleteEmployee(e.id)}
                             title="Delete"

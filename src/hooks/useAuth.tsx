@@ -1,12 +1,15 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase/client';
+import { normalizeRole, can as checkPermission, type Permission, type Role } from '../lib/roles';
 
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  role: Role | null;
   isAdmin: boolean;
+  can: (permission: Permission) => boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -47,18 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession(null);
   };
 
-  // Role-based access control: a user is an admin only when Supabase Auth
-  // metadata carries role='admin'. Set it via the Supabase dashboard
-  // (Authentication → Users → edit user metadata) or with SQL:
-  //   update auth.users set raw_user_meta_data =
-  //     raw_user_meta_data || '{"role":"admin"}'::jsonb
+  // Role-based access control. The role is read from `app_metadata.role`
+  // ONLY — app_metadata is server-controlled, so end users cannot elevate
+  // themselves (user_metadata is client-editable and must not be trusted).
+  // Set the role via the Supabase dashboard (Authentication → Users → edit
+  // user) or with SQL:
+  //   update auth.users set raw_app_meta_data =
+  //     raw_app_meta_data || '{"role":"admin"}'::jsonb
   //   where email = 'admin@example.com';
-  const isAdmin =
-    user?.app_metadata?.role === 'admin' ||
-    user?.user_metadata?.role === 'admin';
+  const role = normalizeRole(user?.app_metadata?.role);
+  const isAdmin = role === 'admin' || role === 'super_admin';
+  const can = useCallback((permission: Permission) => checkPermission(role, permission), [role]);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, isAdmin, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, role, isAdmin, can, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

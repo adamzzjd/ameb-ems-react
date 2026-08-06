@@ -20,7 +20,8 @@ interface EmployeesPageProps {
   onEditEmployee: (id: string) => void;
   onDeleteEmployee: (id: string) => void;
   onPrint: () => void;
-  canManage?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 function esc(s: string | null | undefined): string {
@@ -44,7 +45,7 @@ const inputStyle: React.CSSProperties = { background: 'var(--color-surface)', bo
 
 export function EmployeesPage({
   employees, filter, paginated, filtered, totalPages,
-  onFilterChange, onClearFilters, onViewEmployee, onEditEmployee, onDeleteEmployee, onPrint, canManage,
+  onFilterChange, onClearFilters, onViewEmployee, onEditEmployee, onDeleteEmployee, onPrint, canEdit, canDelete,
 }: EmployeesPageProps) {
   const stationList = useMemo(() => {
     const unique = new Set(employees.map(e => e.station).filter(Boolean) as string[]);
@@ -180,14 +181,14 @@ export function EmployeesPage({
                         style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-muted)' }}>
                         <Eye size={14} />
                       </button>
-                      {canManage && (
+                      {canEdit && (
                         <button onClick={() => onEditEmployee(e.id)} title="Edit"
                           className="w-7 h-7 rounded-lg flex items-center justify-center text-white"
                           style={{ background: 'var(--color-primary)' }}>
                           <Pencil size={14} />
                         </button>
                       )}
-                      {canManage && (
+                      {canDelete && (
                         <button onClick={() => onDeleteEmployee(e.id)} title="Delete"
                           className="w-7 h-7 rounded-lg flex items-center justify-center border transition-colors hover:bg-surface-warm"
                           style={{ borderColor: 'var(--color-border)', color: 'var(--color-error)' }}>

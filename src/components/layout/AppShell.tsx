@@ -16,12 +16,12 @@ interface AppShellProps {
   onExportCsv?: () => void;
   onPrint?: () => void;
   employeeCount: number;
-  canManage?: boolean;
+  canAdd?: boolean;
 }
 
 export function AppShell({
   children, currentPage, onNavigate, onAddEmployee,
-  onImportCsv, onExportCsv, onPrint, employeeCount, canManage,
+  onImportCsv, onExportCsv, onPrint, employeeCount, canAdd,
 }: AppShellProps) {
   const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -47,7 +47,6 @@ export function AppShell({
         employeeCount={employeeCount}
         mobileOpen={sidebarOpen}
         onMobileClose={closeSidebar}
-        canManage={canManage}
       />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <GovernmentHeaderBar />
@@ -55,7 +54,7 @@ export function AppShell({
           currentPage={currentPage}
           onToggleSidebar={toggleSidebar}
           onPrint={onPrint}
-          onAdd={canManage ? onAddEmployee : undefined}
+          onAdd={canAdd ? onAddEmployee : undefined}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6 bg-background main-scroll">
           {children}

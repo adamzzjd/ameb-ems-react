@@ -96,24 +96,7 @@ create table if not exists public.centres (
 );
 
 -- ── Access ───────────────────────────────────────────────────────────────────
--- The app uses the Supabase anon key directly for all reads/writes, so RLS is
--- disabled to match that design (same as the CMS tables in setup.sql).
-alter table public.employees disable row level security;
-alter table public.stations  disable row level security;
-alter table public.cadres    disable row level security;
-alter table public.centres   disable row level security;
-
--- ⚠️ SECURITY WARNING
--- The `employees` table holds personal staff data (name, phone, DOB, LGA,
--- PSN, photo). With RLS disabled, anyone with the anon key can read and
--- modify it. If you want to protect this data:
---   1. Enable RLS:  alter table public.employees enable row level security;
---   2. Allow the public site (if needed) and logged-in staff to access it via
---      policies, e.g.:
---        create policy "employees_read_authenticated" on public.employees
---          for select using (auth.role() = 'authenticated');
---        create policy "employees_write_authenticated" on public.employees
---          for all using (auth.role() = 'authenticated')
---          with check (auth.role() = 'authenticated');
---   3. Remove the "disable row level security" line above for employees.
--- Note: changing this may affect existing app functionality.
+-- ⚠️ SECURITY: The `employees` table holds personal staff data (name, phone,
+-- DOB, LGA, PSN, photo) and MUST be protected. Run `setup_rls.sql` (after
+-- this file) to enable Row Level Security with per-role policies — the role
+-- system is enforced in the database, not just the UI.

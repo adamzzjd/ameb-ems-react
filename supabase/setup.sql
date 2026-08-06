@@ -178,12 +178,6 @@ create table if not exists public.cms_contacts (
 );
 
 -- ── Access ───────────────────────────────────────────────────────────────────
--- The app uses the Supabase anon key directly for all CMS reads/writes
--- (public Landing page + CMS admin). Disable RLS to match that design.
-alter table public.site_content  disable row level security;
-alter table public.cms_programs  disable row level security;
-alter table public.cms_news      disable row level security;
-alter table public.cms_team      disable row level security;
-alter table public.cms_gallery   disable row level security;
-alter table public.cms_downloads disable row level security;
-alter table public.cms_contacts  disable row level security;
+-- ⚠️ SECURITY: Run `setup_rls.sql` (after this file) to enable Row Level
+-- Security with per-role policies. CMS content stays publicly readable (the
+-- Landing page needs it) while writes are limited to admin roles.

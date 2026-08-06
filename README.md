@@ -26,11 +26,34 @@ All scripts are idempotent (safe to re-run).
 
 ### 🖼 How image uploads work
 
-Images are uploaded through the CMS/forms to **Supabase Storage** (public `images` bucket) and the database stores the resulting **public URL** in a `text` column — the files themselves never live in the database.
+Images are uploaded through the CMS/forms to **Cloudinary** (CDN with automatic format/quality optimization) whenever the Cloudinary env vars are set — otherwise they fall back to **Supabase Storage** (public `images` bucket). Either way, the database stores only the resulting **public URL** in a `text` column — the files themselves never live in the database.
 
-- Files are resized/compressed **in the browser before upload** (max ~1600px by default, 8 MB per file) to keep storage small.
-- The **gallery** (`cms_gallery.image`) and **employee photos** (`employees.photo`) currently store base64 data from older uploads — those keep working unchanged. Only new uploads use Storage URLs, and both render fine.
-- Existing image fields: `site_content.logo_url` (header/footer/login logo), `site_content.hero_image` (hero background), `site_content.about_image` (About section photo), `cms_team.photo` (leadership photo), `cms_news.image` (news thumbnail).
+- Files are resized/compressed **in the browser before upload** (max ~1600px by default, 8 MB per file) to keep uploads small.
+- Image fields: `site_content.logo_url` (header/footer/login logo), `site_content.hero_image` (hero background), `site_content.about_image` (About section photo), `cms_team.photo` (leadership photo), `cms_news.image` (news thumbnail), `cms_gallery.image` (gallery photos), `employees.photo` (passport photo).
+- Legacy rows that still hold base64 data render unchanged — run the backfill script below to move them to Cloudinary.
+
+#### ☁️ Cloudinary setup (recommended)
+
+1. Create a Cloudinary account and note your **cloud name** (Account → Settings → Cloud name).
+2. Create an **unsigned upload preset** (Settings → Upload → Upload presets → Add upload preset → set **Signing mode: Unsigned**) — this lets the browser upload directly without exposing your API secret.
+3. Add to `.env` (see `.env.example`):
+   ```
+   VITE_CLOUDINARY_CLOUD_NAME=your-cloud-name
+   VITE_CLOUDINARY_UPLOAD_PRESET=your-unsigned-preset
+   ```
+   New uploads now go to Cloudinary automatically. Remove the vars to fall back to Supabase Storage.
+
+> Replacing/removing an image deletes the old file from Supabase Storage. Cloudinary URLs can't be deleted from the browser (unsigned presets have no delete permission) — clean those up in the **Cloudinary Media Library** dashboard when needed.
+
+#### 🔁 Migrating existing images (one-time backfill)
+
+To move legacy base64 images and existing Supabase Storage files to Cloudinary, run the backfill script. It needs the Cloudinary **API key/secret** and the Supabase **service-role key** in `.env` or the environment:
+
+```bash
+npm run migrate:images                                      # dry run — shows what would change
+npm run migrate:images -- --commit                          # upload + update DB rows
+npm run migrate:images -- --commit --delete-originals       # also delete the old Supabase files
+```
 
 ## 🗄️ Database Schema
 
@@ -51,7 +74,7 @@ Images are uploaded through the CMS/forms to **Supabase Storage** (public `image
 | `cms_programs` | `id` (uuid PK), `title`, `icon`, `description`, `sort_order`, `created_at`, `updated_at` | Education programs shown on the Landing page. |
 | `cms_news` | `id` (uuid PK), `title`, `excerpt`, `date`, `icon`, `image` (URL, optional), `sort_order`, `created_at`, `updated_at` | News & announcements. `image` replaces the icon banner when set. |
 | `cms_team` | `id` (uuid PK), `name`, `initials`, `role`, `photo` (URL, optional), `sort_order`, `created_at`, `updated_at` | Board leadership. `photo` replaces the initials avatar when set. |
-| `cms_gallery` | `id` (uuid PK), `label`, `image` (base64), `wide` (bool), `tall` (bool), `sort_order`, `created_at`, `updated_at` | Photo gallery items. |
+| `cms_gallery` | `id` (uuid PK), `label`, `image` (URL, optional), `wide` (bool), `tall` (bool), `sort_order`, `created_at`, `updated_at` | Photo gallery items. Legacy rows may still hold base64 until the backfill script is run. |
 | `cms_downloads` | `id` (uuid PK), `title`, `meta`, `icon`, `sort_order`, `created_at`, `updated_at` | Downloadable resources. |
 | `cms_contacts` | `id` (uuid PK), `name`, `email`, `subject`, `message`, `read` (bool), `created_at` | Contact form inbox. Written by the public Landing page. |
 

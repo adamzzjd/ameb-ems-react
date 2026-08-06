@@ -36,6 +36,7 @@ const CmsTeam = lazy(() => import('./pages/cms/CmsTeam').then(m => ({ default: m
 const CmsDownloads = lazy(() => import('./pages/cms/CmsDownloads').then(m => ({ default: m.CmsDownloads })));
 const CmsGallery = lazy(() => import('./pages/cms/CmsGallery').then(m => ({ default: m.CmsGallery })));
 const CmsInbox = lazy(() => import('./pages/cms/CmsInbox').then(m => ({ default: m.CmsInbox })));
+const UserManagement = lazy(() => import('./pages/UserManagement').then(m => ({ default: m.UserManagement })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 // ── Loading spinner ───────────────────────────────────────────────────────
@@ -53,7 +54,7 @@ function LoadingSpinner({ text = 'Loading…' }: { text?: string }) {
 type View = 'landing' | 'login' | 'app';
 
 export default function App() {
-  const { user, loading: authLoading, isAdmin } = useAuth();
+  const { user, loading: authLoading, can } = useAuth();
   const { toast } = useToast();
   const [view, setView] = useState<View>('landing');
   const [currentPage, setCurrentPage] = useState('dashboard');
@@ -97,18 +98,21 @@ export default function App() {
   }, [employees]);
 
   const handleEditEmployee = useCallback((id: string) => {
-    if (!isAdmin) { toast('Admin access required to edit records.', true); return; }
+    if (!can('employees.edit')) { toast('You need editor access to edit records.', true); return; }
     const emp = employees.find(e => e.id === id);
     if (emp) { setEditingEmployee(emp); setShowForm(true); }
-  }, [isAdmin, employees, toast]);
+  }, [can, employees, toast]);
 
   const handleAddEmployee = useCallback(() => {
-    if (!isAdmin) { toast('Admin access required to add records.', true); return; }
+    if (!can('employees.create')) { toast('You need editor access to add records.', true); return; }
     setEditingEmployee(null); setShowForm(true);
-  }, [isAdmin, toast]);
+  }, [can, toast]);
 
   const handleSaveEmployee = useCallback(async (data: Partial<Employee> & { name: string }) => {
-    if (!isAdmin) { toast('Admin access required.', true); return false; }
+    if (data.id ? !can('employees.edit') : !can('employees.create')) {
+      toast('You need editor access to save records.', true);
+      return false;
+    }
     const { data: saved, error } = await saveEmployee(data);
     if (error) {
       let msg = error.message;
@@ -118,10 +122,10 @@ export default function App() {
     }
     if (saved) toast(`✓ ${saved.name} ${data.id ? 'updated' : 'added'} successfully.`);
     return true;
-  }, [saveEmployee, toast]);
+  }, [can, saveEmployee, toast]);
 
   const handleDeleteEmployee = useCallback(async (id: string) => {
-    if (!isAdmin) { toast('Admin access required to delete records.', true); return; }
+    if (!can('employees.delete')) { toast('You need delete access to remove records.', true); return; }
     const success = await deleteEmployee(id);
     if (success) {
       const name = employees.find(e => e.id === id)?.name || 'Employee';
@@ -130,7 +134,7 @@ export default function App() {
       toast('Delete failed.', true);
     }
     setShowDeleteConfirm(null);
-  }, [deleteEmployee, employees, toast]);
+  }, [can, deleteEmployee, employees, toast]);
 
   const handlePrint = useCallback(() => {
     if (currentPage === 'employees') {
@@ -141,14 +145,15 @@ export default function App() {
   }, [currentPage, filtered, employees]);
 
   const handleExportCSV = useCallback(() => {
+    if (!can('employees.export')) { toast('You need export access for this action.', true); return; }
     exportEmployeesCSV(employees);
     toast('💾 CSV exported successfully.');
-  }, [employees, toast]);
+  }, [can, employees, toast]);
 
   const handleImport = useCallback(async (records: Partial<Employee>[]) => {
-    if (!isAdmin) { toast('Admin access required to import records.', true); return 0; }
+    if (!can('employees.import')) { toast('You need import access for this action.', true); return 0; }
     return await bulkImport(records);
-  }, [isAdmin, bulkImport, toast]);
+  }, [can, bulkImport, toast]);
 
   const deletingName = showDeleteConfirm
     ? employees.find(e => e.id === showDeleteConfirm)?.name
@@ -156,6 +161,19 @@ export default function App() {
 
   // ── Auth loading ──
   if (authLoading) return <LoadingSpinner text="Authenticating…" />;
+
+  // ── Route guards — hide restricted pages even if reached via state ──
+  // (only enforced inside the app shell, so landing/login always render)
+  const ACCESS_DENIED = 'You do not have permission to view this page.';
+  if (view === 'app' && currentPage.startsWith('cms-') && !can('cms.edit')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+  }
+  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres') && !can('settings.manage')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+  }
+  if (view === 'app' && currentPage === 'users' && !can('users.manage')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+  }
 
   // ── Main content ──
   const renderMainContent = () => {
@@ -187,15 +205,16 @@ export default function App() {
             onEditEmployee={handleEditEmployee}
             onDeleteEmployee={(id) => setShowDeleteConfirm(id)}
             onPrint={handlePrint}
-            canManage={isAdmin}
+            canEdit={can('employees.edit')}
+            canDelete={can('employees.delete')}
           />
         );
       case 'station':
-        return <GroupView employees={employees} groupBy="station" title="Present Station" icon="📍" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canManage={isAdmin} />;
+        return <GroupView employees={employees} groupBy="station" title="Present Station" icon="📍" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canEdit={can('employees.edit')} canDelete={can('employees.delete')} />;
       case 'lga':
-        return <GroupView employees={employees} groupBy="lga" title="LGA of Origin" icon="🗺" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canManage={isAdmin} />;
+        return <GroupView employees={employees} groupBy="lga" title="LGA of Origin" icon="🗺" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canEdit={can('employees.edit')} canDelete={can('employees.delete')} />;
       case 'grade':
-        return <GroupView employees={employees} groupBy="grade" title="Grade Level" icon="📋" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canManage={isAdmin} />;
+        return <GroupView employees={employees} groupBy="grade" title="Grade Level" icon="📋" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canEdit={can('employees.edit')} canDelete={can('employees.delete')} />;
       case 'appointment':
         return <Appointment employees={employees} onViewEmployee={handleViewEmployee} />;
       case 'stations':
@@ -203,7 +222,7 @@ export default function App() {
       case 'cadres':
         return <CadresManager onNavigate={handleNavigate} />;
       case 'centres':
-        return <CentresManager onNavigate={handleNavigate} />;
+        return <CentresManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'cms-dashboard':
         return <CmsDashboard onNavigate={handleNavigate} />;
       case 'cms-content':
@@ -220,6 +239,8 @@ export default function App() {
         return <CmsGallery />;
       case 'cms-inbox':
         return <CmsInbox />;
+      case 'users':
+        return <UserManagement />;
       default:
         return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={() => setCurrentPage('dashboard')} />;
     }
@@ -248,7 +269,7 @@ export default function App() {
           onExportCsv={handleExportCSV}
           onPrint={handlePrint}
           employeeCount={employees.length}
-          canManage={isAdmin}
+          canAdd={can('employees.create')}
         >
           <Suspense fallback={<LoadingSpinner />}>
             {renderMainContent()}
@@ -272,7 +293,8 @@ export default function App() {
           onClose={() => { setShowProfile(false); setProfileEmployee(null); }}
           onEdit={(id) => { setShowProfile(false); handleEditEmployee(id); }}
           onDelete={(id) => { setShowProfile(false); setShowDeleteConfirm(id); }}
-          canManage={isAdmin}
+          canEdit={can('employees.edit')}
+          canDelete={can('employees.delete')}
         />
       </Suspense>
 

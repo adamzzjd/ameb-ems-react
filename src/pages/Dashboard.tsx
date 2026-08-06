@@ -3,7 +3,7 @@
 
 import { useMemo } from 'react';
 import type { Employee } from '../types';
-import { Users, MapPin, BarChart3, Award, ChevronRight } from 'lucide-react';
+import { Users, MapPin, Award, ChevronRight } from 'lucide-react';
 
 interface DashboardProps {
   employees: Employee[];

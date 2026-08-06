@@ -4,7 +4,6 @@
 import type { Employee } from '../types';
 
 const GREEN = '#1A5C38';
-const GREEN_DARK = '#0F3D25';
 const GOLD = '#D4A017';
 const INK = '#1A1A1A';
 const SLATE = '#4A5568';
@@ -24,7 +23,7 @@ function fmtDate(d: string | null | undefined): string {
   catch { return d; }
 }
 
-export function printEmployees(employees: Employee[]) {
+export function printEmployees(employees: Employee[], title?: string, subtitle?: string) {
   const rows = employees.map(e => `
     <tr>
       <td style="padding:6px 8px;border-bottom:1px solid ${BORDER};font-weight:600">${esc(e.name)}</td>
@@ -61,7 +60,8 @@ export function printEmployees(employees: Employee[]) {
         <div class="sub">Permanent & Pensionable Officers Register — ${employees.length} officers</div>
       </div>
     </div>
-    <p>Generated on ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+    ${title ? `<h2>${esc(title)}</h2>` : ''}
+    <p>${esc(subtitle || `${employees.length} officers`)} · Generated on ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
     <table>
       <thead><tr>
         <th>Name</th><th>PSN</th><th>Cadre</th><th>Grade</th><th>LGA</th><th>Station</th><th>First Appt.</th><th>Phone</th>

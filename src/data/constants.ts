@@ -61,4 +61,5 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   'cms-gallery':  { title: '🖼 Gallery',               subtitle: 'Manage photo gallery' },
   'cms-downloads':{ title: '📥 Downloads',             subtitle: 'Manage downloadable resources' },
   'cms-inbox':    { title: '✉️ Contact Inbox',         subtitle: 'View contact form messages' },
+  users:          { title: '👤 User Management',       subtitle: 'Create users and assign roles' },
 };

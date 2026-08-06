@@ -7,6 +7,7 @@ import { useToast } from '../hooks/useToast';
 
 interface CentresManagerProps {
   onNavigate?: (page: string) => void;
+  canManage?: boolean;
 }
 
 function esc(s: string | null | undefined): string {
@@ -47,7 +48,7 @@ function statusBg(s: string | null | undefined): string {
   }
 }
 
-export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps) {
+export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresManagerProps) {
   const { toast } = useToast();
   const [centres, setCentres] = useState<Centre[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,6 +173,7 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
   };
 
   const handleSave = async () => {
+    if (!canManage) { toast('Admin access required to manage centres.', true); return; }
     const name = formName.trim();
     const lga  = formLga.trim();
     if (!name) { setFormError('Centre name is required'); return; }
@@ -221,6 +223,7 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
 
   const handleDelete = async () => {
     if (!showDelete) return;
+    if (!canManage) { toast('Admin access required to manage centres.', true); return; }
     const { error } = await dbDeleteCentre(showDelete.id);
     if (error) { toast('Delete failed: ' + error.message, true); return; }
     setCentres(prev => prev.filter(c => c.id !== showDelete.id));
@@ -406,9 +409,11 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
           <button onClick={() => handlePrintCentres(filtered)} style={{ padding: '7px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'transparent', color: 'var(--color-text-secondary)' }}>
             🖨 Print
           </button>
-          <button onClick={openAdd} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'var(--color-primary)', color: '#fff', whiteSpace: 'nowrap' }}>
-            + Add Centre
-          </button>
+          {canManage && (
+            <button onClick={openAdd} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'var(--color-primary)', color: '#fff', whiteSpace: 'nowrap' }}>
+              + Add Centre
+            </button>
+          )}
         </div>
       </div>
 
@@ -473,8 +478,12 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 4 }}>
                       <button onClick={() => openView(c.id)} title="View" style={actionBtnStyle}>👁</button>
-                      <button onClick={() => openEdit(c)} title="Edit" style={{ ...actionBtnStyle, background: 'var(--color-primary)', color: '#fff' }}>✏️</button>
-                      <button onClick={() => setShowDelete({ id: c.id, name: c.name })} title="Delete" style={{ ...actionBtnStyle, color: 'var(--color-error)' }}>🗑</button>
+                      {canManage && (
+                        <button onClick={() => openEdit(c)} title="Edit" style={{ ...actionBtnStyle, background: 'var(--color-primary)', color: '#fff' }}>✏️</button>
+                      )}
+                      {canManage && (
+                        <button onClick={() => setShowDelete({ id: c.id, name: c.name })} title="Delete" style={{ ...actionBtnStyle, color: 'var(--color-error)' }}>🗑</button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -590,12 +599,16 @@ export function CentresManager({ onNavigate: _onNavigate }: CentresManagerProps)
                 <button onClick={() => handlePrintSingle(viewCentre)} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'transparent', color: 'var(--color-text-secondary)' }}>
                   🖨 Print
                 </button>
-                <button onClick={() => { setShowView(false); openEdit(viewCentre); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'var(--color-primary)', color: '#fff' }}>
-                  ✏️ Edit
-                </button>
-                <button onClick={() => { setShowView(false); setShowDelete({ id: viewCentre.id, name: viewCentre.name }); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'transparent', color: 'var(--color-error)', marginLeft: 'auto' }}>
-                  🗑 Delete
-                </button>
+                {canManage && (
+                  <button onClick={() => { setShowView(false); openEdit(viewCentre); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'var(--color-primary)', color: '#fff' }}>
+                    ✏️ Edit
+                  </button>
+                )}
+                {canManage && (
+                  <button onClick={() => { setShowView(false); setShowDelete({ id: viewCentre.id, name: viewCentre.name }); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'transparent', color: 'var(--color-error)', marginLeft: 'auto' }}>
+                    🗑 Delete
+                  </button>
+                )}
               </>
             )}
           </div>

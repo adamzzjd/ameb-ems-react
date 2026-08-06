@@ -20,6 +20,11 @@ interface CmsData {
 
 const CACHE_KEY = 'ameb_cms_cache';
 
+// How often CMS data re-fetches while the tab is visible.
+// (Previously 30s on every visit — that alone can burn through the free
+// tier's 5 GB egress. Now 60s + visibility + freshness guards.)
+const POLL_INTERVAL_MS = 60_000;
+
 const defaultContent: SiteContent = {
   hero_badge: 'Adamawa State Government — Ministry of Education',
   hero_title_1: 'Mass Education',
@@ -159,8 +164,10 @@ export function useCmsData() {
   const [data, setData] = useState<CmsData>(() => loadCache() || defaultData);
   const [loading, setLoading] = useState(!loadCache()); // loading only if no cache
   const refreshRef = useRef(false);
+  const lastFetchRef = useRef(0);
 
   const load = useCallback(async () => {
+    lastFetchRef.current = Date.now();
     try {
       const [sc, prog, n, t, g, dl] = await Promise.all([
         dbLoadSiteContent(),
@@ -193,13 +200,17 @@ export function useCmsData() {
     // First load — always fetch fresh from DB (cache already used for initial render)
     load();
 
-    // Auto-refresh every 30 seconds so CMS changes propagate without page reload
+    // Auto-refresh so CMS changes propagate without a page reload — but only
+    // while the tab is visible (no background bandwidth), and only once the
+    // previous fetch has aged past the poll interval (no back-to-back fetches
+    // when the tab regains focus). Cuts egress dramatically on public visits.
     const interval = setInterval(() => {
-      if (!refreshRef.current) {
-        refreshRef.current = true;
-        load();
-      }
-    }, 30_000);
+      if (document.visibilityState !== 'visible') return;
+      if (Date.now() - lastFetchRef.current < POLL_INTERVAL_MS) return;
+      if (refreshRef.current) return;
+      refreshRef.current = true;
+      load();
+    }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [load]);

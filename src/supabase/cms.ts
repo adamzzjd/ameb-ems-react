@@ -124,7 +124,9 @@ export async function dbLoadGallery(): Promise<{ data: CmsGallery[] | null; erro
   return { data: data as CmsGallery[] | null, error };
 }
 
-export async function dbSaveGalleryImage(image: Partial<CmsGallery>): Promise<{ data: CmsGallery | null; error: Error | null }> {
+// `image` may be explicitly null to clear a gallery photo on update
+// (undefined would be dropped by the update payload spread).
+export async function dbSaveGalleryImage(image: Omit<Partial<CmsGallery>, 'image'> & { image?: string | null }): Promise<{ data: CmsGallery | null; error: Error | null }> {
   if (image.id) {
     const { data, error } = await supabase
       .from('cms_gallery')

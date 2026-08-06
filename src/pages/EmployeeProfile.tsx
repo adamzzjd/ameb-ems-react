@@ -12,7 +12,8 @@ interface EmployeeProfileProps {
   onClose: () => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
-  canManage?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 function esc(s: string | null | undefined): string {
@@ -37,7 +38,7 @@ function initials(name: string): string {
   return (name || '?').split(' ').map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 }
 
-export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, canManage }: EmployeeProfileProps) {
+export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, canEdit, canDelete }: EmployeeProfileProps) {
   if (!employee) return null;
 
   return (
@@ -49,14 +50,14 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, can
             style={{ background: 'var(--color-primary)' }}>
             <Printer size={14} /> Print
           </button>
-          {canManage && (
+          {canEdit && (
             <button onClick={() => onEdit(employee.id)}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white"
               style={{ background: 'var(--color-primary)' }}>
               <Pencil size={14} /> Edit
             </button>
           )}
-          {canManage && (
+          {canDelete && (
             <button onClick={() => { onClose(); setTimeout(() => onDelete(employee.id), 200); }}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold border"
               style={{ borderColor: 'rgba(192,57,43,0.3)', color: 'var(--color-error)' }}>

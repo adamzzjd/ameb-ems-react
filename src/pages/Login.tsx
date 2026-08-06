@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
-import { useTheme } from '../hooks/useTheme';
 import { supabase } from '../supabase/client';
 import { GraduationCap, Shield } from 'lucide-react';
 
@@ -15,7 +14,6 @@ interface LoginProps {
 export function Login({ onBackToSite }: LoginProps) {
   const { signIn, loading: authLoading } = useAuth();
   const { toast } = useToast();
-  const { theme } = useTheme();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

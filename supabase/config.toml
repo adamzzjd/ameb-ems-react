@@ -1,0 +1,8 @@
+# AMEB EMS — Supabase CLI configuration
+# Used for local development and deploying edge functions.
+# Run `supabase link --project-ref <ref>` before deploying functions.
+
+project_id = "ameb-ems"
+
+[functions.manage-users]
+verify_jwt = true

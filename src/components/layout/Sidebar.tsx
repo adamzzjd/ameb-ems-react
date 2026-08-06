@@ -4,10 +4,11 @@
 import { useAuth } from '../../hooks/useAuth';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { cn } from '@/lib/utils';
+import { ROLE_LABELS, type Permission } from '@/lib/roles';
 import {
   LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
   GraduationCap, BookOpen, Building2, Settings, FileText,
-  Download, Printer, Plus, LogOut,
+  Download, Printer, Plus, LogOut, UserCog,
   Newspaper, Image, MessageSquare,
 } from 'lucide-react';
 
@@ -20,7 +21,6 @@ interface SidebarProps {
   onPrint: () => void;
   onLogout: () => void;
   employeeCount: number;
-  canManage?: boolean;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -30,11 +30,13 @@ interface NavItem {
   icon: React.ReactNode;
   label: string;
   badge?: boolean;
+  permission?: Permission;
 }
 
 interface NavSection {
   label: string;
   items: NavItem[];
+  permission?: Permission;
 }
 
 const navSections: NavSection[] = [
@@ -57,13 +59,17 @@ const navSections: NavSection[] = [
   },
   {
     label: 'Settings',
+    permission: 'settings.manage',
     items: [
       { page: 'stations', icon: <Building2 size={18} />, label: 'Manage Stations' },
       { page: 'cadres', icon: <BookOpen size={18} />, label: 'Manage Cadres' },
+      { page: 'users', icon: <UserCog size={18} />, label: 'User Management', permission: 'users.manage' },
     ],
   },
+
   {
     label: 'Content Manager',
+    permission: 'cms.edit',
     items: [
       { page: 'cms-dashboard', icon: <FileText size={18} />, label: 'CMS Dashboard' },
       { page: 'cms-content', icon: <Settings size={18} />, label: 'Site Content' },
@@ -77,18 +83,21 @@ const navSections: NavSection[] = [
   },
 ];
 
-const actions = [
-  { icon: <Plus size={18} />, label: 'Add Employee', key: 'add', adminOnly: true },
-  { icon: <Download size={18} />, label: 'Import from Register', key: 'import', adminOnly: true },
-  { icon: <Download size={18} />, label: 'Export to CSV', key: 'export' },
-  { icon: <Printer size={18} />, label: 'Print Full Register', key: 'print' },
+const actions: { icon: React.ReactNode; label: string; key: string; permission: Permission }[] = [
+  { icon: <Plus size={18} />, label: 'Add Employee', key: 'add', permission: 'employees.create' },
+  { icon: <Download size={18} />, label: 'Import from Register', key: 'import', permission: 'employees.import' },
+  { icon: <Download size={18} />, label: 'Export to CSV', key: 'export', permission: 'employees.export' },
+  { icon: <Printer size={18} />, label: 'Print Full Register', key: 'print', permission: 'employees.view' },
 ];
 
 export function Sidebar({
   currentPage, onNavigate, onAddEmployee, onImportCsv, onExportCsv,
-  onPrint, onLogout, employeeCount, canManage, mobileOpen, onMobileClose,
+  onPrint, onLogout, employeeCount, mobileOpen, onMobileClose,
 }: SidebarProps) {
-  const { user } = useAuth();
+  const { user, role, can } = useAuth();
+
+  const visibleSections = navSections.filter(s => !s.permission || can(s.permission));
+  const visibleActions = actions.filter(a => can(a.permission));
 
   const handleNav = (page: string) => {
     onNavigate(page);
@@ -117,67 +126,75 @@ export function Sidebar({
             Adamawa MEB
           </div>
           <div className="text-[10px] text-sidebar-foreground/50 mt-0.5 truncate">
-            Admin Portal
+            Staff Portal
           </div>
         </div>
       </div>
 
       {/* Navigation sections */}
       <nav className="flex-1 overflow-y-auto scrollbar-thin py-2">
-        {navSections.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.label} className="mb-1">
             <div className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40 px-4 pt-4 pb-2">
               {section.label}
             </div>
-            {section.items.map((item) => (
-              <button
-                key={item.page}
-                onClick={() => handleNav(item.page)}
-                className={cn(
-                  'flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 border-none cursor-pointer',
-                  currentPage === item.page
-                    ? 'bg-sidebar-accent text-sidebar-primary border-l-[3px] border-gold pl-[13px]'
-                    : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
-                )}
-              >
-                <span className={cn(
-                  'w-5 h-5 flex items-center justify-center shrink-0',
-                  currentPage === item.page ? 'text-gold' : 'opacity-70'
-                )}>
-                  {item.icon}
-                </span>
-                <span className="flex-1 min-w-0 truncate">{item.label}</span>
-                {item.badge && (
-                  <span className={cn(
-                    'text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center',
+            {section.items.map((item) => {
+              // Items can carry their own permission (e.g. User Management)
+              if (item.permission && !can(item.permission)) return null;
+              return (
+                <button
+                  key={item.page}
+                  onClick={() => handleNav(item.page)}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 border-none cursor-pointer',
                     currentPage === item.page
-                      ? 'bg-gold text-primary-dark'
-                      : 'bg-sidebar-accent text-sidebar-foreground/70'
+                      ? 'bg-sidebar-accent text-sidebar-primary border-l-[3px] border-gold pl-[13px]'
+                      : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                  )}
+                >
+                  <span className={cn(
+                    'w-5 h-5 flex items-center justify-center shrink-0',
+                    currentPage === item.page ? 'text-gold' : 'opacity-70'
                   )}>
-                    {employeeCount === 0 ? '—' : employeeCount}
+                    {item.icon}
                   </span>
-                )}
-              </button>
-            ))}
+                  <span className="flex-1 min-w-0 truncate">{item.label}</span>
+                  {item.badge && (
+                    <span className={cn(
+                      'text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center',
+                      currentPage === item.page
+                        ? 'bg-gold text-primary-dark'
+                        : 'bg-sidebar-accent text-sidebar-foreground/70'
+                    )}>
+                      {employeeCount === 0 ? '—' : employeeCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         ))}
 
         {/* Actions */}
-        <div className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40 px-4 pt-4 pb-2">
-          Actions
-        </div>
-        {actions.filter(a => !a.adminOnly || canManage).map((action) => (
-          <button
-            key={action.key}
-            onClick={() => handleAction(action.key)}
-            className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent border-none cursor-pointer"
-          >
-            <span className="w-5 h-5 flex items-center justify-center shrink-0 opacity-70">
-              {action.icon}
-            </span>
-            {action.label}
-          </button>
-        ))}
+        {visibleActions.length > 0 && (
+          <>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-sidebar-foreground/40 px-4 pt-4 pb-2">
+              Actions
+            </div>
+            {visibleActions.map((action) => (
+              <button
+                key={action.key}
+                onClick={() => handleAction(action.key)}
+                className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent border-none cursor-pointer"
+              >
+                <span className="w-5 h-5 flex items-center justify-center shrink-0 opacity-70">
+                  {action.icon}
+                </span>
+                {action.label}
+              </button>
+            ))}
+          </>
+        )}
       </nav>
 
       {/* Footer */}
@@ -191,7 +208,7 @@ export function Sidebar({
               {user?.email || '—'}
             </div>
             <div className="text-[10px] text-sidebar-foreground/40">
-              {canManage ? 'Administrator · AMEB' : 'Viewer · AMEB'}
+              {role ? ROLE_LABELS[role] : 'Viewer'} · AMEB
             </div>
           </div>
         </div>
