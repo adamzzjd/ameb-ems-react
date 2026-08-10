@@ -1,29 +1,23 @@
-import { supabase } from './client';
-
-// ── Image hosting ────────────────────────────────────────────────────────────
-// Images can be hosted on Cloudinary (recommended — CDN + automatic
-// f_auto/q_auto optimization, zero Supabase egress) or Supabase Storage.
-// Cloudinary is used automatically once these env vars are set:
+// ── Image hosting (Cloudinary only) ─────────────────────────────────────────
+// All images — CMS content, gallery, team, news and employee photos — are
+// hosted exclusively on Cloudinary: CDN delivery with automatic f_auto/q_auto
+// optimization and zero Supabase egress. The database only ever stores the
+// Cloudinary public URL (never image data).
+//
+// Required env vars:
 //   VITE_CLOUDINARY_CLOUD_NAME      e.g. dabc12345
 //   VITE_CLOUDINARY_UPLOAD_PRESET   the unsigned upload preset name
-// Until then, uploads fall back to Supabase Storage.
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME as string | undefined;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET as string | undefined;
-const CLOUDINARY_ENABLED = Boolean(CLOUD_NAME && UPLOAD_PRESET);
-
-// All public-site and CMS images live in this bucket (Supabase fallback).
-export const IMAGE_BUCKET = 'images';
 
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 const MAX_BYTES = 8 * 1024 * 1024;
 
-const CLOUDINARY_URL_RE = /res\.cloudinary\.com\/.*\/image\/upload\//;
-
 /**
  * Downscale + compress an image client-side before upload so uploads stay
- * small (the free storage tier is limited). PNG is kept as PNG so transparent
- * logos keep working; everything else becomes JPEG. GIFs and oversized/odd
- * formats are passed through unchanged.
+ * small. PNG is kept as PNG so transparent logos keep working; everything
+ * else becomes JPEG. GIFs and oversized/odd formats are passed through
+ * unchanged.
  */
 async function resizeImage(file: File, maxDim: number, quality: number): Promise<File> {
   if (file.type === 'image/gif') return file;
@@ -70,7 +64,7 @@ async function resizeImage(file: File, maxDim: number, quality: number): Promise
  */
 async function uploadToCloudinary(file: File): Promise<{ url: string | null; error: Error | null }> {
   if (!CLOUD_NAME || !UPLOAD_PRESET) {
-    return { url: null, error: new Error('Cloudinary is not configured.') };
+    return { url: null, error: new Error('Cloudinary is not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.') };
   }
   const form = new FormData();
   form.append('file', file);
@@ -91,10 +85,14 @@ async function uploadToCloudinary(file: File): Promise<{ url: string | null; err
   }
 }
 
-/** Upload an image and return its public URL (Cloudinary first, Supabase fallback). */
+/**
+ * Upload an image and return its public Cloudinary URL.
+ * `folder` is kept for API compatibility with callers; with an unsigned
+ * preset Cloudinary routes uploads into the preset's folder.
+ */
 export async function uploadImageToStorage(
   file: File,
-  folder: string,
+  _folder: string,
   opts?: { maxDim?: number; quality?: number }
 ): Promise<{ url: string | null; error: Error | null }> {
   if (!ALLOWED_TYPES.includes(file.type)) {
@@ -104,40 +102,19 @@ export async function uploadImageToStorage(
     return { url: null, error: new Error('Image must be smaller than 8 MB.') };
   }
 
-  // Downscale before upload either way (keeps uploads small and delivery fast).
+  // Downscale before upload keeps uploads small and delivery fast.
   const resized = await resizeImage(file, opts?.maxDim ?? 1600, opts?.quality ?? 0.82);
 
-  if (CLOUDINARY_ENABLED) {
-    return uploadToCloudinary(resized);
-  }
-
-  const ext = resized.type === 'image/png' ? 'png' : resized.type === 'image/webp' ? 'webp' : 'jpg';
-  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
-
-  const { error } = await supabase.storage.from(IMAGE_BUCKET).upload(path, resized, {
-    contentType: resized.type,
-    cacheControl: '3600',
-    upsert: false,
-  });
-  if (error) return { url: null, error: new Error(error.message) };
-
-  const { data } = supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path);
-  return { url: data.publicUrl, error: null };
+  return uploadToCloudinary(resized);
 }
 
 /**
  * Delete an image by its public URL.
- * - Supabase storage URLs are removed from the bucket.
- * - Cloudinary URLs are left in place (unsigned presets can't delete — clean
- *   them up in the Cloudinary Media Library dashboard when needed).
- * - Anything else is a no-op (e.g. legacy base64 data).
+ *
+ * Cloudinary is the only image host, and unsigned upload presets carry no
+ * delete permission — so this is a no-op. Clean up unused assets in the
+ * Cloudinary Media Library dashboard when needed.
  */
-export async function deleteImageFromStorage(url: string | null | undefined): Promise<void> {
-  if (!url) return;
-  if (CLOUDINARY_URL_RE.test(url)) return;
-  const marker = `/storage/v1/object/public/${IMAGE_BUCKET}/`;
-  const idx = url.indexOf(marker);
-  if (idx === -1) return;
-  const path = url.slice(idx + marker.length);
-  await supabase.storage.from(IMAGE_BUCKET).remove([path]);
+export async function deleteImageFromStorage(_url: string | null | undefined): Promise<void> {
+  // No-op — see comment above.
 }

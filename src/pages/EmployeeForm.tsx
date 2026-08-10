@@ -58,6 +58,9 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   // Photo (if any) that was saved in the DB and got replaced/removed in the
   // form — its hosted file is only deleted AFTER a successful save, so a
   // cancel never breaks the record's existing photo.
+  // NOTE: deleteImageFromStorage is currently a no-op (Cloudinary unsigned
+  // presets can't delete) — this deferred-delete logic is inert but kept for
+  // when a signed-delete endpoint is added.
   const [pendingPhotoDelete, setPendingPhotoDelete] = useState('');
   const originalPhotoRef = useRef('');
 
@@ -96,8 +99,8 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   const handleClose = () => { resetForm(); onClose(); };
 
   // Upload the photo immediately on selection — the file is stored on
-  // Cloudinary (preferred) or Supabase Storage and only the public URL is
-  // saved with the record (never base64 in the database).
+  // Cloudinary and only the public URL is saved with the record (never
+  // image data in the database).
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || photoUploading) return;

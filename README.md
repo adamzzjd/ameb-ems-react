@@ -20,19 +20,19 @@ Then create the tables by running the SQL setup scripts in the **Supabase dashbo
 
 1. [`supabase/setup.sql`](./supabase/setup.sql) — **CMS tables** (required for the public website + CMS admin)
 2. [`supabase/setup_ems.sql`](./supabase/setup_ems.sql) — **EMS register tables** (employees, stations, cadres, centres)
-3. [`supabase/setup_storage.sql`](./supabase/setup_storage.sql) — **image uploads** (creates the public `images` Storage bucket and adds the image columns to the CMS tables)
+3. [`supabase/setup_storage.sql`](./supabase/setup_storage.sql) — **image URL columns** (adds the image columns to the CMS tables — images themselves live on Cloudinary, see below)
 
 All scripts are idempotent (safe to re-run).
 
-### 🖼 How image uploads work
+### 🖼 How image uploads work (Cloudinary-only)
 
-Images are uploaded through the CMS/forms to **Cloudinary** (CDN with automatic format/quality optimization) whenever the Cloudinary env vars are set — otherwise they fall back to **Supabase Storage** (public `images` bucket). Either way, the database stores only the resulting **public URL** in a `text` column — the files themselves never live in the database.
+All images are uploaded to and served from **Cloudinary** (CDN with automatic format/quality optimization) — there is **no Supabase Storage fallback** and no image data in the database. The database stores only the resulting **public Cloudinary URL** in a `text` column.
 
-- Files are resized/compressed **in the browser before upload** (max ~1600px by default, 8 MB per file) to keep uploads small.
+- Files are resized/compressed **in the browser before upload** (max ~1600px by default, 8 MB per file) to keep uploads small, then uploaded to Cloudinary via an unsigned preset (`f_auto,q_auto` optimization embedded in the URL).
 - Image fields: `site_content.logo_url` (header/footer/login logo), `site_content.hero_image` (hero background), `site_content.about_image` (About section photo), `cms_team.photo` (leadership photo), `cms_news.image` (news thumbnail), `cms_gallery.image` (gallery photos), `employees.photo` (passport photo).
-- Legacy rows that still hold base64 data render unchanged — run the backfill script below to move them to Cloudinary.
+- `scripts/diag-count.mjs` (`npm run diag:images`) reports how many rows still hold base64 / Supabase Storage / Cloudinary URLs — run it to confirm the database is Cloudinary-only.
 
-#### ☁️ Cloudinary setup (recommended)
+#### ☁️ Cloudinary setup (required)
 
 1. Create a Cloudinary account and note your **cloud name** (Account → Settings → Cloud name).
 2. Create an **unsigned upload preset** (Settings → Upload → Upload presets → Add upload preset → set **Signing mode: Unsigned**) — this lets the browser upload directly without exposing your API secret.
@@ -41,19 +41,13 @@ Images are uploaded through the CMS/forms to **Cloudinary** (CDN with automatic 
    VITE_CLOUDINARY_CLOUD_NAME=your-cloud-name
    VITE_CLOUDINARY_UPLOAD_PRESET=your-unsigned-preset
    ```
-   New uploads now go to Cloudinary automatically. Remove the vars to fall back to Supabase Storage.
+   Uploads fail with a clear error until both vars are set.
 
-> Replacing/removing an image deletes the old file from Supabase Storage. Cloudinary URLs can't be deleted from the browser (unsigned presets have no delete permission) — clean those up in the **Cloudinary Media Library** dashboard when needed.
+> Cloudinary URLs can't be deleted from the browser (unsigned presets have no delete permission) — clean up unused assets in the **Cloudinary Media Library** dashboard when needed.
 
-#### 🔁 Migrating existing images (one-time backfill)
+#### 🧹 Purging legacy image values (one-time cleanup)
 
-To move legacy base64 images and existing Supabase Storage files to Cloudinary, run the backfill script. It needs the Cloudinary **API key/secret** and the Supabase **service-role key** in `.env` or the environment:
-
-```bash
-npm run migrate:images                                      # dry run — shows what would change
-npm run migrate:images -- --commit                          # upload + update DB rows
-npm run migrate:images -- --commit --delete-originals       # also delete the old Supabase files
-```
+If any rows still hold base64 or Supabase Storage URLs (left over from before the Cloudinary migration), run [`supabase/purge_non_cloudinary_images.sql`](./supabase/purge_non_cloudinary_images.sql) in the Supabase SQL Editor — it clears every non-Cloudinary image value so only Cloudinary URLs (or NULL) remain.
 
 ## 🗄️ Database Schema
 
@@ -74,7 +68,7 @@ npm run migrate:images -- --commit --delete-originals       # also delete the ol
 | `cms_programs` | `id` (uuid PK), `title`, `icon`, `description`, `sort_order`, `created_at`, `updated_at` | Education programs shown on the Landing page. |
 | `cms_news` | `id` (uuid PK), `title`, `excerpt`, `date`, `icon`, `image` (URL, optional), `sort_order`, `created_at`, `updated_at` | News & announcements. `image` replaces the icon banner when set. |
 | `cms_team` | `id` (uuid PK), `name`, `initials`, `role`, `photo` (URL, optional), `sort_order`, `created_at`, `updated_at` | Board leadership. `photo` replaces the initials avatar when set. |
-| `cms_gallery` | `id` (uuid PK), `label`, `image` (URL, optional), `wide` (bool), `tall` (bool), `sort_order`, `created_at`, `updated_at` | Photo gallery items. Legacy rows may still hold base64 until the backfill script is run. |
+| `cms_gallery` | `id` (uuid PK), `label`, `image` (URL, optional), `wide` (bool), `tall` (bool), `sort_order`, `created_at`, `updated_at` | Photo gallery items. `image` holds the Cloudinary URL. |
 | `cms_downloads` | `id` (uuid PK), `title`, `meta`, `icon`, `sort_order`, `created_at`, `updated_at` | Downloadable resources. |
 | `cms_contacts` | `id` (uuid PK), `name`, `email`, `subject`, `message`, `read` (bool), `created_at` | Contact form inbox. Written by the public Landing page. |
 

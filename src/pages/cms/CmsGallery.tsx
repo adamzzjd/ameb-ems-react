@@ -98,7 +98,8 @@ export function CmsGallery() {
 
   const handleDelete = async (id: string) => {
     const item = items.find(i => i.id === id);
-    // Clean up the hosted file (no-op for legacy base64 / Cloudinary URLs)
+    // Clean up the hosted file (no-op — Cloudinary URLs can't be deleted
+    // from the browser; clean up in the Cloudinary Media Library instead)
     if (item?.image) void deleteImageFromStorage(item.image);
     const { error } = await dbDeleteGalleryImage(id);
     if (error) { toast('Delete failed: ' + error.message, true); return; }
@@ -182,7 +183,7 @@ export function CmsGallery() {
               </button>
             </div>
             <div className="p-5 space-y-4">
-              {/* Image upload (Cloudinary-first, Supabase fallback) */}
+              {/* Image upload (Cloudinary only) */}
               <ImageUpload
                 label="Upload Image"
                 folder="gallery"

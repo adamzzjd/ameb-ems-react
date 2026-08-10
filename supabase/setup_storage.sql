@@ -1,63 +1,57 @@
 -- ============================================================================
--- AMEB EMS — Supabase Storage Setup (images)
+-- AMEB EMS — Image URL Columns (Cloudinary-only hosting)
 -- ----------------------------------------------------------------------------
--- Enables image uploads for the public website and CMS:
---   1. Creates the public "images" storage bucket
---   2. Grants the app (anon key) read/write access to that bucket
---   3. Adds the new image columns to existing tables
+-- Images are hosted EXCLUSIVELY on Cloudinary. Uploads go straight from the
+-- browser to Cloudinary (unsigned preset); the database only ever stores the
+-- resulting Cloudinary public URL in text columns — never image data, and
+-- never Supabase Storage URLs.
 --
--- WHY:
---   The app stores image URLs in text columns; the actual files live in
---   Supabase Storage so the database stays small and images load fast via
---   CDN-cached public URLs. Existing base64 images (gallery, employee
---   photos) keep working untouched — only new uploads use Storage.
+-- This script just adds the image columns to the existing tables. It is
+-- idempotent and safe to re-run.
+--
+-- WHY THIS MATTERS FOR EXISTING DATABASES:
+--   `CREATE TABLE IF NOT EXISTS` in setup.sql / setup_ems.sql only creates a
+--   table when it's absent — it NEVER adds columns to a table that already
+--   exists. Databases created before the image columns were introduced (or
+--   migrated from the old project) are therefore missing some of them (e.g.
+--   `cms_gallery.image`, `employees.photo`). Run this file once to fix that.
+--
+-- The old Supabase Storage "images" bucket + access policy are intentionally
+-- NOT created anymore (see Phase 8.6 in PROGRESS.md). If the bucket already
+-- exists in your project with orphaned files, you can delete it in the
+-- dashboard: Storage → images → (bucket settings) → Delete bucket.
 --
 -- HOW TO RUN:
 --   1. Supabase dashboard → "SQL Editor" → "New query"
 --   2. Paste this entire file and click "Run"
---   3. (Safe to re-run — uses IF NOT EXISTS / ON CONFLICT)
---
--- NOTE: The app performs all requests with the Supabase anon key (RLS is
--- disabled on tables elsewhere), so we grant the anon role access to this
--- bucket. If you later add real authentication, tighten these policies.
+--   3. (Safe to re-run — uses ADD COLUMN IF NOT EXISTS)
 -- ============================================================================
 
--- ── 1. Storage bucket ────────────────────────────────────────────────────────
--- Public bucket → files get public URLs (no auth needed to view).
--- Limits: 8 MB per file, images only.
-insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values (
-  'images', 'images', true,
-  8388608,
-  array['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-)
-on conflict (id) do nothing;
-
--- ── 2. Access policy ────────────────────────────────────────────────────────
--- Version-safe: a DO block checks the policy catalog first, so this works on
--- PostgreSQL 14 (no CREATE POLICY IF NOT EXISTS there) and can be re-run.
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies
-    where schemaname = 'storage' and tablename = 'objects' and policyname = 'images_anon_all'
-  ) then
-    create policy "images_anon_all" on storage.objects
-      for all
-      using (bucket_id = 'images')
-      with check (bucket_id = 'images');
-  end if;
-end
-$$;
-
--- ── 3. New image columns (idempotent — safe for existing databases) ────────
+-- ── 1. Image URL columns (idempotent — safe for existing databases) ────────
 -- site_content: logo + hero + about images for the public website
 alter table public.site_content add column if not exists logo_url text;
 alter table public.site_content add column if not exists hero_image text;
 alter table public.site_content add column if not exists about_image text;
 
+-- cms_news: optional thumbnail image (replaces the icon banner when set)
+alter table public.cms_news add column if not exists image text;
+
 -- cms_team: optional leadership photo (replaces the initials avatar when set)
 alter table public.cms_team add column if not exists photo text;
 
--- cms_news: optional thumbnail image (replaces the icon banner when set)
-alter table public.cms_news add column if not exists image text;
+-- cms_gallery: gallery photos
+alter table public.cms_gallery add column if not exists image text;
+
+-- employees: passport photo
+alter table public.employees add column if not exists photo text;
+
+-- ── 2. Verify all seven columns now exist ───────────────────────────────────
+-- select table_name, column_name
+--   from information_schema.columns
+--   where table_schema = 'public'
+--     and (table_name, column_name) in (
+--       ('site_content', 'logo_url'),  ('site_content', 'hero_image'), ('site_content', 'about_image'),
+--       ('cms_news', 'image'),          ('cms_team', 'photo'),
+--       ('cms_gallery', 'image'),       ('employees', 'photo')
+--     )
+--   order by table_name, column_name;

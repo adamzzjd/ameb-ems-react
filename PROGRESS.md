@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 6, 2026
+> **Last updated:** August 6, 2026 (evening session — image data cleanup)
 
 ---
 
@@ -98,6 +98,30 @@
 | 8.3 Employee photos migrated | ✅ Done | `EmployeeForm` uploads passport photos via `uploadImageToStorage` (URL in DB, replaces legacy base64 path) |
 | 8.4 Legacy backfill script | ✅ Done | `scripts/migrate-images-to-cloudinary.mjs` — one-time migration of base64 + Supabase Storage images to Cloudinary; dry-run by default, `--commit` and `--delete-originals` flags |
 | 8.5 Docs | ✅ Done | README Cloudinary setup + migration instructions, `.env.example` updated |
+
+## 🧹 Phase 8.5: Image Data Cleanup — Fresh Start (In Progress)
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 8.5.1 Migration script keys wired | ✅ Done | `.env` now has `CLOUDINARY_CLOUD_NAME`/`CLOUDINARY_API_KEY`/`CLOUDINARY_API_SECRET` + `SUPABASE_SERVICE_ROLE_KEY` (script-only, non-`VITE_`, never committed) |
+| 8.5.2 Migration script abandoned | ✅ Decided | Dry-run found images stored as huge base64 blobs (a 5-row gallery query alone took 51s) + slow link to Supabase; user chose a clean-slate re-upload instead (eats egress + too slow) |
+| 8.5.3 Base64 + storage URLs purged | ✅ Done | SQL in Supabase editor cleared all `data:image/...` base64 and `/storage/v1/object/public/images/...` URLs from `cms_gallery`, `employees`, `cms_news`, `cms_team`, `site_content` — **no records deleted** |
+| 8.5.4 Data verified intact | ✅ Done | 138 employees, all CMS rows present; full `select(*)` on employees dropped from ~38s/terminated → ~7s (latency-bound, payload now tiny) |
+| 8.5.5 Dashboard restored | ✅ Done | Employee dashboard loads again (was blank because the huge base64 photo payload caused the query to be terminated) |
+| 8.5.6 Cloudinary-first uploads verified | ✅ Done | Test upload to Cloudinary succeeded (3.4s); `storage.ts` uploads via unsigned preset `ameb_ems` with `f_auto,q_auto` + client-side resize |
+| 8.5.7 🔴 PENDING — `site_content`/`cms_news` anon reads blocked by RLS | ⏳ Open | Row exists (service role sees it) but anon/logged-in reads return 0 rows → CMS pages show "No site content found". Other CMS tables (programs/team/gallery/downloads) read fine, so the `setup_rls.sql` select policies for these two tables are not in effect. **Next step: re-run the `site_content` + `cms_news` select policy snippets (or full `setup_rls.sql`) in the SQL editor.** |
+
+## ☁️ Phase 8.6: Cloudinary-Only Image Hosting (In Progress)
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 8.6.1 Supabase Storage fallback removed | ✅ Done | `src/supabase/storage.ts` is now Cloudinary-only — `IMAGE_BUCKET`, `supabase.storage` upload/getPublicUrl/remove paths deleted; uploads fail with a clear error if Cloudinary env vars are missing |
+| 8.6.2 `deleteImageFromStorage` simplified | ✅ Done | Now a documented no-op (unsigned presets can't delete) — clean up in Cloudinary Media Library |
+| 8.6.3 `setup_storage.sql` slimmed | ✅ Done | Removed `images` bucket creation + `images_anon_all` policy; keeps only the image URL column additions |
+| 8.6.4 Legacy image purge script | ✅ Done | `supabase/purge_non_cloudinary_images.sql` — schema-aware (checks `information_schema` first; skips missing columns instead of erroring); review counts first, then uncomment the UPDATE block |
+| 8.6.5 Schema drift fixed | ✅ Done | Live DB was missing `cms_gallery.image` (and possibly `employees.photo`) because `CREATE TABLE IF NOT EXISTS` never adds columns to existing tables → `setup_storage.sql` now adds **all seven** image columns idempotently; `diag-count.mjs` reports "missing column" instead of crashing |
+| 8.6.6 Docs + diagnostics | ✅ Done | README + `.env.example` rewritten for Cloudinary-only; `npm run diag:images` wired to `scripts/diag-count.mjs` |
+| 8.6.7 DB cleanup verified | ✅ Done | Ran `setup_storage.sql` (added missing `cms_gallery.image` etc. — schema drift) + purge Step 2 in SQL editor. `npm run diag:images` confirms **base64=0 and supabaseStorage=0 on all 7 image columns** — database is Cloudinary-only (image fields all NULL; every new upload goes straight to Cloudinary). |
 
 ---
 
@@ -201,7 +225,10 @@ Make sure you have a `.env` file with:
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_CLOUDINARY_CLOUD_NAME=your_cloud_name
+VITE_CLOUDINARY_UPLOAD_PRESET=your_unsigned_preset
 ```
+`VITE_SUPABASE_*` are required for the app; `VITE_CLOUDINARY_*` are **required for image uploads** (the app is Cloudinary-only — uploads fail with a clear error until they're set).
 
 ## 🌐 Deployment
 

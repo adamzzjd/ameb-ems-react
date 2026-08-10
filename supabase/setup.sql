@@ -147,7 +147,7 @@ create table if not exists public.cms_team (
 create table if not exists public.cms_gallery (
   id         uuid primary key,
   label      text not null default '',
-  image      text,                          -- base64 image data (optional)
+  image      text,                          -- Cloudinary image URL (optional)
   wide       boolean not null default false,
   tall       boolean not null default false,
   sort_order integer not null default 0,

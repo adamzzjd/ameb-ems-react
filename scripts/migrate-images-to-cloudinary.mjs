@@ -2,6 +2,12 @@
 /**
  * One-time backfill: move existing images from Supabase into Cloudinary.
  *
+ * ⚠️ OBSOLETE — kept for reference only.
+ * Phase 8.5 purged all base64 + Supabase Storage image values from the
+ * database (clean-slate re-upload chosen instead), and Phase 8.6 made
+ * Cloudinary the only image host. With nothing left to migrate, this script
+ * is a no-op. See PROGRESS.md §8.5/8.6.
+ *
  * What it handles:
  *   1. Legacy base64 images stored in the database (cms_gallery, employees,
  *      site_content, cms_team, cms_news)  → uploaded to Cloudinary.

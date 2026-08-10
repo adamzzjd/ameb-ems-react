@@ -11,7 +11,8 @@
     "test:coverage": "vitest run --coverage",
     "lint": "oxlint",
     "preview": "vite preview",
-    "migrate:images": "node scripts/migrate-images-to-cloudinary.mjs"
+    "migrate:images": "node scripts/migrate-images-to-cloudinary.mjs",
+    "diag:images": "node scripts/diag-count.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.20",
