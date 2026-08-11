@@ -8,7 +8,7 @@ import { ROLE_LABELS, type Permission } from '@/lib/roles';
 import {
   LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
   GraduationCap, BookOpen, Building2, Settings, FileText,
-  Download, Printer, Plus, LogOut, UserCog,
+  Download, Printer, Plus, LogOut, UserCog, UsersRound,
   Newspaper, Image, MessageSquare,
 } from 'lucide-react';
 
@@ -63,6 +63,7 @@ const navSections: NavSection[] = [
     items: [
       { page: 'stations', icon: <Building2 size={18} />, label: 'Manage Stations' },
       { page: 'cadres', icon: <BookOpen size={18} />, label: 'Manage Cadres' },
+      { page: 'facilitators', icon: <UsersRound size={18} />, label: 'Manage Facilitators' },
       { page: 'users', icon: <UserCog size={18} />, label: 'User Management', permission: 'users.manage' },
     ],
   },
@@ -79,6 +80,7 @@ const navSections: NavSection[] = [
       { page: 'cms-gallery', icon: <Image size={18} />, label: 'Gallery' },
       { page: 'cms-downloads', icon: <Download size={18} />, label: 'Downloads' },
       { page: 'cms-inbox', icon: <MessageSquare size={18} />, label: 'Contact Inbox' },
+      { page: 'cms-enrolments', icon: <BarChart3 size={18} />, label: 'Enrolment Stats' },
     ],
   },
 ];

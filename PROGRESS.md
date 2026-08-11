@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 6, 2026 (evening session — image data cleanup)
+> **Last updated:** August 11, 2026 (Phase 9 — Facilitator Registry & multi-facilitator centre assignments)
 
 ---
 
@@ -99,7 +99,7 @@
 | 8.4 Legacy backfill script | ✅ Done | `scripts/migrate-images-to-cloudinary.mjs` — one-time migration of base64 + Supabase Storage images to Cloudinary; dry-run by default, `--commit` and `--delete-originals` flags |
 | 8.5 Docs | ✅ Done | README Cloudinary setup + migration instructions, `.env.example` updated |
 
-## 🧹 Phase 8.5: Image Data Cleanup — Fresh Start (In Progress)
+## ✅ Phase 8.5: Image Data Cleanup — Fresh Start (Complete)
 
 | Step | Status | Notes |
 |------|--------|-------|
@@ -109,9 +109,9 @@
 | 8.5.4 Data verified intact | ✅ Done | 138 employees, all CMS rows present; full `select(*)` on employees dropped from ~38s/terminated → ~7s (latency-bound, payload now tiny) |
 | 8.5.5 Dashboard restored | ✅ Done | Employee dashboard loads again (was blank because the huge base64 photo payload caused the query to be terminated) |
 | 8.5.6 Cloudinary-first uploads verified | ✅ Done | Test upload to Cloudinary succeeded (3.4s); `storage.ts` uploads via unsigned preset `ameb_ems` with `f_auto,q_auto` + client-side resize |
-| 8.5.7 🔴 PENDING — `site_content`/`cms_news` anon reads blocked by RLS | ⏳ Open | Row exists (service role sees it) but anon/logged-in reads return 0 rows → CMS pages show "No site content found". Other CMS tables (programs/team/gallery/downloads) read fine, so the `setup_rls.sql` select policies for these two tables are not in effect. **Next step: re-run the `site_content` + `cms_news` select policy snippets (or full `setup_rls.sql`) in the SQL editor.** |
+| 8.5.7 `site_content`/`cms_news` anon reads | ✅ Done | RLS select policies for these two tables re-applied in the SQL editor (the `cms_content_select` + `cms_news_select` snippets from `setup_rls.sql`). User confirmed via full testing that CMS pages and the public site render correctly — anon reads now return rows. |
 
-## ☁️ Phase 8.6: Cloudinary-Only Image Hosting (In Progress)
+## ✅ Phase 8.6: Cloudinary-Only Image Hosting (Complete)
 
 | Step | Status | Notes |
 |------|--------|-------|
@@ -122,6 +122,36 @@
 | 8.6.5 Schema drift fixed | ✅ Done | Live DB was missing `cms_gallery.image` (and possibly `employees.photo`) because `CREATE TABLE IF NOT EXISTS` never adds columns to existing tables → `setup_storage.sql` now adds **all seven** image columns idempotently; `diag-count.mjs` reports "missing column" instead of crashing |
 | 8.6.6 Docs + diagnostics | ✅ Done | README + `.env.example` rewritten for Cloudinary-only; `npm run diag:images` wired to `scripts/diag-count.mjs` |
 | 8.6.7 DB cleanup verified | ✅ Done | Ran `setup_storage.sql` (added missing `cms_gallery.image` etc. — schema drift) + purge Step 2 in SQL editor. `npm run diag:images` confirms **base64=0 and supabaseStorage=0 on all 7 image columns** — database is Cloudinary-only (image fields all NULL; every new upload goes straight to Cloudinary). |
+
+## 🚀 Phase 9: Facilitator Registry & Multi-Facilitator Centres (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_facilitators.sql` in the Supabase SQL Editor, then re-run `supabase/setup_rls.sql` (adds policies for the two new tables). The script migrates existing `centres.facilitator` text into the registry and links it.
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 9.1 DB tables + legacy migration | ✅ Done | `supabase/setup_facilitators.sql` — creates `facilitators` + `centre_facilitators` (many-to-many, cascade deletes); converts distinct legacy `centres.facilitator` names into registry rows, links each centre, then drops the old column (runs once — guarded by column existence) |
+| 9.2 RLS policies | ✅ Done | `setup_rls.sql` — new `4.5` section: `facilitators` + `centre_facilitators` read for any signed-in user, admin+ write (same model as stations/cadres) |
+| 9.3 Types + Supabase service | ✅ Done | `Facilitator`/`CentreFacilitator` types (`Centre.facilitator` removed); `src/supabase/facilitators.ts` — CRUD + `dbLoadCentreFacilitators()` + `dbSetCentreFacilitators()` (delete+re-insert replace) |
+| 9.4 Facilitator registry page | ✅ Done | `FacilitatorsManager.tsx` — searchable CRUD (name, gender, phone, LGA, community, remarks), view modal shows assigned centres, delete warns about unlinking |
+| 9.5 Multi-assign in CentresManager | ✅ Done | `CentresManager.tsx` — searchable multi-select facilitator picker with inline quick-add (creates + assigns), chips in table (max 3 + count), view modal, both print views; search matches facilitator names; "Facilitators" stat card |
+| 9.6 Routing + navigation | ✅ Done | `facilitators` page in `App.tsx` (lazy, `settings.manage` guard + prop), Sidebar "Manage Facilitators" (Settings), PAGE_TITLES entry, cross-links between Centres ↔ Facilitators pages |
+| 9.7 Docs | ✅ Done | README schema + setup order updated (run `setup_facilitators.sql`, then `setup_rls.sql` last) |
+
+## 🚀 Phase 10: Enrolment Stats, Public Centre Directory & Live Site Stats (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_enrolments.sql` in the Supabase SQL Editor, then re-run `supabase/setup_rls.sql` (adds policies for `enrolment_stats`).
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 10.1 DB table + public view | ✅ Done | `setup_enrolments.sql` — `enrolment_stats` (year UNIQUE, learners_enrolled, certified, dropped_out, no_exam, ngos text[]) + `public_centres` view (safe public projection of centres with facilitator names, no internal remarks; granted to anon) |
+| 10.2 RLS policies | ✅ Done | `setup_rls.sql` — `enrolment_stats` public read (Landing hero needs it with anon key), admin+ write |
+| 10.3 Types + Supabase service | ✅ Done | `EnrolmentStat`/`PublicCentre` types; `src/supabase/enrolments.ts` — CRUD + `dbLoadPublicCentres()` |
+| 10.4 CMS manager | ✅ Done | `CmsEnrolments.tsx` — summary cards (total enrolled/certified/dropped/no-exam), per-year table, add/edit modal with NGOs textarea (one per line), delete confirm, NGO partner chips |
+| 10.5 Routing + navigation | ✅ Done | `cms-enrolments` page in `App.tsx` (lazy, cms.edit guard), Sidebar "Enrolment Stats" (Content Manager), PAGE_TITLES, CMS Dashboard card |
+| 10.6 Public centre directory | ✅ Done | Landing "Find a Learning Center" rebuilt as a live directory: search by name/ward/community/LGA, LGA filter chips derived from the register, centre cards (type, status, location, phone, facilitators); removed the "Interactive map coming soon" placeholder; new `centres` nav link; "Find a Learning Center" CTAs now scroll to the directory |
+| 10.7 Live hero stats | ✅ Done | Hero counters now live: Learners Enrolled (sum of `enrolment_stats`), Learning Centres + LGAs (from `public_centres`), Active Programs (CMS programs) — with static fallbacks until data exists |
+| 10.8 Hausa toggle removed | ✅ Done | Removed the incomplete EN/HA language toggle (state, header + mobile buttons, all `lang ===` ternaries) so the site no longer looks half-translated |
+| 10.9 Docs | ✅ Done | README schema + setup order updated (`setup_enrolments.sql` before `setup_rls.sql`) |
 
 ---
 

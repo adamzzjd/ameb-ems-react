@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Modal } from '../components/ui/Modal';
 import { LGAs } from '../data/constants';
-import type { Centre } from '../types';
+import type { Centre, Facilitator, CentreFacilitator } from '../types';
 import { dbLoadCentres, dbSaveCentre, dbDeleteCentre } from '../supabase/centres';
+import {
+  dbLoadFacilitators, dbLoadCentreFacilitators, dbSetCentreFacilitators, dbAddFacilitator,
+} from '../supabase/facilitators';
 import { useToast } from '../hooks/useToast';
 
 interface CentresManagerProps {
@@ -48,9 +51,114 @@ function statusBg(s: string | null | undefined): string {
   }
 }
 
-export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresManagerProps) {
+// ── Searchable multi-select picker for assigning facilitators ──────────────
+function FacilitatorPicker({
+  facilitators, selected, onChange, canManage, onQuickAdd, onManageLink,
+}: {
+  facilitators: Facilitator[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+  canManage: boolean;
+  onQuickAdd: (name: string) => void;
+  onManageLink?: () => void;
+}) {
+  const [query, setQuery] = useState('');
+  const [quickName, setQuickName] = useState('');
+  const [showList, setShowList] = useState(false);
+
+  const filtered = useMemo(() => {
+    const q = query.toLowerCase();
+    return facilitators.filter(f =>
+      !q ||
+      (f.name || '').toLowerCase().includes(q) ||
+      (f.lga || '').toLowerCase().includes(q) ||
+      (f.community || '').toLowerCase().includes(q)
+    );
+  }, [facilitators, query]);
+
+  const toggle = (id: string) => {
+    onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
+  };
+
+  return (
+    <div
+      onBlur={() => setTimeout(() => setShowList(false), 150)}
+    >
+      {selected.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+          {selected.map(id => {
+            const f = facilitators.find(x => x.id === id);
+            return (
+              <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'rgba(22,163,74,.1)', color: '#16a34a' }}>
+                {esc(f?.name || '—')}
+                {canManage && (
+                  <span onClick={() => toggle(id)} title="Remove" style={{ cursor: 'pointer', fontWeight: 800, fontSize: 13, lineHeight: 1 }}>×</span>
+                )}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      <div>
+        <input
+          value={query}
+          onChange={e => { setQuery(e.target.value); setShowList(true); }}
+          onFocus={() => setShowList(true)}
+          placeholder="Search facilitators to assign…"
+          style={inputStyle}
+        />
+        {showList && (
+          <div style={{ marginTop: 4, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, maxHeight: 190, overflowY: 'auto' }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
+                No facilitators found. {canManage && 'Add one below.'}
+              </div>
+            ) : filtered.map(f => {
+              const checked = selected.includes(f.id);
+              return (
+                <label key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 13, background: checked ? 'rgba(22,163,74,.06)' : '#fff' }}>
+                  <input type="checkbox" checked={checked} onChange={() => toggle(f.id)} style={{ accentColor: 'var(--color-primary)' }} />
+                  <span style={{ flex: 1, fontWeight: checked ? 700 : 500, color: 'var(--color-text-primary)' }}>{esc(f.name)}</span>
+                  {f.lga && <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{esc(f.lga)}</span>}
+                </label>
+              );
+            })}
+            {canManage && (
+              <div style={{ borderTop: '1px solid var(--color-border)', padding: '8px 12px', display: 'flex', gap: 6, background: 'var(--color-surface-warm)' }}>
+                <input
+                  value={quickName}
+                  onChange={e => setQuickName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && quickName.trim()) { onQuickAdd(quickName.trim()); setQuickName(''); } }}
+                  placeholder="Add new facilitator name…"
+                  style={{ flex: 1, padding: '5px 8px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12, outline: 'none', background: '#fff' }}
+                />
+                <button
+                  onClick={() => { if (quickName.trim()) { onQuickAdd(quickName.trim()); setQuickName(''); } }}
+                  style={{ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'var(--color-primary)', color: '#fff' }}
+                >
+                  + Add
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {onManageLink && (
+        <div style={{ marginTop: 6, fontSize: 12 }}>
+          <span onClick={onManageLink} style={{ color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}>Manage facilitator registry →</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
   const { toast } = useToast();
   const [centres, setCentres] = useState<Centre[]>([]);
+  const [facilitators, setFacilitators] = useState<Facilitator[]>([]);
+  const [links, setLinks] = useState<CentreFacilitator[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter state
@@ -70,7 +178,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
   const [formStatus, setFormStatus] = useState('Active');
   const [formCapacity, setFormCapacity] = useState('');
   const [formPhone, setFormPhone] = useState('');
-  const [formFacilitator, setFormFacilitator] = useState('');
+  const [formFacilitatorIds, setFormFacilitatorIds] = useState<string[]>([]);
   const [formNgo, setFormNgo] = useState('');
   const [formRemarks, setFormRemarks] = useState('');
   const [formError, setFormError] = useState('');
@@ -85,16 +193,32 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await dbLoadCentres();
-    if (!error && data) {
-      setCentres(data);
-    } else {
-      setCentres([]);
-    }
+    const [centreRes, facRes, linkRes] = await Promise.all([
+      dbLoadCentres(),
+      dbLoadFacilitators(),
+      dbLoadCentreFacilitators(),
+    ]);
+    if (!centreRes.error && centreRes.data) setCentres(centreRes.data);
+    if (!facRes.error && facRes.data) setFacilitators(facRes.data);
+    if (!linkRes.error && linkRes.data) setLinks(linkRes.data);
     setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // centreId → assigned facilitators (sorted by name)
+  const facilitatorsByCentre = useMemo(() => {
+    const map = new Map<string, Facilitator[]>();
+    links.forEach(l => {
+      const f = facilitators.find(x => x.id === l.facilitator_id);
+      if (!f) return;
+      const list = map.get(l.centre_id) || [];
+      list.push(f);
+      map.set(l.centre_id, list);
+    });
+    map.forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)));
+    return map;
+  }, [links, facilitators]);
 
   // Derived stats
   const stats = useMemo(() => {
@@ -111,9 +235,9 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
       active: byStatus['Active'] || 0,
       lgasCovered: Object.keys(byLGA).length,
       withNgo: centres.filter(c => c.ngo_partner).length,
-
+      facilitators: facilitators.length,
     };
-  }, [centres]);
+  }, [centres, facilitators]);
 
   // Filtered centres
   const filtered = useMemo(() => {
@@ -121,13 +245,13 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
     return centres.filter(c =>
       (!q || (c.name||'').toLowerCase().includes(q) ||
              (c.community||'').toLowerCase().includes(q) ||
-             (c.facilitator||'').toLowerCase().includes(q) ||
-             (c.ngo_partner||'').toLowerCase().includes(q))
+             (c.ngo_partner||'').toLowerCase().includes(q) ||
+             (facilitatorsByCentre.get(c.id) || []).some(f => (f.name||'').toLowerCase().includes(q)))
       && (!filterLGA    || c.lga    === filterLGA)
       && (!filterType   || c.type   === filterType)
       && (!filterStatus || c.status === filterStatus)
     );
-  }, [centres, search, filterLGA, filterType, filterStatus]);
+  }, [centres, search, filterLGA, filterType, filterStatus, facilitatorsByCentre]);
 
   const clearFilters = () => {
     setSearch('');
@@ -148,7 +272,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
     setFormStatus('Active');
     setFormCapacity('');
     setFormPhone('');
-    setFormFacilitator('');
+    setFormFacilitatorIds([]);
     setFormNgo('');
     setFormRemarks('');
     setFormError('');
@@ -165,11 +289,22 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
     setFormStatus(c.status || 'Active');
     setFormCapacity(c.capacity != null ? String(c.capacity) : '');
     setFormPhone(c.phone || '');
-    setFormFacilitator(c.facilitator || '');
+    setFormFacilitatorIds((facilitatorsByCentre.get(c.id) || []).map(f => f.id));
     setFormNgo(c.ngo_partner || '');
     setFormRemarks(c.remarks || '');
     setFormError('');
     setShowForm(true);
+  };
+
+  const handleQuickAddFacilitator = async (name: string) => {
+    if (!canManage) { toast('Admin access required.', true); return; }
+    const { data, error } = await dbAddFacilitator(name);
+    if (error) { toast('Failed to add facilitator: ' + error.message, true); return; }
+    if (data) {
+      setFacilitators(prev => [...prev, data]);
+      setFormFacilitatorIds(prev => prev.includes(data.id) ? prev : [...prev, data.id]);
+      toast(`✓ Facilitator "${name}" added and assigned.`);
+    }
   };
 
   const handleSave = async () => {
@@ -190,7 +325,6 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
       status: formStatus || 'Active',
       capacity: formCapacity ? parseInt(formCapacity) || null : null,
       phone: formPhone.trim(),
-      facilitator: formFacilitator,
       ngo_partner: formNgo.trim(),
       remarks: formRemarks.trim(),
     };
@@ -202,6 +336,16 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
       return;
     }
     if (data) {
+      // Persist facilitator assignments (replace set)
+      const { error: linkErr } = await dbSetCentreFacilitators(data.id, formFacilitatorIds);
+      if (linkErr) {
+        toast('Centre saved, but facilitator assignment failed: ' + linkErr.message, true);
+      } else {
+        setLinks(prev => [
+          ...prev.filter(l => l.centre_id !== data.id),
+          ...formFacilitatorIds.map(fid => ({ centre_id: data.id, facilitator_id: fid })),
+        ]);
+      }
       if (editing) {
         setCentres(prev => prev.map(c => c.id === data.id ? data : c));
       } else {
@@ -227,6 +371,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
     const { error } = await dbDeleteCentre(showDelete.id);
     if (error) { toast('Delete failed: ' + error.message, true); return; }
     setCentres(prev => prev.filter(c => c.id !== showDelete.id));
+    setLinks(prev => prev.filter(l => l.centre_id !== showDelete.id));
     toast(`Centre "${showDelete.name}" deleted.`);
     setShowDelete(null);
   };
@@ -235,7 +380,9 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
 
   const handlePrintCentres = (items: Centre[]) => {
     if (!items.length) { toast('No centres to print.', true); return; }
-    const rows = items.map((c, i) => `
+    const rows = items.map((c, i) => {
+      const facNames = (facilitatorsByCentre.get(c.id) || []).map(f => f.name).join(', ');
+      return `
       <tr>
         <td>${i + 1}</td>
         <td style="font-weight:600;">${esc(c.name)}</td>
@@ -243,11 +390,12 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
         <td>${esc(c.ward||'—')}</td>
         <td>${esc(c.community||'—')}</td>
         <td>${esc(c.type||'—')}</td>
-        <td>${esc(c.facilitator||'—')}</td>
+        <td>${esc(facNames || '—')}</td>
         <td>${esc(c.ngo_partner||'—')}</td>
         <td>${esc(c.capacity != null ? String(c.capacity) : '—')}</td>
         <td>${esc(c.status||'—')}</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 
     const w = window.open('', '_blank');
     if (!w) return;
@@ -274,7 +422,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
     <p>Total: <strong>${items.length}</strong> centre${items.length !== 1 ? 's' : ''} &middot; Printed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
     <table><thead><tr>
       <th>#</th><th>Centre Name</th><th>LGA</th><th>Ward</th><th>Community</th>
-      <th>Type</th><th>Facilitator</th><th>NGO Partner</th><th>Capacity</th><th>Status</th>
+      <th>Type</th><th>Facilitators</th><th>NGO Partner</th><th>Capacity</th><th>Status</th>
     </tr></thead><tbody>${rows}</tbody></table>
     <div class="foot"><span>AMEB EMS &middot; Learning Centres Register</span><span>Printed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
     <script>window.onload=function(){window.print();}<\/script></body></html>`);
@@ -282,6 +430,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
   };
 
   const handlePrintSingle = (c: Centre) => {
+    const facNames = (facilitatorsByCentre.get(c.id) || []).map(f => f.name).join(', ');
     const w = window.open('', '_blank');
     if (!w) return;
     w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(c.name)}</title>
@@ -311,7 +460,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
         <div class="field"><div class="fl">Ward</div><div class="fv">${esc(c.ward||'—')}</div></div>
         <div class="field"><div class="fl">Community</div><div class="fv">${esc(c.community||'—')}</div></div>
         <div class="field"><div class="fl">Capacity</div><div class="fv">${c.capacity != null ? c.capacity : '—'}</div></div>
-        <div class="field"><div class="fl">Facilitator</div><div class="fv">${esc(c.facilitator||'—')}</div></div>
+        <div class="field"><div class="fl">Facilitators</div><div class="fv">${esc(facNames || '—')}</div></div>
         <div class="field"><div class="fl">Phone</div><div class="fv">${esc(c.phone||'—')}</div></div>
         <div class="field"><div class="fl">NGO Partner</div><div class="fv">${esc(c.ngo_partner||'—')}</div></div>
         <div class="field"><div class="fl">Status</div><div class="fv">${esc(c.status||'—')}</div></div>
@@ -352,6 +501,11 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>of {LGAs.length} LGAs</div>
         </div>
         <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px' }}>Facilitators</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)', marginTop: 2 }}>{stats.facilitators}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>In the registry</div>
+        </div>
+        <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px' }}>With NGO Partner</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)', marginTop: 2 }}>{stats.withNgo}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Supported centres</div>
@@ -376,7 +530,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.3px' }}>LGA</div>
           <select
             value={filterLGA} onChange={e => setFilterLGA(e.target.value)}
-            style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12, outline: 'none', background: 'var(--color-surface-warm)', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12, outline: 'none', background: 'var(--color-surface-warm)', appearance: 'none', paddingRight: 24, backgroundImage: `url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
           >
             <option value="">All LGAs</option>
             {LGAs.map(l => <option key={l} value={l}>{l}</option>)}
@@ -386,7 +540,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.3px' }}>Type</div>
           <select
             value={filterType} onChange={e => setFilterType(e.target.value)}
-            style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12, outline: 'none', background: 'var(--color-surface-warm)', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12, outline: 'none', background: 'var(--color-surface-warm)', appearance: 'none', paddingRight: 24, backgroundImage: `url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
           >
             <option value="">All Types</option>
             {CENTRE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
@@ -396,7 +550,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
           <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.3px' }}>Status</div>
           <select
             value={filterStatus} onChange={e => setFilterStatus(e.target.value)}
-            style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12, outline: 'none', background: 'var(--color-surface-warm)', appearance: 'none', paddingRight: 24, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+            style={{ padding: '7px 10px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12, outline: 'none', background: 'var(--color-surface-warm)', appearance: 'none', paddingRight: 24, backgroundImage: `url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
           >
             <option value="">All Statuses</option>
             {CENTRE_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -433,7 +587,7 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
                 <th style={thStyle}>Ward</th>
                 <th style={thStyle}>Community</th>
                 <th style={thStyle}>Type</th>
-                <th style={thStyle}>Facilitator</th>
+                <th style={thStyle}>Facilitators</th>
                 <th style={thStyle}>NGO Partner</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Actions</th>
@@ -454,40 +608,60 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
                     </div>
                   </td>
                 </tr>
-              ) : filtered.map((c, i) => (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)', background: i % 2 === 0 ? 'var(--color-surface)' : 'var(--color-surface-warm)' }}>
-                  <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--color-text-primary)', cursor: 'pointer' }}
-                    onClick={() => openView(c.id)}>
-                    {esc(c.name)}
-                  </td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.lga || '—')}</td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.ward || '—')}</td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.community || '—')}</td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.type || '—')}</td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.facilitator || '—')}</td>
-                  <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.ngo_partner || '—')}</td>
-                  <td style={tdStyle}>
-                    <span style={{
-                      display: 'inline-block', padding: '2px 9px', borderRadius: 20,
-                      fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
-                      background: statusBg(c.status), color: statusColor(c.status),
-                    }}>
-                      {esc(c.status || '—')}
-                    </span>
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button onClick={() => openView(c.id)} title="View" style={actionBtnStyle}>👁</button>
-                      {canManage && (
-                        <button onClick={() => openEdit(c)} title="Edit" style={{ ...actionBtnStyle, background: 'var(--color-primary)', color: '#fff' }}>✏️</button>
+              ) : filtered.map((c, i) => {
+                const assigned = facilitatorsByCentre.get(c.id) || [];
+                return (
+                  <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)', background: i % 2 === 0 ? 'var(--color-surface)' : 'var(--color-surface-warm)' }}>
+                    <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--color-text-primary)', cursor: 'pointer' }}
+                      onClick={() => openView(c.id)}>
+                      {esc(c.name)}
+                    </td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.lga || '—')}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.ward || '—')}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.community || '—')}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.type || '—')}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>
+                      {assigned.length === 0 ? (
+                        <span style={{ color: 'var(--color-text-muted)' }}>—</span>
+                      ) : (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, maxWidth: 180 }}>
+                          {assigned.slice(0, 3).map(f => (
+                            <span key={f.id} style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: 'rgba(22,163,74,.1)', color: '#16a34a', whiteSpace: 'nowrap' }}>
+                              {esc(f.name)}
+                            </span>
+                          ))}
+                          {assigned.length > 3 && (
+                            <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: 'var(--color-surface-warm)', color: 'var(--color-text-muted)', whiteSpace: 'nowrap' }}>
+                              +{assigned.length - 3}
+                            </span>
+                          )}
+                        </div>
                       )}
-                      {canManage && (
-                        <button onClick={() => setShowDelete({ id: c.id, name: c.name })} title="Delete" style={{ ...actionBtnStyle, color: 'var(--color-error)' }}>🗑</button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.ngo_partner || '—')}</td>
+                    <td style={tdStyle}>
+                      <span style={{
+                        display: 'inline-block', padding: '2px 9px', borderRadius: 20,
+                        fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+                        background: statusBg(c.status), color: statusColor(c.status),
+                      }}>
+                        {esc(c.status || '—')}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button onClick={() => openView(c.id)} title="View" style={actionBtnStyle}>👁</button>
+                        {canManage && (
+                          <button onClick={() => openEdit(c)} title="Edit" style={{ ...actionBtnStyle, background: 'var(--color-primary)', color: '#fff' }}>✏️</button>
+                        )}
+                        {canManage && (
+                          <button onClick={() => setShowDelete({ id: c.id, name: c.name })} title="Delete" style={{ ...actionBtnStyle, color: 'var(--color-error)' }}>🗑</button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -566,18 +740,26 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
           </div>
 
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px', paddingBottom: 2, borderBottom: '1px solid var(--color-border)', marginTop: 4 }}>
-            Facilitator & Partner
+            Facilitators & Partner
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Assigned Facilitator</label>
-              <input value={formFacilitator} onChange={e => setFormFacilitator(e.target.value)} placeholder="Facilitator name" style={inputStyle} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>NGO Partner</label>
-              <input value={formNgo} onChange={e => setFormNgo(e.target.value)} placeholder="e.g. UNICEF, Save the Children" style={inputStyle} />
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+              Assigned Facilitators <span style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>({formFacilitatorIds.length} selected — you can assign more than one)</span>
+            </label>
+            <FacilitatorPicker
+              facilitators={facilitators}
+              selected={formFacilitatorIds}
+              onChange={setFormFacilitatorIds}
+              canManage={!!canManage}
+              onQuickAdd={handleQuickAddFacilitator}
+              onManageLink={() => { setShowForm(false); if (onNavigate) onNavigate('facilitators'); }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>NGO Partner</label>
+            <input value={formNgo} onChange={e => setFormNgo(e.target.value)} placeholder="e.g. UNICEF, Save the Children" style={inputStyle} />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -645,7 +827,6 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
                 ['Ward', viewCentre.ward],
                 ['Community', viewCentre.community],
                 ['Capacity', viewCentre.capacity != null ? String(viewCentre.capacity) : null],
-                ['Facilitator', viewCentre.facilitator],
                 ['Phone', viewCentre.phone],
                 ['NGO Partner', viewCentre.ngo_partner],
                 ['Status', viewCentre.status],
@@ -655,6 +836,24 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
                   <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text-primary)', marginTop: 2 }}>{val ? esc(val) : '—'}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Facilitators */}
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--color-border)' }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 7 }}>
+                Facilitators ({facilitatorsByCentre.get(viewCentre.id)?.length || 0})
+              </div>
+              {(facilitatorsByCentre.get(viewCentre.id) || []).length === 0 ? (
+                <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No facilitators assigned to this centre.</div>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {(facilitatorsByCentre.get(viewCentre.id) || []).map(f => (
+                    <span key={f.id} style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'rgba(22,163,74,.1)', color: '#16a34a' }}>
+                      🧑‍🏫 {esc(f.name)}{f.lga ? ` · ${esc(f.lga)}` : ''}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
             {viewCentre.remarks && (
@@ -694,6 +893,12 @@ export function CentresManager({ onNavigate: _onNavigate, canManage }: CentresMa
           </div>
           <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
             This will permanently remove the centre from the register.
+            {(facilitatorsByCentre.get(showDelete?.id || '') || []).length > 0 && (
+              <>
+                <br />
+                It is assigned {facilitatorsByCentre.get(showDelete?.id || '')!.length} facilitator{(facilitatorsByCentre.get(showDelete?.id || '') || []).length !== 1 ? 's' : ''} — they will be unlinked.
+              </>
+            )}
           </div>
         </div>
       </Modal>
@@ -728,6 +933,6 @@ const selectStyle: React.CSSProperties = {
   padding: '8px 10px', border: '1px solid var(--color-border)', borderRadius: 6,
   fontSize: 13, outline: 'none', width: '100%', background: '#fff',
   appearance: 'none', paddingRight: 24,
-  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
+  backgroundImage: `url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E\")`,
   backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center',
 };

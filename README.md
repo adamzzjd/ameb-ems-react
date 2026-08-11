@@ -21,8 +21,13 @@ Then create the tables by running the SQL setup scripts in the **Supabase dashbo
 1. [`supabase/setup.sql`](./supabase/setup.sql) — **CMS tables** (required for the public website + CMS admin)
 2. [`supabase/setup_ems.sql`](./supabase/setup_ems.sql) — **EMS register tables** (employees, stations, cadres, centres)
 3. [`supabase/setup_storage.sql`](./supabase/setup_storage.sql) — **image URL columns** (adds the image columns to the CMS tables — images themselves live on Cloudinary, see below)
+4. [`supabase/setup_facilitators.sql`](./supabase/setup_facilitators.sql) — **facilitator registry** (`facilitators` + `centre_facilitators` join). Migrates the old `centres.facilitator` free-text values into the registry and links them, then drops the legacy column.
+5. [`supabase/setup_enrolments.sql`](./supabase/setup_enrolments.sql) — **enrolment statistics** (`enrolment_stats` per-year table + the `public_centres` view that powers the public centre directory)
+6. [`supabase/setup_rls.sql`](./supabase/setup_rls.sql) — **Row Level Security** — run **last**, after all the setup scripts above, so the new tables get their policies.
 
 All scripts are idempotent (safe to re-run).
+
+> **Upgrading an existing database to the AMEB cadre list:** re-run `supabase/setup_ems.sql` (adds the `cadres.grade` column), then in the app open **Manage Cadres → ↺ Restore Defaults** to replace any old cadre rows with the standard AMEB establishment list and their grade levels.
 
 ### 🖼 How image uploads work (Cloudinary-only)
 
@@ -57,8 +62,12 @@ If any rows still hold base64 or Supabase Storage URLs (left over from before th
 |---|---|---|
 | `employees` | `id` (uuid PK), `name`, `grade`, `cadre`, `date_first_appt`, `date_present_appt`, `dob`, `phone`, `lga`, `psn`, `station`, `photo`, `remarks`, `created_at`, `updated_at` | Core staff register. `psn` is UNIQUE — the app rejects duplicate PSNs. |
 | `stations` | `id` (uuid PK), `name`, `lga`, `type`, `created_at`, `updated_at` | Posting stations. Auto-seeded from `src/data/constants.ts` on first load if empty. |
-| `cadres` | `id` (uuid PK), `name`, `category`, `created_at`, `updated_at` | Staff cadres. Auto-seeded from `src/data/constants.ts` on first load if empty. |
-| `centres` | `id` (uuid PK), `name`, `lga`, `ward`, `community`, `type`, `status`, `capacity` (int), `phone`, `facilitator`, `ngo_partner`, `remarks`, `created_at`, `updated_at` | Learning centres register. |
+| `cadres` | `id` (uuid PK), `name`, `grade`, `category`, `created_at`, `updated_at` | Staff cadres (AMEB establishment: Adult Education Officer ladder, directorate, admin & support) with each cadre's typical grade level. Auto-seeded from `src/data/constants.ts` on first load if empty; the employee form auto-fills the grade from the selected cadre. |
+| `centres` | `id` (uuid PK), `name`, `lga`, `ward`, `community`, `type`, `status`, `capacity` (int), `phone`, `ngo_partner`, `remarks`, `created_at`, `updated_at` | Learning centres register. Facilitators are assigned separately via `centre_facilitators`. |
+| `facilitators` | `id` (uuid PK), `name`, `gender`, `phone`, `lga`, `community`, `remarks`, `created_at`, `updated_at` | Facilitator registry (created by `setup_facilitators.sql`). |
+| `centre_facilitators` | `centre_id` (FK → centres, cascade), `facilitator_id` (FK → facilitators, cascade), `created_at` — PK `(centre_id, facilitator_id)` | Many-to-many: a centre can have many facilitators, a facilitator can serve many centres. |
+| `enrolment_stats` | `id` (uuid PK), `year` (int, UNIQUE), `learners_enrolled`, `certified`, `dropped_out`, `no_exam` (ints), `ngos` (text[]), `created_at`, `updated_at` | Per-year learner outcome figures managed from **CMS → Enrolment Stats** and shown live on the public site hero stats. |
+| `public_centres` (view) | Safe projection of `centres` + facilitator names — public fields only, never `remarks`. Powers the public "Find a Learning Center" directory. |
 
 ### CMS tables (public website)
 

@@ -46,6 +46,7 @@ export function CmsDashboard({ onNavigate }: CmsDashboardProps) {
     { page: 'cms-gallery', icon: '🖼', title: 'Gallery', sub: `${stats.gallery} item${stats.gallery !== 1 ? 's' : ''} in gallery`, action: 'Manage →' },
     { page: 'cms-downloads', icon: '📥', title: 'Downloads', sub: `${stats.downloads} resource${stats.downloads !== 1 ? 's' : ''} available`, action: 'Manage →' },
     { page: 'cms-inbox', icon: '✉️', title: 'Contact Inbox', sub: `${stats.contacts} message${stats.contacts !== 1 ? 's' : ''}${stats.unread > 0 ? ` · ${stats.unread} unread` : ''}`, action: `View ${stats.unread > 0 ? `(${stats.unread})` : ''}→` },
+    { page: 'cms-enrolments', icon: '📈', title: 'Enrolment Stats', sub: 'Per-year learner figures & NGO partners', action: 'Manage →' },
   ];
 
   if (loading) {

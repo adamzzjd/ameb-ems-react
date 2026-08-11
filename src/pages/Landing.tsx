@@ -1,7 +1,7 @@
 /* Restyled from scratch - Adamawa State Mass Education Board
    Official Government Website */
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   motion,
   AnimatePresence,
@@ -12,7 +12,8 @@ import {
 import { useCmsData } from '@/hooks/useCmsData';
 import { useTheme } from '@/hooks/useTheme';
 import { supabase } from '@/supabase/client';
-import type { CmsNews, CmsProgram } from '@/types';
+import { dbLoadEnrolmentStats, dbLoadPublicCentres } from '@/supabase/enrolments';
+import type { CmsNews, CmsProgram, EnrolmentStat, PublicCentre } from '@/types';
 import {
   GraduationCap, BookOpen, Users, Star, Heart, Wrench,
   MapPin, ClipboardList, Rocket, ChevronRight, ChevronLeft,
@@ -30,26 +31,20 @@ const NAV_LINKS = [
   { label: 'About', id: 'about' },
   { label: 'Programs', id: 'programs' },
   { label: 'News', id: 'news' },
+  { label: 'Centres', id: 'centres' },
   { label: 'Gallery', id: 'gallery' },
   { label: 'Contact', id: 'contact' },
 ];
 
-const STATS = [
-  { num: 47000, suffix: '+', label: 'Learners Enrolled' },
-  { num: 312, suffix: '', label: 'Learning Centers' },
-  { num: 21, suffix: '', label: 'LGAs Covered' },
-  { num: 8, suffix: '', label: 'Active Programs' },
-];
+const FALLBACK_STATS = {
+  learners: 47000,
+  centres: 312,
+  lgas: 21,
+  programs: 8,
+};
 
 const PROGRAM_ICONS = [BookOpen, Wrench, GraduationCap, Users, Star, Heart];
 const PROGRAM_COLORS = ['bg-primary', 'bg-gold', 'bg-terracotta', 'bg-primary', 'bg-gold', 'bg-success'];
-
-const LGAS = [
-  'Demsa', 'Fufore', 'Ganye', 'Girei', 'Gombi', 'Guyuk', 'Hong',
-  'Jada', 'Lamurde', 'Madagali', 'Maiha', 'Mayo-Belwa', 'Michika',
-  'Mubi North', 'Mubi South', 'Numan', 'Shelleng', 'Song', 'Toungo',
-  'Yola North', 'Yola South',
-];
 
 const HEADER_H = 76;      // fixed header height
 const GOVT_BAR_H = 36;    // top government bar (fixed offset of the header)
@@ -545,11 +540,32 @@ export function Landing({ onGoToLogin }: LandingProps) {
 
   const handleGlobalEnroll = useCallback(() => {
     setSelectedProgram(null);
-    setTimeout(() => scrollTo('contact'), 50);
+    setTimeout(() => scrollTo('centres'), 50);
   }, []);
 
-  // Language toggle
-  const [lang, setLang] = useState<'EN' | 'HA'>('EN');
+  // Live data: enrolment stats + public centre directory
+  const [enrolmentStats, setEnrolmentStats] = useState<EnrolmentStat[]>([]);
+  const [publicCentres, setPublicCentres] = useState<PublicCentre[]>([]);
+  // true only when the fetch failed (e.g. tables not set up yet) — fallbacks
+  // are used then, but a successfully-loaded-but-empty table shows real 0s.
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const [enrRes, centreRes] = await Promise.all([
+        dbLoadEnrolmentStats(),
+        dbLoadPublicCentres(),
+      ]);
+      if (!active) return;
+      const enrOk = !enrRes.error && !!enrRes.data;
+      const centreOk = !centreRes.error && !!centreRes.data;
+      if (enrOk && enrRes.data) setEnrolmentStats(enrRes.data);
+      if (centreOk && centreRes.data) setPublicCentres(centreRes.data);
+      setLoadFailed(!enrOk || !centreOk);
+    })();
+    return () => { active = false; };
+  }, []);
 
   // Contact form
   const [cfName, setCfName] = useState('');
@@ -583,7 +599,35 @@ export function Landing({ onGoToLogin }: LandingProps) {
   const sortedNews = [...news].sort((a, b) => a.sort_order - b.sort_order);
   const sortedGallery = [...gallery].sort((a, b) => a.sort_order - b.sort_order);
 
-  const filteredLgas = LGAS.filter(l => l.toLowerCase().includes(centerSearch.toLowerCase()));
+  // Live hero stats — real values from the DB; static figures only when the
+  // fetch failed (tables not set up yet), so an empty-but-existing table
+  // correctly shows 0 rather than a stale placeholder.
+  const liveStats = useMemo(() => ({
+    learners: loadFailed ? FALLBACK_STATS.learners : enrolmentStats.reduce((s, r) => s + (r.learners_enrolled || 0), 0),
+    centres: loadFailed ? FALLBACK_STATS.centres : publicCentres.length,
+    lgas: loadFailed ? FALLBACK_STATS.lgas : new Set(publicCentres.map(c => c.lga).filter(Boolean)).size,
+    programs: loadFailed ? FALLBACK_STATS.programs : sortedPrograms.length,
+  }), [enrolmentStats, publicCentres, sortedPrograms, loadFailed]);
+
+  // Centre directory filtering
+  const centreLgas = useMemo(() => {
+    const set = new Set(publicCentres.map(c => c.lga).filter(Boolean));
+    return [...set].sort();
+  }, [publicCentres]);
+  const [activeLga, setActiveLga] = useState('All');
+  const filteredCentres = useMemo(() => {
+    const q = centerSearch.toLowerCase();
+    return publicCentres.filter(c => {
+      const matchesLga = activeLga === 'All' || c.lga === activeLga;
+      if (!matchesLga) return false;
+      if (!q) return true;
+      return (c.name || '').toLowerCase().includes(q) ||
+        (c.ward || '').toLowerCase().includes(q) ||
+        (c.community || '').toLowerCase().includes(q) ||
+        (c.lga || '').toLowerCase().includes(q) ||
+        (c.type || '').toLowerCase().includes(q);
+    });
+  }, [publicCentres, centerSearch, activeLga]);
 
   // Program detail page (replaces the whole landing view while open)
   if (selectedProgram) {
@@ -665,13 +709,6 @@ export function Landing({ onGoToLogin }: LandingProps) {
                 {item.label}
               </a>
             ))}
-            {/* Language Toggle */}
-            <div className="flex items-center ml-3 rounded-lg border overflow-hidden" style={{ borderColor: 'var(--color-border)' }}>
-              <button onClick={() => setLang('EN')} className={`px-2.5 py-1 text-[11px] font-bold transition-colors ${lang === 'EN' ? 'bg-primary text-white' : ''}`}
-                style={lang !== 'EN' ? { color: 'var(--color-text-secondary)' } : {}}>EN</button>
-              <button onClick={() => setLang('HA')} className={`px-2.5 py-1 text-[11px] font-bold transition-colors ${lang === 'HA' ? 'bg-primary text-white' : ''}`}
-                style={lang !== 'HA' ? { color: 'var(--color-text-secondary)' } : {}}>HA</button>
-            </div>
             {/* Theme Toggle */}
             <button onClick={toggleTheme} className="ml-2 w-9 h-9 rounded-lg flex items-center justify-center transition-colors border"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
@@ -711,16 +748,10 @@ export function Landing({ onGoToLogin }: LandingProps) {
               <button onClick={() => { onGoToLogin(); setMobileNavOpen(false); }}
                 className="mt-4 px-5 py-4 rounded-xl text-base font-bold text-white border-none"
                 style={{ background: 'var(--color-primary)' }}>🔒 Staff Portal</button>
-              <div className="flex items-center gap-2 mt-3">
-                <button onClick={toggleTheme} className="flex-1 px-4 py-3 rounded-xl text-sm font-bold border"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
-                  {isDark ? '☀️ Light Mode' : '🌙 Dark Mode'}
-                </button>
-                <button onClick={() => setLang(lang === 'EN' ? 'HA' : 'EN')} className="px-4 py-3 rounded-xl text-sm font-bold border"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
-                  {lang === 'EN' ? 'HA' : 'EN'}
-                </button>
-              </div>
+              <button onClick={toggleTheme} className="mt-3 w-full px-4 py-3 rounded-xl text-sm font-bold border"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
+                {isDark ? '☀️ Light Mode' : '🌙 Dark Mode'}
+              </button>
             </div>
           </motion.div>
         )}
@@ -778,20 +809,25 @@ export function Landing({ onGoToLogin }: LandingProps) {
               <button onClick={() => handleScroll('programs')}
                 className="px-8 py-3.5 rounded-lg text-sm font-semibold inline-flex items-center gap-2.5 transition-all hover:-translate-y-0.5"
                 style={{ background: 'var(--color-gold)', color: 'var(--color-gold-fg)' }}>
-                {lang === 'EN' ? 'Explore Our Programs' : 'Bincika Shirye-Shiryenmu'} <ChevronRight size={16} />
+                Explore Our Programs <ChevronRight size={16} />
               </button>
               <button onClick={onGoToLogin}
                 className="px-8 py-3.5 rounded-lg text-sm font-semibold inline-flex items-center gap-2.5 border transition-all hover:-translate-y-0.5"
                 style={{ borderColor: 'rgba(255,255,255,0.4)', color: 'white', background: 'rgba(255,255,255,0.08)' }}>
-                🔒 {lang === 'EN' ? 'Staff Portal' : 'Shirin Ma\'aikata'}
+                🔒 Staff Portal
               </button>
             </motion.div>
 
-            {/* Stats */}
+            {/* Stats — live from the database (enrolment_stats + centres + programs) */}
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.56 }}
               className="grid grid-cols-2 sm:flex mt-14 pt-8 max-w-[660px] mx-auto"
               style={{ borderTop: '1px solid rgba(255,255,255,0.2)', gap: 0 }}>
-              {STATS.map((stat, i) => (
+              {[
+                { num: liveStats.learners, suffix: '+', label: 'Learners Enrolled' },
+                { num: liveStats.centres, suffix: '', label: 'Learning Centres' },
+                { num: liveStats.lgas, suffix: '', label: 'LGAs Covered' },
+                { num: liveStats.programs, suffix: '', label: 'Active Programs' },
+              ].map((stat, i) => (
                 <div key={stat.label} className="text-center sm:text-left flex-1 py-3 px-4"
                   style={{ borderLeft: i > 0 ? '1px solid rgba(255,255,255,0.2)' : 'none' }}>
                   <div className="text-[26px] sm:text-[32px] font-heading font-bold text-white leading-none">
@@ -915,13 +951,13 @@ export function Landing({ onGoToLogin }: LandingProps) {
       {/* ═══════════ 7. HOW TO ENROLL ═══════════ */}
       <section className="scroll-mt-[112px] py-16 md:py-24 px-6" style={{ background: isDark ? 'var(--color-bg)' : 'var(--color-primary)' }}>
         <div className="max-w-[1200px] mx-auto">
-          <SectionHeading tag="Getting Started" title={lang === 'EN' ? 'How to Enroll' : 'Yadda Ake Yin Rajista'}
-            sub={lang === 'EN' ? 'Three simple steps to begin your learning journey' : 'Matakka uku masu sauki don fara tafiyar iliminku'} onDark />
+          <SectionHeading tag="Getting Started" title="How to Enroll"
+            sub="Three simple steps to begin your learning journey" onDark />
           <div className="max-w-[800px] mx-auto">
             {[
-              { num: 1, icon: <MapPin size={22} />, title: lang === 'EN' ? 'Find Your Nearest Learning Center' : 'Nemo Cibiyar Ilimi da ke Kusa da ku', desc: lang === 'EN' ? 'Use our directory to locate a center in your LGA or ward.' : 'Yi amfani da jerin mu don samun cibiyar a karkara ko ward din ku.' },
-              { num: 2, icon: <ClipboardList size={22} />, title: lang === 'EN' ? 'Complete the Registration Form' : 'Cika Fomun Rajista', desc: lang === 'EN' ? 'Fill out your personal details and select your preferred program.' : 'Cika bayanan kanka kuma zaɓi shirin da kake so.' },
-              { num: 3, icon: <Rocket size={22} />, title: lang === 'EN' ? 'Begin Your Learning Journey' : 'Fara Tafiyar Iliminku', desc: lang === 'EN' ? 'Start attending classes and building new skills.' : 'Fara yin darussa kuma samu sabbin fasahohi.' },
+              { num: 1, icon: <MapPin size={22} />, title: 'Find Your Nearest Learning Center', desc: 'Use our directory to locate a center in your LGA or ward.' },
+              { num: 2, icon: <ClipboardList size={22} />, title: 'Complete the Registration Form', desc: 'Fill out your personal details and select your preferred program.' },
+              { num: 3, icon: <Rocket size={22} />, title: 'Begin Your Learning Journey', desc: 'Start attending classes and building new skills.' },
             ].map((step, i) => (
               <div key={step.num} className="flex gap-5 md:gap-8 items-start mb-10 last:mb-0">
                 <div className="flex flex-col items-center shrink-0">
@@ -991,37 +1027,126 @@ export function Landing({ onGoToLogin }: LandingProps) {
         </div>
       </section>
 
-      {/* ═══════════ 10. FIND A LEARNING CENTER ═══════════ */}
-      <section className="scroll-mt-[112px] py-16 md:py-24 px-6" style={{ background: 'var(--color-bg)' }}>
+      {/* ═══════════ 10. FIND A LEARNING CENTER — live directory ═══════════ */}
+      <section id="centres" className="scroll-mt-[112px] py-16 md:py-24 px-6" style={{ background: 'var(--color-bg)' }}>
         <div className="max-w-[1200px] mx-auto">
-          <SectionHeading tag="Find a Center" title={lang === 'EN' ? 'Find a Learning Center' : 'Nemo Cibiyar Ilimi'}
-            sub={lang === 'EN' ? 'Search by LGA or town to find your nearest center' : 'Bincika ta LGA ko gari don samun cibiyar ku'} />
-          <div className="max-w-[600px] mx-auto mb-8">
+          <SectionHeading tag="Find a Center" title="Find a Learning Center"
+            sub="Search by LGA, town or centre name to find your nearest learning centre" />
+          <div className="max-w-[600px] mx-auto mb-6">
             <div className="flex gap-2">
               <input value={centerSearch} onChange={e => setCenterSearch(e.target.value)}
-                placeholder={lang === 'EN' ? 'Enter your LGA or town name...' : 'Shigar da sunan LGA ko gari...'}
+                placeholder="Enter an LGA, town or centre name…"
                 className="flex-1 h-12 px-5 rounded-full border text-sm outline-none transition-colors focus:ring-2 focus:ring-ring"
                 style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-              <button className="px-6 h-12 rounded-full text-sm font-semibold text-white" style={{ background: 'var(--color-primary)' }}>
-                Search
-              </button>
+              {centerSearch && (
+                <button onClick={() => setCenterSearch('')} title="Clear search"
+                  className="px-4 h-12 rounded-full text-sm font-semibold border"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  ✕
+                </button>
+              )}
             </div>
           </div>
-          <div className="flex flex-wrap justify-center gap-2 max-w-[800px] mx-auto">
-            {filteredLgas.map(lga => (
-              <span key={lga} className="px-3.5 py-1.5 rounded-full text-xs font-semibold border cursor-pointer transition-colors hover:bg-primary hover:text-white hover:border-primary"
-                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                {lga}
-              </span>
-            ))}
-          </div>
-          <div className="mt-10 max-w-[600px] mx-auto rounded-2xl border-2 border-dashed p-12 text-center"
-            style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
-            <MapPin size={40} className="mx-auto mb-3 text-primary opacity-40" />
-            <p className="text-sm font-semibold" style={{ color: 'var(--color-text-muted)' }}>
-              {lang === 'EN' ? 'Interactive map coming soon' : 'Taswirar ta zuwa nan kawai'}
-            </p>
-          </div>
+
+          {/* LGA filter chips (derived from the live centre register) */}
+          {centreLgas.length > 0 && (
+            <div className="flex flex-wrap justify-center gap-2 max-w-[900px] mx-auto mb-10">
+              <button onClick={() => setActiveLga('All')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${activeLga === 'All' ? 'bg-primary text-white border-primary' : 'hover:bg-primary hover:text-white hover:border-primary'}`}
+                style={activeLga === 'All' ? undefined : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                All LGAs
+              </button>
+              {centreLgas.map(lga => (
+                <button key={lga} onClick={() => setActiveLga(lga)}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${activeLga === lga ? 'bg-primary text-white border-primary' : 'hover:bg-primary hover:text-white hover:border-primary'}`}
+                  style={activeLga === lga ? undefined : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                  {lga}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Centre cards */}
+          {publicCentres.length === 0 ? (
+            <div className="mt-10 max-w-[600px] mx-auto rounded-2xl border-2 border-dashed p-12 text-center"
+              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+              <MapPin size={40} className="mx-auto mb-3 text-primary opacity-40" />
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+                {loadFailed
+                  ? 'The learning centre directory is being set up. Please check back soon.'
+                  : 'Learning centre details will be published here soon.'}
+              </p>
+            </div>
+          ) : filteredCentres.length === 0 ? (
+            <div className="mt-10 max-w-[600px] mx-auto rounded-2xl border-2 border-dashed p-12 text-center"
+              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+              <MapPin size={40} className="mx-auto mb-3 text-primary opacity-40" />
+              <p className="text-sm font-semibold" style={{ color: 'var(--color-text-muted)' }}>
+                No centres match your search. Try a different LGA or name.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="text-center text-xs mb-6" style={{ color: 'var(--color-text-muted)' }}>
+                Showing <strong style={{ color: 'var(--color-text-primary)' }}>{filteredCentres.length}</strong> of {publicCentres.length} centres
+              </div>
+              <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" variants={listContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-70px' }}>
+                {filteredCentres.map(centre => {
+                  const active = (centre.status || '').toLowerCase() === 'active';
+                  return (
+                    <motion.div key={centre.id} variants={listItem}>
+                      <div className="rounded-2xl p-6 h-full border relative overflow-hidden card-hover"
+                        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                        <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: active ? 'var(--color-primary)' : 'var(--color-gold)' }} />
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="min-w-0">
+                            <div className="font-heading text-[15px] font-bold leading-snug" style={{ color: 'var(--color-text-primary)' }}>
+                              {centre.name}
+                            </div>
+                            {centre.type && (
+                              <div className="text-[11px] mt-1 font-semibold" style={{ color: 'var(--color-primary)' }}>
+                                {centre.type}
+                              </div>
+                            )}
+                          </div>
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0 ${active ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
+                            {centre.status || '—'}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5 mb-4 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
+                          <div className="flex items-center gap-2">
+                            <MapPin size={13} className="shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+                            <span>[{centre.lga}] {[centre.ward, centre.community].filter(Boolean).join(' · ') || centre.lga}</span>
+                          </div>
+                          {centre.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone size={13} className="shrink-0" style={{ color: 'var(--color-text-muted)' }} />
+                              <span>{centre.phone}</span>
+                            </div>
+                          )}
+                        </div>
+                        {centre.facilitators && centre.facilitators.length > 0 && (
+                          <div className="pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
+                            <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+                              Facilitators
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {centre.facilitators.map(f => (
+                                <span key={f} className="px-2 py-0.5 rounded-full text-[11px] font-semibold border"
+                                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface-warm)' }}>
+                                  {f}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </motion.div>
+            </>
+          )}
         </div>
       </section>
 
@@ -1032,7 +1157,7 @@ export function Landing({ onGoToLogin }: LandingProps) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 max-w-[980px] mx-auto">
             {/* Contact Info */}
             <div>
-              <h3 className="font-heading text-lg font-bold mb-5 text-white">{lang === 'EN' ? 'Our Office' : 'Keɓen Mu'}</h3>
+              <h3 className="font-heading text-lg font-bold mb-5 text-white">Our Office</h3>
               {[
                 { icon: <MapPin size={18} />, label: 'Head Office', value: site_content.address },
                 { icon: <Phone size={18} />, label: 'Phone', value: `${site_content.phone}\n${site_content.phone_2}` },

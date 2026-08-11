@@ -14,6 +14,8 @@ interface EmployeeFormProps {
   employee?: Employee | null;
   stations: string[];
   cadres: string[];
+  /** Cadre name → default grade level (auto-fills the grade field). */
+  cadreGrades?: Record<string, string>;
 }
 
 const NG_PHONE_RE = /^0\d{10}$/;
@@ -36,7 +38,7 @@ const selectClass = "h-[42px] w-full px-3 rounded-lg border text-[13px] outline-
 const labelClass = "text-[12px] font-bold";
 const errorClass = "text-[11px] mt-0.5";
 
-export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres }: EmployeeFormProps) {
+export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres, cadreGrades = {} }: EmployeeFormProps) {
   const isEdit = !!employee;
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,6 +65,10 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   // when a signed-delete endpoint is added.
   const [pendingPhotoDelete, setPendingPhotoDelete] = useState('');
   const originalPhotoRef = useRef('');
+  // Tracks the last grade that was auto-filled from a cadre selection, so a
+  // change of cadre only overwrites a still-default grade (never a manually
+  // chosen one).
+  const autoGradeRef = useRef('');
 
   // Keep the form in sync with the employee being edited — the component stays
   // mounted between opens (App.tsx renders it once), so plain useState initializers
@@ -84,6 +90,9 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
     setPhotoUploading(false);
     originalPhotoRef.current = employee?.photo || '';
     setPendingPhotoDelete('');
+    // Only allow auto-fill for grades filled *during this session* — never
+    // treat the officer's stored grade as an auto-filled default.
+    autoGradeRef.current = '';
     setErrors({}); setSaving(false);
   }, [employee]);
 
@@ -152,6 +161,20 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   };
 
   const selOpts = (arr: readonly string[] | string[]) => arr.map(o => <option key={o} value={o}>{o}</option>);
+
+  // Auto-fill the grade when a cadre is chosen (only while the grade is empty
+  // or still holds a grade auto-filled earlier in this session, so a stored or
+  // manually chosen grade is never silently overwritten).
+  const handleCadreChange = (value: string) => {
+    setCadre(value);
+    const def = cadreGrades[value];
+    if (def && (!grade || grade === autoGradeRef.current)) {
+      setGrade(def);
+      autoGradeRef.current = def;
+    } else if (!def) {
+      autoGradeRef.current = '';
+    }
+  };
   const chevronSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236B8F7E' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`;
 
   return (
@@ -241,10 +264,23 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
           <label className={labelClass} style={{ color: 'var(--color-text-secondary)' }}>
             3. Cadre / Role <span style={{ color: 'var(--color-error)' }}>*</span>
           </label>
-          <select value={cadre} onChange={e => setCadre(e.target.value)} className={selectClass}
+          <select value={cadre} onChange={e => handleCadreChange(e.target.value)} className={selectClass}
             style={{ background: 'var(--color-surface)', backgroundImage: chevronSvg, borderColor: errors.cadre ? 'var(--color-error)' : 'var(--color-border)', color: 'var(--color-text-primary)' }}>
-            <option value="">— Select —</option>{selOpts(cadres)}
+            <option value="">— Select —</option>
+            {cadres.map(c => (
+              <option key={c} value={c}>{cadreGrades[c] ? `${c} — ${cadreGrades[c]}` : c}</option>
+            ))}
+            {/* Keep a stored cadre visible even if it's no longer in the list
+                (e.g. a legacy name from before this update). */}
+            {cadre && !cadres.includes(cadre) && (
+              <option value={cadre}>{cadre}</option>
+            )}
           </select>
+          {cadre && cadreGrades[cadre] && (
+            <div className={errorClass} style={{ color: 'var(--color-text-muted)' }}>
+              Default grade: <strong style={{ color: 'var(--color-primary)' }}>{cadreGrades[cadre]}</strong> — adjust if needed.
+            </div>
+          )}
           {errors.cadre && <div className={errorClass} style={{ color: 'var(--color-error)' }}>{errors.cadre}</div>}
         </div>
 

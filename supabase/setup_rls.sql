@@ -2,8 +2,8 @@
 -- AMEB EMS — Row Level Security (RLS) Setup
 -- ----------------------------------------------------------------------------
 -- Enforces the role system in the database. Run this AFTER setup.sql,
--- setup_ems.sql and setup_storage.sql, in the Supabase dashboard SQL Editor.
--- Safe to run multiple times (drops and recreates policies).
+-- setup_ems.sql, setup_storage.sql and setup_facilitators.sql, in the Supabase
+-- dashboard SQL Editor. Safe to run multiple times (drops and recreates policies).
 --
 -- Roles live on the Supabase auth user's `app_metadata.role`:
 --   super_admin | admin | data_collector | staff
@@ -13,6 +13,7 @@
 --   employees        : any signed-in user (any role) can read; data_collector+
 --                      can insert/update; admin+ can delete.
 --   stations/cadres/centres: any signed-in user can read; admin+ can write.
+--   facilitators/centre_facilitators: any signed-in user can read; admin+ can write.
 --   CMS content      : public read (anon — the Landing page needs it); admin+ write.
 --   cms_contacts     : public insert (contact form); admin+ read/update/delete.
 -- ============================================================================
@@ -32,6 +33,8 @@ alter table public.employees      enable row level security;
 alter table public.stations       enable row level security;
 alter table public.cadres         enable row level security;
 alter table public.centres        enable row level security;
+alter table public.facilitators       enable row level security;
+alter table public.centre_facilitators enable row level security;
 alter table public.site_content   enable row level security;
 alter table public.cms_programs   enable row level security;
 alter table public.cms_news       enable row level security;
@@ -114,6 +117,67 @@ drop policy if exists "centres_delete" on public.centres;
 create policy "centres_delete" on public.centres
   for delete using (public.auth_role() in ('admin', 'super_admin'));
 
+-- ── 4.5. Facilitators (registry + centre assignments) ───────────────────────
+-- Same access model as stations/cadres/centres: any signed-in user reads,
+-- admin+ writes. The join table lets a centre have many facilitators and a
+-- facilitator serve many centres.
+drop policy if exists "facilitators_select" on public.facilitators;
+create policy "facilitators_select" on public.facilitators
+  for select using (public.auth_role() is not null);
+
+drop policy if exists "facilitators_insert" on public.facilitators;
+create policy "facilitators_insert" on public.facilitators
+  for insert with check (public.auth_role() in ('admin', 'super_admin'));
+
+drop policy if exists "facilitators_update" on public.facilitators;
+create policy "facilitators_update" on public.facilitators
+  for update using (public.auth_role() in ('admin', 'super_admin'))
+  with check (public.auth_role() in ('admin', 'super_admin'));
+
+drop policy if exists "facilitators_delete" on public.facilitators;
+create policy "facilitators_delete" on public.facilitators
+  for delete using (public.auth_role() in ('admin', 'super_admin'));
+
+drop policy if exists "centre_facilitators_select" on public.centre_facilitators;
+create policy "centre_facilitators_select" on public.centre_facilitators
+  for select using (public.auth_role() is not null);
+
+drop policy if exists "centre_facilitators_insert" on public.centre_facilitators;
+create policy "centre_facilitators_insert" on public.centre_facilitators
+  for insert with check (public.auth_role() in ('admin', 'super_admin'));
+
+drop policy if exists "centre_facilitators_delete" on public.centre_facilitators;
+create policy "centre_facilitators_delete" on public.centre_facilitators
+  for delete using (public.auth_role() in ('admin', 'super_admin'));
+
+-- ── 4.6. Enrolment stats (public read — shown on the Landing page; admin+ write) ──
+-- Guarded: only applies if the enrolment_stats table exists (created by
+-- setup_enrolments.sql). Keeps setup_rls.sql safe to re-run in any order.
+do $$
+begin
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'enrolment_stats') then
+    alter table public.enrolment_stats enable row level security;
+
+    drop policy if exists "enrolment_stats_select" on public.enrolment_stats;
+    create policy "enrolment_stats_select" on public.enrolment_stats
+      for select using (true);
+
+    drop policy if exists "enrolment_stats_insert" on public.enrolment_stats;
+    create policy "enrolment_stats_insert" on public.enrolment_stats
+      for insert with check (public.auth_role() in ('admin', 'super_admin'));
+
+    drop policy if exists "enrolment_stats_update" on public.enrolment_stats;
+    create policy "enrolment_stats_update" on public.enrolment_stats
+      for update using (public.auth_role() in ('admin', 'super_admin'))
+      with check (public.auth_role() in ('admin', 'super_admin'));
+
+    drop policy if exists "enrolment_stats_delete" on public.enrolment_stats;
+    create policy "enrolment_stats_delete" on public.enrolment_stats
+      for delete using (public.auth_role() in ('admin', 'super_admin'));
+  end if;
+end $$;
+
 -- ── 5. CMS content tables (public read, admin+ write) ──────────────────────
 -- Public read is required: the public Landing page reads these with the anon key.
 drop policy if exists "cms_content_select" on public.site_content;
@@ -172,8 +236,9 @@ create policy "cms_downloads_write" on public.cms_downloads
 
 -- ── 6. Contact inbox (public submit, admin+ manage) ─────────────────────────
 drop policy if exists "cms_contacts_insert" on public.cms_contacts;
+-- Note: INSERT policies only allow WITH CHECK (USING is invalid for INSERT).
 create policy "cms_contacts_insert" on public.cms_contacts
-  for insert using (true);
+  for insert with check (true);
 
 drop policy if exists "cms_contacts_read" on public.cms_contacts;
 create policy "cms_contacts_read" on public.cms_contacts

@@ -6,28 +6,62 @@ export const LGAs = [
   'Mubi South', 'Numan', 'Shelleng', 'Song', 'Toungo', 'Yola North', 'Yola South',
 ] as const;
 
-export const CADRES = [
-  'Executive Secretary',
-  'Director, Literacy Education',
-  'Director, Planning, Research and Statistics',
-  'Director, Home Economics',
-  'Director, Finance',
-  'Director, Continuing Education',
-  'Adult Education Officer II',
-  'Asst. Adult Education Officer',
-  'Senior Education Officer',
-  'Education Officer',
-  'Administrative Officer',
-  'Accountant II',
-  'Store Officer',
-  'Information Officer II',
-  'Executive Officer (Acct)',
-  'Procurement Officer II',
-  'Clerical Officer',
-  'Driver',
-  'Messenger',
-  'Other',
-] as const;
+// ── Cadres ────────────────────────────────────────────────────────────────────
+// Actual AMEB (Adamawa State Mass Education Board) staff establishment, aligned
+// with the NMEC/state mass education board cadre structure. Each cadre carries
+// its typical salary grade level (GL) — the employee form auto-fills the grade
+// from the selected cadre.
+export interface CadreSeed {
+  name: string;
+  grade: string;
+  category: string;
+}
+
+export const CADRES: CadreSeed[] = [
+  // ── Senior Management / Directorate (GL 15–17) ────────────────────────────
+  { name: 'Executive Secretary',                                  grade: 'GL 17', category: 'Senior Management' },
+  { name: 'Director, Literacy Education',                         grade: 'GL 16', category: 'Senior Management' },
+  { name: 'Director, Continuing Education',                       grade: 'GL 16', category: 'Senior Management' },
+  { name: 'Director, Home Economics',                             grade: 'GL 16', category: 'Senior Management' },
+  { name: 'Director, Planning, Research and Statistics',          grade: 'GL 16', category: 'Senior Management' },
+  { name: 'Director, Finance',                                    grade: 'GL 16', category: 'Senior Management' },
+  { name: 'Deputy Director',                                      grade: 'GL 15', category: 'Senior Management' },
+  { name: 'Assistant Director',                                   grade: 'GL 15', category: 'Senior Management' },
+
+  // ── Professional — Adult / Mass Education Officer ladder (GL 07–14) ──────
+  { name: 'Chief Adult Education Officer',                        grade: 'GL 14', category: 'Professional' },
+  { name: 'Assistant Chief Adult Education Officer',              grade: 'GL 13', category: 'Professional' },
+  { name: 'Principal Adult Education Officer',                    grade: 'GL 12', category: 'Professional' },
+  { name: 'Senior Adult Education Officer',                       grade: 'GL 10', category: 'Professional' },
+  { name: 'Adult Education Officer I',                            grade: 'GL 09', category: 'Professional' },
+  { name: 'Adult Education Officer II',                           grade: 'GL 08', category: 'Professional' },
+  { name: 'Assistant Adult Education Officer',                    grade: 'GL 07', category: 'Professional' },
+  { name: 'Information Officer II',                               grade: 'GL 08', category: 'Professional' },
+
+  // ── Administrative & Finance (GL 07–09) ───────────────────────────────────
+  { name: 'Administrative Officer',                               grade: 'GL 08', category: 'Administrative' },
+  { name: 'Accountant II',                                        grade: 'GL 08', category: 'Administrative' },
+  { name: 'Procurement Officer II',                               grade: 'GL 08', category: 'Administrative' },
+  { name: 'Store Officer',                                        grade: 'GL 07', category: 'Administrative' },
+  { name: 'Executive Officer (Acct)',                             grade: 'GL 07', category: 'Administrative' },
+
+  // ── Support Staff (GL 02–07) ──────────────────────────────────────────────
+  { name: 'Confidential Secretary',                               grade: 'GL 07', category: 'Support Staff' },
+  { name: 'Clerical Officer',                                     grade: 'GL 04', category: 'Support Staff' },
+  { name: 'Typist',                                               grade: 'GL 03', category: 'Support Staff' },
+  { name: 'Driver',                                               grade: 'GL 03', category: 'Support Staff' },
+  { name: 'Messenger',                                            grade: 'GL 02', category: 'Support Staff' },
+
+  { name: 'Other', grade: '', category: 'Other' },
+];
+
+// Plain cadre names for dropdowns / lookups.
+export const CADRE_NAMES = CADRES.map(c => c.name);
+
+// Cadre name → default grade level (used to auto-fill the grade field).
+export const CADRE_GRADES = Object.fromEntries(
+  CADRES.filter(c => c.grade).map(c => [c.name, c.grade])
+) as Record<string, string>;
 
 export const GRADES = [
   'GL 01', 'GL 02', 'GL 03', 'GL 04', 'GL 05', 'GL 06',
@@ -52,6 +86,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   appointment:   { title: 'By Appointment Date',     subtitle: 'Staff sorted by date of first appointment' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
+  facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },
   centres:       { title: 'Learning Centres Register', subtitle: 'All AMEB learning centres across 21 LGAs' },
   'cms-dashboard': { title: '📝 Content Manager',      subtitle: 'Manage all website content' },
   'cms-content':  { title: '⚙️ Site Content',          subtitle: 'Hero, About, Mission, Vision, Contact' },
@@ -61,5 +96,6 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   'cms-gallery':  { title: '🖼 Gallery',               subtitle: 'Manage photo gallery' },
   'cms-downloads':{ title: '📥 Downloads',             subtitle: 'Manage downloadable resources' },
   'cms-inbox':    { title: '✉️ Contact Inbox',         subtitle: 'View contact form messages' },
+  'cms-enrolments': { title: '📈 Enrolment Statistics', subtitle: 'Per-year learner figures & NGO partners' },
   users:          { title: '👤 User Management',       subtitle: 'Create users and assign roles' },
 };

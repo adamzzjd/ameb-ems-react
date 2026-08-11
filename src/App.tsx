@@ -14,7 +14,7 @@ import type { Employee } from './types';
 import { dbCheckTable } from './supabase/employees';
 import { CsvImportModal, exportEmployeesCSV } from './pages/CsvImportModal';
 import { printEmployees } from './utils/print';
-import { CADRES, STATIONS } from './data/constants';
+import { CADRE_NAMES, CADRE_GRADES, STATIONS } from './data/constants';
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────
 const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
@@ -27,6 +27,7 @@ const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m
 const Appointment = lazy(() => import('./pages/Appointment').then(m => ({ default: m.Appointment })));
 const StationsManager = lazy(() => import('./pages/StationsManager').then(m => ({ default: m.StationsManager })));
 const CadresManager = lazy(() => import('./pages/CadresManager').then(m => ({ default: m.CadresManager })));
+const FacilitatorsManager = lazy(() => import('./pages/FacilitatorsManager').then(m => ({ default: m.FacilitatorsManager })));
 const CentresManager = lazy(() => import('./pages/CentresManager').then(m => ({ default: m.CentresManager })));
 const CmsDashboard = lazy(() => import('./pages/cms/CmsDashboard').then(m => ({ default: m.CmsDashboard })));
 const SiteContent = lazy(() => import('./pages/cms/SiteContent').then(m => ({ default: m.SiteContent })));
@@ -36,6 +37,7 @@ const CmsTeam = lazy(() => import('./pages/cms/CmsTeam').then(m => ({ default: m
 const CmsDownloads = lazy(() => import('./pages/cms/CmsDownloads').then(m => ({ default: m.CmsDownloads })));
 const CmsGallery = lazy(() => import('./pages/cms/CmsGallery').then(m => ({ default: m.CmsGallery })));
 const CmsInbox = lazy(() => import('./pages/cms/CmsInbox').then(m => ({ default: m.CmsInbox })));
+const CmsEnrolments = lazy(() => import('./pages/cms/CmsEnrolments').then(m => ({ default: m.CmsEnrolments })));
 const UserManagement = lazy(() => import('./pages/UserManagement').then(m => ({ default: m.UserManagement })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
@@ -168,7 +170,7 @@ export default function App() {
   if (view === 'app' && currentPage.startsWith('cms-') && !can('cms.edit')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
-  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres') && !can('settings.manage')) {
+  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres' || currentPage === 'facilitators') && !can('settings.manage')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
   if (view === 'app' && currentPage === 'users' && !can('users.manage')) {
@@ -221,6 +223,8 @@ export default function App() {
         return <StationsManager onNavigate={handleNavigate} />;
       case 'cadres':
         return <CadresManager onNavigate={handleNavigate} />;
+      case 'facilitators':
+        return <FacilitatorsManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'centres':
         return <CentresManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'cms-dashboard':
@@ -239,6 +243,8 @@ export default function App() {
         return <CmsGallery />;
       case 'cms-inbox':
         return <CmsInbox />;
+      case 'cms-enrolments':
+        return <CmsEnrolments />;
       case 'users':
         return <UserManagement />;
       default:
@@ -306,7 +312,8 @@ export default function App() {
           onSave={handleSaveEmployee}
           employee={editingEmployee}
           stations={[...STATIONS]}
-          cadres={[...CADRES]}
+          cadres={[...CADRE_NAMES]}
+          cadreGrades={CADRE_GRADES}
         />
       </Suspense>
 

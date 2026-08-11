@@ -69,13 +69,19 @@ create table if not exists public.stations (
 -- ── Cadres (staff cadres) ────────────────────────────────────────────────────
 -- The app auto-seeds the standard cadre list from src/data/constants.ts the
 -- first time this table is empty, so no seed rows are needed here.
+-- `grade` carries the cadre's typical salary grade level (e.g. 'GL 08').
 create table if not exists public.cadres (
   id         uuid primary key,
   name       text not null default '',
+  grade      text,
   category   text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Add the grade column to databases created before this field existed
+-- (Safe to run multiple times.)
+alter table public.cadres add column if not exists grade text;
 
 -- ── Centres (learning centres) ───────────────────────────────────────────────
 create table if not exists public.centres (
@@ -88,7 +94,6 @@ create table if not exists public.centres (
   status       text not null default 'Active',
   capacity     integer,
   phone        text,
-  facilitator  text,
   ngo_partner  text,
   remarks      text,
   created_at   timestamptz not null default now(),

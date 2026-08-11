@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Modal } from '../components/ui/Modal';
 import type { Cadre } from '../types';
-import { dbLoadCadres, dbAddCadre, dbUpdateCadre, dbDeleteCadre, dbBulkInsertCadres } from '../supabase/cadres';
-import { CADRES } from '../data/constants';
+import { dbLoadCadres, dbAddCadre, dbUpdateCadre, dbDeleteCadre, dbBulkInsertCadres, dbResetCadres } from '../supabase/cadres';
+import { CADRES, GRADES } from '../data/constants';
 import { useToast } from '../hooks/useToast';
 
 interface CadresManagerProps {
@@ -20,6 +20,11 @@ const CATEGORIES = [
   'Administrative', 'Support Staff', 'Other',
 ];
 
+// Standard AMEB establishment list as DB-ready records.
+function seedRecords(): Partial<Cadre>[] {
+  return [...CADRES].map(({ name, grade, category }) => ({ name, grade: grade || null, category }));
+}
+
 export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
   const { toast } = useToast();
   const [cadres, setCadres] = useState<Cadre[]>([]);
@@ -29,12 +34,17 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Cadre | null>(null);
   const [formName, setFormName] = useState('');
+  const [formGrade, setFormGrade] = useState('');
   const [formCategory, setFormCategory] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
   // Delete state
   const [showDelete, setShowDelete] = useState<string | null>(null);
+
+  // Restore-defaults state
+  const [showRestore, setShowRestore] = useState(false);
+  const [restoring, setRestoring] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -44,15 +54,15 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
     } else {
       // Seed defaults
       try {
-        const seedRecords = [...CADRES].map(name => ({ name, category: '' }));
-        const { data: seeded, error: seedErr } = await dbBulkInsertCadres(seedRecords);
+        const records = seedRecords();
+        const { data: seeded, error: seedErr } = await dbBulkInsertCadres(records);
         if (!seedErr && seeded) {
           setCadres(seeded);
         } else {
-          setCadres(seedRecords as Cadre[]);
+          setCadres(records as Cadre[]);
         }
       } catch {
-        setCadres([...CADRES].map((c, i) => ({ id: String(i), name: c, category: '' } as Cadre)));
+        setCadres([...CADRES].map((c, i) => ({ id: String(i), name: c.name, grade: c.grade || null, category: c.category } as Cadre)));
       }
     }
     setLoading(false);
@@ -63,6 +73,7 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
   const openAdd = () => {
     setEditing(null);
     setFormName('');
+    setFormGrade('');
     setFormCategory('');
     setFormError('');
     setShowForm(true);
@@ -71,6 +82,7 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
   const openEdit = (c: Cadre) => {
     setEditing(c);
     setFormName(c.name);
+    setFormGrade(c.grade || '');
     setFormCategory(c.category || '');
     setFormError('');
     setShowForm(true);
@@ -87,12 +99,12 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
 
     setSaving(true);
     if (editing) {
-      const { error } = await dbUpdateCadre(editing.id, name, formCategory || undefined);
+      const { error } = await dbUpdateCadre(editing.id, name, formCategory || undefined, formGrade || undefined);
       if (error) { toast('Update failed: ' + error.message, true); setSaving(false); return; }
-      setCadres(prev => prev.map(c => c.id === editing.id ? { ...c, name, category: formCategory } : c));
+      setCadres(prev => prev.map(c => c.id === editing.id ? { ...c, name, grade: formGrade || null, category: formCategory } : c));
       toast('✓ Cadre updated successfully.');
     } else {
-      const { data, error } = await dbAddCadre(name, formCategory || undefined);
+      const { data, error } = await dbAddCadre(name, formCategory || undefined, formGrade || undefined);
       if (error) { toast('Failed to add cadre: ' + error.message, true); setSaving(false); return; }
       if (data) setCadres(prev => [...prev, data]);
       toast(`✓ Cadre "${name}" added successfully.`);
@@ -109,6 +121,17 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
     setShowDelete(null);
   };
 
+  const handleRestoreDefaults = async () => {
+    setRestoring(true);
+    const records = seedRecords();
+    const { data, error } = await dbResetCadres(records);
+    setRestoring(false);
+    if (error) { toast('Restore failed: ' + error.message, true); return; }
+    if (data) setCadres(data);
+    toast(`✓ Restored ${data?.length || records.length} standard AMEB cadres.`);
+    setShowRestore(false);
+  };
+
   if (loading) {
     return (
       <div style={{ textAlign: 'center', padding: 60, color: 'var(--color-text-muted)' }}>
@@ -120,21 +143,37 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, gap: 12, flexWrap: 'wrap' }}>
         <div style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
           Manage cadres for all AMEB staff. Cadres added here appear in the employee form automatically.
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 3 }}>
+            AMEB establishment: Adult Education Officer ladder (GL 07–14), directorate (GL 15–17), admin & support (GL 02–08).
+          </div>
         </div>
-        <button
-          onClick={openAdd}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            border: 'none', cursor: 'pointer',
-            background: 'var(--color-primary)', color: '#fff',
-          }}
-        >
-          + Add Cadre
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            onClick={() => setShowRestore(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              border: '1px solid var(--color-border)', cursor: 'pointer',
+              background: 'transparent', color: 'var(--color-text-secondary)',
+            }}
+          >
+            ↺ Restore Defaults
+          </button>
+          <button
+            onClick={openAdd}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+              border: 'none', cursor: 'pointer',
+              background: 'var(--color-primary)', color: '#fff',
+            }}
+          >
+            + Add Cadre
+          </button>
+        </div>
       </div>
 
       <div style={{
@@ -151,6 +190,7 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
             <thead>
               <tr>
                 <th style={thStyle}>Cadre Name</th>
+                <th style={thStyle}>Grade</th>
                 <th style={thStyle}>Category</th>
                 <th style={thStyle}>Actions</th>
               </tr>
@@ -158,7 +198,7 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
             <tbody>
               {cadres.length === 0 ? (
                 <tr>
-                  <td colSpan={3} style={{ textAlign: 'center', padding: 44 }}>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: 44 }}>
                     <div style={{ fontSize: 38, marginBottom: 10 }}>📋</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 5 }}>No cadres yet.</div>
                     <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>Click "Add Cadre" to get started.</div>
@@ -167,6 +207,16 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
               ) : cadres.map((c, i) => (
                 <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)', background: i % 2 === 0 ? 'var(--color-surface)' : 'var(--color-surface-warm)' }}>
                   <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--color-text-primary)' }}>{esc(c.name)}</td>
+                  <td style={{ ...tdStyle, fontSize: 12, whiteSpace: 'nowrap' }}>
+                    <span style={{
+                      display: 'inline-block', padding: '2px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                      background: c.grade ? 'rgba(22,163,74,.1)' : 'transparent',
+                      color: c.grade ? '#16a34a' : 'var(--color-text-muted)',
+                      border: c.grade ? '1px solid rgba(22,163,74,.25)' : 'none',
+                    }}>
+                      {esc(c.grade || '—')}
+                    </span>
+                  </td>
                   <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.category || '—')}</td>
                   <td style={tdStyle}>
                     <div style={{ display: 'flex', gap: 5 }}>
@@ -216,9 +266,19 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Cadre Name <span style={{ color: 'var(--color-error)' }}>*</span></label>
             <input
               value={formName} onChange={e => setFormName(e.target.value)}
-              placeholder="e.g. Adult Education Officer III"
+              placeholder="e.g. Adult Education Officer II"
               style={{ padding: '9px 11px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff' }}
             />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Grade Level</label>
+            <select
+              value={formGrade} onChange={e => setFormGrade(e.target.value)}
+              style={{ padding: '9px 11px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 13, outline: 'none', width: '100%', background: '#fff', appearance: 'none', paddingRight: 26, backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 9px center' }}
+            >
+              <option value="">— No specific grade —</option>
+              {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Category</label>
@@ -229,6 +289,41 @@ export function CadresManager({ onNavigate: _onNavigate }: CadresManagerProps) {
               <option value="">— Select Category —</option>
               {CATEGORIES.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Restore Defaults Confirmation */}
+      <Modal
+        open={showRestore}
+        onClose={() => setShowRestore(false)}
+        maxWidth="420px"
+        footer={
+          <>
+            <button
+              onClick={() => setShowRestore(false)}
+              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'transparent', color: 'var(--color-text-secondary)' }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleRestoreDefaults}
+              disabled={restoring}
+              style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: restoring ? 'not-allowed' : 'pointer', background: 'var(--color-primary)', color: '#fff', opacity: restoring ? 0.6 : 1 }}
+            >
+              {restoring ? 'Restoring…' : '✓ Yes, Restore Defaults'}
+            </button>
+          </>
+        }
+      >
+        <div style={{ textAlign: 'center', padding: 8 }}>
+          <div style={{ fontSize: 38, marginBottom: 10 }}>↺</div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>
+            Restore the standard AMEB cadre list?
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+            All current cadres will be replaced with the {CADRES.length} standard AMEB cadres
+            (with their grade levels). Any cadres you added manually will be removed.
           </div>
         </div>
       </Modal>

@@ -152,6 +152,7 @@ export interface Station {
 export interface Cadre {
   id: string;
   name: string;
+  grade: string | null;
   category: string;
   created_at?: string;
   updated_at?: string;
@@ -167,9 +168,59 @@ export interface Centre {
   status: string;
   capacity: number | null;
   phone: string;
-  facilitator: string;
   ngo_partner: string;
   remarks: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Facilitator {
+  id: string;
+  name: string;
+  gender: string | null;
+  phone: string | null;
+  lga: string | null;
+  community: string | null;
+  remarks: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// Many-to-many: a centre can have many facilitators, and a facilitator can
+// serve many centres.
+export interface CentreFacilitator {
+  centre_id: string;
+  facilitator_id: string;
+  created_at?: string;
+}
+
+// Public projection of a centre (the `public_centres` view) — safe fields +
+// facilitator names only, never internal remarks.
+export interface PublicCentre {
+  id: string;
+  name: string;
+  lga: string;
+  ward: string | null;
+  community: string | null;
+  type: string | null;
+  status: string;
+  capacity: number | null;
+  phone: string | null;
+  ngo_partner: string | null;
+  facilitators: string[];
+}
+
+// ── Enrolment Stats ───────────────────────────────────────────────────────────
+// Per-year learner outcome figures managed from the CMS and shown live on the
+// public site hero stats.
+export interface EnrolmentStat {
+  id: string;
+  year: number;
+  learners_enrolled: number;
+  certified: number;
+  dropped_out: number;
+  no_exam: number;
+  ngos: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -210,6 +261,7 @@ export type AppPage =
   | 'appointment'
   | 'stations'
   | 'cadres'
+  | 'facilitators'
   | 'centres'
   | 'cms-dashboard'
   | 'cms-content'
@@ -219,4 +271,5 @@ export type AppPage =
   | 'cms-gallery'
   | 'cms-downloads'
   | 'cms-inbox'
+  | 'cms-enrolments'
   | 'users';
