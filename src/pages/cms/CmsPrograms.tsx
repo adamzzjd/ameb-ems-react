@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ImageUpload } from '@/components/ui/ImageUpload';
 import { dbLoadPrograms, dbSaveProgram, dbDeleteProgram } from '@/supabase/cms';
 import { clearCmsCache } from '@/hooks/useCmsData';
 import type { CmsProgram } from '@/types';
@@ -22,13 +23,13 @@ export function CmsPrograms() {
   useEffect(() => { load(); }, [load]);
 
   const handleAdd = async (data: Omit<CmsProgram, 'id' | 'sort_order'>) => {
-    const result = await dbSaveProgram({ ...data, details: data.details || '', sort_order: items.length });
+    const result = await dbSaveProgram({ ...normalizeImage(data), details: data.details || '', sort_order: items.length });
     clearCmsCache();
     return result;
   };
 
   const handleUpdate = async (id: string, data: Partial<CmsProgram>) => {
-    const result = await dbSaveProgram({ id, ...data } as CmsProgram);
+    const result = await dbSaveProgram({ id, ...normalizeImage(data) });
     clearCmsCache();
     return result;
   };
@@ -56,7 +57,14 @@ export function CmsPrograms() {
       onReorder={handleReorder}
       searchPlaceholder="Search programs…"
       renderItem={(p) => (
-        <span><span className="mr-2">{p.icon}</span><strong>{p.title}</strong><span className="text-muted-foreground ml-2">— {p.description}</span></span>
+        <span>
+          {p.image ? (
+            <img src={p.image} alt="" className="inline-block w-7 h-7 rounded object-cover align-middle mr-2" />
+          ) : (
+            <span className="mr-2">{p.icon}</span>
+          )}
+          <strong>{p.title}</strong><span className="text-muted-foreground ml-2">— {p.description}</span>
+        </span>
       )}
       renderForm={({ item, onSave }) => (
         <ProgramForm item={item} onSave={onSave} />
@@ -65,17 +73,34 @@ export function CmsPrograms() {
   );
 }
 
+// The generic CmsListManager form surface types `image?: string`, so a cleared
+// photo arrives as `undefined`. Translate that to null so dbSaveProgram can
+// actually clear the column (undefined would be dropped by the update spread).
+function normalizeImage(data: Partial<CmsProgram>): Omit<Partial<CmsProgram>, 'image'> & { image?: string | null } {
+  if (!('image' in data) || data.image) {
+    return data as Omit<Partial<CmsProgram>, 'image'> & { image?: string | null };
+  }
+  return { ...data, image: null };
+}
+
 function ProgramForm({ item, onSave }: { item: Partial<CmsProgram> | null; onSave: (data: Partial<CmsProgram>) => Promise<boolean> }) {
   const [title, setTitle] = useState(item?.title || '');
   const [icon, setIcon] = useState(item?.icon || '📖');
   const [description, setDescription] = useState(item?.description || '');
   const [details, setDetails] = useState(item?.details || '');
+  const [image, setImage] = useState<string>(item?.image || '');
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
     if (!title.trim()) return;
     setSaving(true);
-    await onSave({ title: title.trim(), icon, description: description.trim(), details: details.trim() });
+    await onSave({
+      title: title.trim(),
+      icon,
+      image: image || undefined,
+      description: description.trim(),
+      details: details.trim(),
+    });
     setSaving(false);
   };
 
@@ -86,9 +111,17 @@ function ProgramForm({ item, onSave }: { item: Partial<CmsProgram> | null; onSav
         <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Adult Literacy" />
       </div>
       <div className="space-y-1.5">
-        <Label>Icon</Label>
+        <Label>Icon <span className="text-muted-foreground font-normal">(fallback when no photo is set)</span></Label>
         <Input value={icon} onChange={e => setIcon(e.target.value)} placeholder="📖" />
       </div>
+      <ImageUpload
+        label="Cover Photo"
+        folder="programs"
+        maxDim={1400}
+        value={image}
+        onChange={v => setImage(v || '')}
+        hint="Optional photo — replaces the icon on the public site"
+      />
       <div className="space-y-1.5">
         <Label>Short Description</Label>
         <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="Short description shown on the landing page card…" />

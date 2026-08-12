@@ -21,6 +21,7 @@ interface SidebarProps {
   onPrint: () => void;
   onLogout: () => void;
   employeeCount: number;
+  unreadContactCount?: number;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -94,7 +95,7 @@ const actions: { icon: React.ReactNode; label: string; key: string; permission: 
 
 export function Sidebar({
   currentPage, onNavigate, onAddEmployee, onImportCsv, onExportCsv,
-  onPrint, onLogout, employeeCount, mobileOpen, onMobileClose,
+  onPrint, onLogout, employeeCount, unreadContactCount = 0, mobileOpen, onMobileClose,
 }: SidebarProps) {
   const { user, role, can } = useAuth();
 
@@ -161,6 +162,15 @@ export function Sidebar({
                     {item.icon}
                   </span>
                   <span className="flex-1 min-w-0 truncate">{item.label}</span>
+                  {item.page === 'cms-inbox' && unreadContactCount > 0 && (
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center text-white"
+                      style={{ background: 'var(--color-error)' }}
+                      title={`${unreadContactCount} unread message${unreadContactCount !== 1 ? 's' : ''}`}
+                    >
+                      {unreadContactCount > 99 ? '99+' : unreadContactCount}
+                    </span>
+                  )}
                   {item.badge && (
                     <span className={cn(
                       'text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center',

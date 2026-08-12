@@ -104,6 +104,7 @@ create table if not exists public.cms_programs (
   icon        text not null default '',
   description text not null default '',
   details     text not null default '',       -- full-length programme details (Learn more page)
+  image       text,                           -- cover photo URL (optional) — replaces the icon on the public site
   sort_order  integer not null default 0,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
@@ -112,6 +113,10 @@ create table if not exists public.cms_programs (
 -- Add the details column to databases created before this field existed
 -- (Safe to run multiple times.)
 alter table public.cms_programs add column if not exists details text not null default '';
+
+-- Add the image column to databases created before this field existed
+-- (Safe to run multiple times.)
+alter table public.cms_programs add column if not exists image text;
 
 -- ── News ─────────────────────────────────────────────────────────────────────
 create table if not exists public.cms_news (

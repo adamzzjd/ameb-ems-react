@@ -39,6 +39,7 @@ export interface CmsProgram {
   icon: string;
   description: string;
   details?: string;
+  image?: string;
   sort_order: number;
 }
 

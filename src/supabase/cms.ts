@@ -31,7 +31,9 @@ export async function dbLoadPrograms(): Promise<{ data: CmsProgram[] | null; err
   return { data: data as CmsProgram[] | null, error };
 }
 
-export async function dbSaveProgram(program: Partial<CmsProgram>): Promise<{ data: CmsProgram | null; error: Error | null }> {
+// `image` may be explicitly null to clear a program photo on update
+// (undefined would be dropped by the update payload spread).
+export async function dbSaveProgram(program: Omit<Partial<CmsProgram>, 'image'> & { image?: string | null }): Promise<{ data: CmsProgram | null; error: Error | null }> {
   if (program.id) {
     const { data, error } = await supabase
       .from('cms_programs')
@@ -186,6 +188,16 @@ export async function dbLoadContacts(): Promise<{ data: CmsContact[] | null; err
     .select('*')
     .order('created_at', { ascending: false });
   return { data: data as CmsContact[] | null, error };
+}
+
+// Lightweight unread count for the sidebar badge — fetches only the count,
+// never the rows (RLS restricts reads to admin/super_admin, same as the inbox).
+export async function dbLoadUnreadContactCount(): Promise<{ count: number | null; error: Error | null }> {
+  const { count, error } = await supabase
+    .from('cms_contacts')
+    .select('id', { count: 'exact', head: true })
+    .eq('read', false);
+  return { count, error };
 }
 
 export async function dbMarkContactRead(id: string): Promise<{ error: Error | null }> {

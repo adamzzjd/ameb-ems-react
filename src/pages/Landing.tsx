@@ -11,6 +11,8 @@ import {
 } from 'framer-motion';
 import { useCmsData } from '@/hooks/useCmsData';
 import { useTheme } from '@/hooks/useTheme';
+import { LGAs } from '@/data/constants';
+import { Modal } from '@/components/ui/Modal';
 import { supabase } from '@/supabase/client';
 import { dbLoadEnrolmentStats, dbLoadPublicCentres } from '@/supabase/enrolments';
 import type { CmsNews, CmsProgram, EnrolmentStat, PublicCentre } from '@/types';
@@ -31,7 +33,7 @@ const NAV_LINKS = [
   { label: 'About', id: 'about' },
   { label: 'Programs', id: 'programs' },
   { label: 'News', id: 'news' },
-  { label: 'Centres', id: 'centres' },
+  { label: 'Enroll', id: 'enroll' },
   { label: 'Gallery', id: 'gallery' },
   { label: 'Contact', id: 'contact' },
 ];
@@ -45,6 +47,17 @@ const FALLBACK_STATS = {
 
 const PROGRAM_ICONS = [BookOpen, Wrench, GraduationCap, Users, Star, Heart];
 const PROGRAM_COLORS = ['bg-primary', 'bg-gold', 'bg-terracotta', 'bg-primary', 'bg-gold', 'bg-success'];
+
+// ── Centre enquiry form ────────────────────────────────────────────────────────
+const CENTRE_ENQUIRY_AGE_GROUPS = ['Out-of-school child', 'Youth (15–24)', 'Adult (25+)', 'Not sure yet'];
+
+const enquiryFieldClass = 'w-full h-11 px-4 rounded-lg border text-sm outline-none transition-colors focus:ring-2 focus:ring-ring';
+const enquiryLabelClass = 'block text-[12px] font-bold mb-1.5';
+const enquirySelectStyle = {
+  backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238e99b0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E")`,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 10px center',
+} as const;
 
 const HEADER_H = 76;      // fixed header height
 const GOVT_BAR_H = 36;    // top government bar (fixed offset of the header)
@@ -343,9 +356,15 @@ function ProgramDetailPage({ program, programs, isDark, toggleTheme, onBack, onG
         }} />
         <div className="max-w-[1000px] mx-auto relative z-10">
           <div className="flex items-center gap-4 mb-5">
-            <div className={`w-16 h-16 rounded-2xl ${accent} text-white flex items-center justify-center text-3xl shrink-0`}>
-              {program.icon || <GraduationCap size={28} />}
-            </div>
+            {program.image ? (
+              <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 border" style={{ borderColor: 'rgba(255,255,255,0.25)' }}>
+                <img src={program.image} alt={program.title} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className={`w-16 h-16 rounded-2xl ${accent} text-white flex items-center justify-center text-3xl shrink-0`}>
+                {program.icon || <GraduationCap size={28} />}
+              </div>
+            )}
             <div className="min-w-0">
               <div className="text-[10px] font-bold uppercase tracking-[2px] mb-1" style={{ color: 'var(--color-gold)' }}>
                 AMEB Programme
@@ -390,12 +409,18 @@ function ProgramDetailPage({ program, programs, isDark, toggleTheme, onBack, onG
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {others.map(p => (
                   <a key={p.id} onClick={() => onOpenProgram(p.id)}
-                    className="rounded-xl border p-5 cursor-pointer transition-all card-hover block"
+                    className="rounded-xl overflow-hidden border cursor-pointer transition-all card-hover block"
                     style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                    <div className="text-2xl mb-2">{p.icon}</div>
-                    <div className="font-heading text-[14px] font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>{p.title}</div>
-                    <p className="text-[12px] leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>{p.description}</p>
-                    <span className="inline-block mt-2.5 text-[11px] font-bold uppercase tracking-[1px] text-primary">Learn more →</span>
+                    {p.image ? (
+                      <img src={p.image} alt={p.title} className="w-full h-28 object-cover" />
+                    ) : (
+                      <div className="text-2xl mb-2 px-5 pt-5">{p.icon}</div>
+                    )}
+                    <div className="p-5">
+                      <div className="font-heading text-[14px] font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>{p.title}</div>
+                      <p className="text-[12px] leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>{p.description}</p>
+                      <span className="inline-block mt-2.5 text-[11px] font-bold uppercase tracking-[1px] text-primary">Learn more →</span>
+                    </div>
                   </a>
                 ))}
               </div>
@@ -540,7 +565,7 @@ export function Landing({ onGoToLogin }: LandingProps) {
 
   const handleGlobalEnroll = useCallback(() => {
     setSelectedProgram(null);
-    setTimeout(() => scrollTo('centres'), 50);
+    setTimeout(() => scrollTo('enroll'), 50);
   }, []);
 
   // Live data: enrolment stats + public centre directory
@@ -577,8 +602,17 @@ export function Landing({ onGoToLogin }: LandingProps) {
   const [cfError, setCfError] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Center search
-  const [centerSearch, setCenterSearch] = useState('');
+  // Centre enquiry form
+  const [ceName, setCeName] = useState('');
+  const [cePhone, setCePhone] = useState('');
+  const [ceEmail, setCeEmail] = useState('');
+  const [ceLga, setCeLga] = useState('');
+  const [ceProgram, setCeProgram] = useState('');
+  const [ceAge, setCeAge] = useState('');
+  const [ceSending, setCeSending] = useState(false);
+  const [ceSent, setCeSent] = useState(false);
+  const [ceError, setCeError] = useState('');
+  const [ceModalOpen, setCeModalOpen] = useState(false);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -592,6 +626,37 @@ export function Landing({ onGoToLogin }: LandingProps) {
     if (error) setCfError('Failed to send. Please try again later.');
     else { setCfSent(true); setCfName(''); setCfEmail(''); setCfSubject(''); setCfMessage(''); }
     setCfSending(false);
+  };
+
+  const handleCentreEnquirySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ceName.trim() || !cePhone.trim() || !ceEmail.trim()) return;
+    const lga = ceLga.trim() || 'Not sure yet';
+    setCeSending(true);
+    setCeError('');
+    const { error } = await supabase.from('cms_contacts').insert({
+      id: crypto.randomUUID(),
+      name: ceName.trim(),
+      email: ceEmail.trim(),
+      subject: `Learning Centre Enquiry — ${lga} · ${cePhone.trim()}`,
+      message: [
+        '🧑‍🎓 Learning Centre Enquiry (submitted from the Find a Learning Center form)',
+        '',
+        `Full name: ${ceName.trim()}`,
+        `Phone: ${cePhone.trim()}`,
+        `Email: ${ceEmail.trim()}`,
+        `Preferred LGA / Location: ${lga}`,
+        `Program of interest: ${ceProgram.trim() || 'Not sure yet'}`,
+        `Age / education level: ${ceAge.trim() || 'Not sure yet'}`,
+      ].join('\n'),
+      read: false,
+    });
+    if (error) setCeError('Failed to submit. Please try again later.');
+    else {
+      setCeSent(true);
+      setCeName(''); setCePhone(''); setCeEmail(''); setCeLga(''); setCeProgram(''); setCeAge('');
+    }
+    setCeSending(false);
   };
 
   const sortedTeam = [...team].sort((a, b) => a.sort_order - b.sort_order);
@@ -614,20 +679,12 @@ export function Landing({ onGoToLogin }: LandingProps) {
     const set = new Set(publicCentres.map(c => c.lga).filter(Boolean));
     return [...set].sort();
   }, [publicCentres]);
-  const [activeLga, setActiveLga] = useState('All');
-  const filteredCentres = useMemo(() => {
-    const q = centerSearch.toLowerCase();
-    return publicCentres.filter(c => {
-      const matchesLga = activeLga === 'All' || c.lga === activeLga;
-      if (!matchesLga) return false;
-      if (!q) return true;
-      return (c.name || '').toLowerCase().includes(q) ||
-        (c.ward || '').toLowerCase().includes(q) ||
-        (c.community || '').toLowerCase().includes(q) ||
-        (c.lga || '').toLowerCase().includes(q) ||
-        (c.type || '').toLowerCase().includes(q);
-    });
-  }, [publicCentres, centerSearch, activeLga]);
+  // LGA options for the enquiry form — live centre LGAs (once the register is
+  // published) merged with the statutory 21 LGAs so the dropdown always works.
+  const lgaOptions = useMemo(() => {
+    const set = new Set<string>([...LGAs, ...centreLgas]);
+    return [...set].sort((a, b) => a.localeCompare(b));
+  }, [centreLgas]);
 
   // Program detail page (replaces the whole landing view while open)
   if (selectedProgram) {
@@ -930,16 +987,27 @@ export function Landing({ onGoToLogin }: LandingProps) {
               const Icon = PROGRAM_ICONS[i % PROGRAM_ICONS.length];
               return (
                 <motion.div key={program.title} variants={listItem}>
-                  <div className="rounded-2xl p-7 h-full border relative card-hover" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                    <div className={`w-13 h-13 rounded-xl ${PROGRAM_COLORS[i % PROGRAM_COLORS.length]} text-white flex items-center justify-center mb-4`}>
-                      {program.icon ? <span className="text-2xl">{program.icon}</span> : <Icon size={22} />}
+                  <div className="rounded-2xl overflow-hidden h-full border relative card-hover" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+                    {program.image ? (
+                      <div className="h-[150px] relative flex items-center justify-center overflow-hidden">
+                        <img src={program.image} alt={program.title} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)' }} />
+                      </div>
+                    ) : (
+                      <div className="px-7 pt-7">
+                        <div className={`w-13 h-13 rounded-xl ${PROGRAM_COLORS[i % PROGRAM_COLORS.length]} text-white flex items-center justify-center mb-4`}>
+                          {program.icon ? <span className="text-2xl">{program.icon}</span> : <Icon size={22} />}
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-7">
+                      <h3 className="font-heading text-base font-bold mb-2.5" style={{ color: 'var(--color-text-primary)' }}>{program.title}</h3>
+                      <p className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>{program.description}</p>
+                      <button onClick={() => selectProgramById(program.id)}
+                        className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[1.1px] text-primary transition-all hover:gap-2">
+                        Learn more <ChevronRight size={13} />
+                      </button>
                     </div>
-                    <h3 className="font-heading text-base font-bold mb-2.5" style={{ color: 'var(--color-text-primary)' }}>{program.title}</h3>
-                    <p className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>{program.description}</p>
-                    <button onClick={() => selectProgramById(program.id)}
-                      className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[1.1px] text-primary transition-all hover:gap-2">
-                      Learn more <ChevronRight size={13} />
-                    </button>
                   </div>
                 </motion.div>
               );
@@ -949,13 +1017,13 @@ export function Landing({ onGoToLogin }: LandingProps) {
       </section>
 
       {/* ═══════════ 7. HOW TO ENROLL ═══════════ */}
-      <section className="scroll-mt-[112px] py-16 md:py-24 px-6" style={{ background: isDark ? 'var(--color-bg)' : 'var(--color-primary)' }}>
+      <section id="enroll" className="scroll-mt-[112px] py-16 md:py-24 px-6" style={{ background: isDark ? 'var(--color-bg)' : 'var(--color-primary)' }}>
         <div className="max-w-[1200px] mx-auto">
           <SectionHeading tag="Getting Started" title="How to Enroll"
             sub="Three simple steps to begin your learning journey" onDark />
           <div className="max-w-[800px] mx-auto">
             {[
-              { num: 1, icon: <MapPin size={22} />, title: 'Find Your Nearest Learning Center', desc: 'Use our directory to locate a center in your LGA or ward.' },
+              { num: 1, icon: <MapPin size={22} />, title: 'Tell Us Where You Want to Learn', desc: 'Fill in the enquiry form and we will match you with the nearest centre.' },
               { num: 2, icon: <ClipboardList size={22} />, title: 'Complete the Registration Form', desc: 'Fill out your personal details and select your preferred program.' },
               { num: 3, icon: <Rocket size={22} />, title: 'Begin Your Learning Journey', desc: 'Start attending classes and building new skills.' },
             ].map((step, i) => (
@@ -976,6 +1044,18 @@ export function Landing({ onGoToLogin }: LandingProps) {
                 </div>
               </div>
             ))}
+          </div>
+
+          {/* Enquiry CTA — opens the Find a Learning Center form */}
+          <div className="text-center mt-12">
+            <button onClick={() => setCeModalOpen(true)}
+              className="px-8 py-3.5 rounded-lg text-sm font-bold inline-flex items-center gap-2.5 transition-all hover:-translate-y-0.5"
+              style={{ background: 'var(--color-gold)', color: 'var(--color-gold-fg)' }}>
+              🏫 Find a Learning Center <ChevronRight size={16} />
+            </button>
+            <p className="text-xs mt-3" style={{ color: 'rgba(255,255,255,0.6)' }}>
+              Click to fill in a short enquiry form — the board will match you with the nearest centre and follow up with you.
+            </p>
           </div>
         </div>
       </section>
@@ -1024,129 +1104,6 @@ export function Landing({ onGoToLogin }: LandingProps) {
         <div className="max-w-[1200px] mx-auto">
           <SectionHeading tag={site_content.gallery_tag} title={site_content.gallery_title} sub={site_content.gallery_sub} />
           <FadeIn><GallerySlideshow items={sortedGallery} /></FadeIn>
-        </div>
-      </section>
-
-      {/* ═══════════ 10. FIND A LEARNING CENTER — live directory ═══════════ */}
-      <section id="centres" className="scroll-mt-[112px] py-16 md:py-24 px-6" style={{ background: 'var(--color-bg)' }}>
-        <div className="max-w-[1200px] mx-auto">
-          <SectionHeading tag="Find a Center" title="Find a Learning Center"
-            sub="Search by LGA, town or centre name to find your nearest learning centre" />
-          <div className="max-w-[600px] mx-auto mb-6">
-            <div className="flex gap-2">
-              <input value={centerSearch} onChange={e => setCenterSearch(e.target.value)}
-                placeholder="Enter an LGA, town or centre name…"
-                className="flex-1 h-12 px-5 rounded-full border text-sm outline-none transition-colors focus:ring-2 focus:ring-ring"
-                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-              {centerSearch && (
-                <button onClick={() => setCenterSearch('')} title="Clear search"
-                  className="px-4 h-12 rounded-full text-sm font-semibold border"
-                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                  ✕
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* LGA filter chips (derived from the live centre register) */}
-          {centreLgas.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-2 max-w-[900px] mx-auto mb-10">
-              <button onClick={() => setActiveLga('All')}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${activeLga === 'All' ? 'bg-primary text-white border-primary' : 'hover:bg-primary hover:text-white hover:border-primary'}`}
-                style={activeLga === 'All' ? undefined : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                All LGAs
-              </button>
-              {centreLgas.map(lga => (
-                <button key={lga} onClick={() => setActiveLga(lga)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors cursor-pointer ${activeLga === lga ? 'bg-primary text-white border-primary' : 'hover:bg-primary hover:text-white hover:border-primary'}`}
-                  style={activeLga === lga ? undefined : { borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                  {lga}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Centre cards */}
-          {publicCentres.length === 0 ? (
-            <div className="mt-10 max-w-[600px] mx-auto rounded-2xl border-2 border-dashed p-12 text-center"
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
-              <MapPin size={40} className="mx-auto mb-3 text-primary opacity-40" />
-              <p className="text-sm font-semibold" style={{ color: 'var(--color-text-muted)' }}>
-                {loadFailed
-                  ? 'The learning centre directory is being set up. Please check back soon.'
-                  : 'Learning centre details will be published here soon.'}
-              </p>
-            </div>
-          ) : filteredCentres.length === 0 ? (
-            <div className="mt-10 max-w-[600px] mx-auto rounded-2xl border-2 border-dashed p-12 text-center"
-              style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
-              <MapPin size={40} className="mx-auto mb-3 text-primary opacity-40" />
-              <p className="text-sm font-semibold" style={{ color: 'var(--color-text-muted)' }}>
-                No centres match your search. Try a different LGA or name.
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="text-center text-xs mb-6" style={{ color: 'var(--color-text-muted)' }}>
-                Showing <strong style={{ color: 'var(--color-text-primary)' }}>{filteredCentres.length}</strong> of {publicCentres.length} centres
-              </div>
-              <motion.div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5" variants={listContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-70px' }}>
-                {filteredCentres.map(centre => {
-                  const active = (centre.status || '').toLowerCase() === 'active';
-                  return (
-                    <motion.div key={centre.id} variants={listItem}>
-                      <div className="rounded-2xl p-6 h-full border relative overflow-hidden card-hover"
-                        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                        <div className="absolute top-0 left-0 right-0 h-[3px]" style={{ background: active ? 'var(--color-primary)' : 'var(--color-gold)' }} />
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div className="min-w-0">
-                            <div className="font-heading text-[15px] font-bold leading-snug" style={{ color: 'var(--color-text-primary)' }}>
-                              {centre.name}
-                            </div>
-                            {centre.type && (
-                              <div className="text-[11px] mt-1 font-semibold" style={{ color: 'var(--color-primary)' }}>
-                                {centre.type}
-                              </div>
-                            )}
-                          </div>
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide shrink-0 ${active ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'}`}>
-                            {centre.status || '—'}
-                          </span>
-                        </div>
-                        <div className="space-y-1.5 mb-4 text-[13px]" style={{ color: 'var(--color-text-secondary)' }}>
-                          <div className="flex items-center gap-2">
-                            <MapPin size={13} className="shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-                            <span>[{centre.lga}] {[centre.ward, centre.community].filter(Boolean).join(' · ') || centre.lga}</span>
-                          </div>
-                          {centre.phone && (
-                            <div className="flex items-center gap-2">
-                              <Phone size={13} className="shrink-0" style={{ color: 'var(--color-text-muted)' }} />
-                              <span>{centre.phone}</span>
-                            </div>
-                          )}
-                        </div>
-                        {centre.facilitators && centre.facilitators.length > 0 && (
-                          <div className="pt-3 border-t" style={{ borderColor: 'var(--color-border)' }}>
-                            <div className="text-[10px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
-                              Facilitators
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {centre.facilitators.map(f => (
-                                <span key={f} className="px-2 py-0.5 rounded-full text-[11px] font-semibold border"
-                                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)', background: 'var(--color-surface-warm)' }}>
-                                  {f}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </motion.div>
-            </>
-          )}
         </div>
       </section>
 
@@ -1275,6 +1232,103 @@ export function Landing({ onGoToLogin }: LandingProps) {
           </div>
         </div>
       </footer>
+
+      {/* ═══════════ ENQUIRY MODAL (Find a Learning Center form) ═══════════ */}
+      <Modal open={ceModalOpen} onClose={() => { setCeModalOpen(false); setCeSent(false); setCeError(''); }}
+        title="Learner Enquiry Form" subtitle="Find a Learning Center — we'll follow up with you" maxWidth="640px">
+        {ceSent ? (
+          <div className="py-8 flex flex-col items-center justify-center text-center">
+            <div className="w-16 h-16 rounded-full bg-success/10 flex items-center justify-center mb-4">
+              <span className="text-3xl">✅</span>
+            </div>
+            <h3 className="font-heading text-lg font-bold mb-1.5" style={{ color: 'var(--color-text-primary)' }}>Enquiry Received!</h3>
+            <p className="text-[13px] max-w-[380px] leading-relaxed mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+              Thank you for your interest. The AMEB team will contact you shortly to help you enrol at a learning centre near you.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <button onClick={() => { setCeSent(false); setCeError(''); }}
+                className="px-6 py-2.5 rounded-lg text-[13px] font-bold border transition-colors hover:border-primary cursor-pointer"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                Submit another enquiry
+              </button>
+              <button onClick={() => { setCeModalOpen(false); setCeSent(false); setCeError(''); }}
+                className="px-6 py-2.5 rounded-lg text-[13px] font-bold text-white transition-colors"
+                style={{ background: 'var(--color-primary)' }}>
+                Close
+              </button>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleCentreEnquirySubmit} className="flex flex-col gap-4">
+            {ceError && (
+              <div className="px-3.5 py-2.5 rounded-lg text-[13px]"
+                style={{ background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.25)', color: 'var(--color-error)' }}>
+                {ceError}
+              </div>
+            )}
+            <div>
+              <label htmlFor="ce-name" className={enquiryLabelClass} style={{ color: 'var(--color-text-primary)' }}>Full Name <span style={{ color: 'var(--color-error)' }}>*</span></label>
+              <input id="ce-name" required value={ceName} onChange={e => setCeName(e.target.value)} placeholder="e.g. Aisha Mohammed"
+                className={enquiryFieldClass}
+                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="ce-phone" className={enquiryLabelClass} style={{ color: 'var(--color-text-primary)' }}>Phone Number <span style={{ color: 'var(--color-error)' }}>*</span></label>
+                <input id="ce-phone" required type="tel" value={cePhone} onChange={e => setCePhone(e.target.value)} placeholder="e.g. 0803 123 4567"
+                  className={enquiryFieldClass}
+                  style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+              </div>
+              <div>
+                <label htmlFor="ce-email" className={enquiryLabelClass} style={{ color: 'var(--color-text-primary)' }}>Email Address <span style={{ color: 'var(--color-error)' }}>*</span></label>
+                <input id="ce-email" required type="email" value={ceEmail} onChange={e => setCeEmail(e.target.value)} placeholder="you@example.com"
+                  className={enquiryFieldClass}
+                  style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="ce-lga" className={enquiryLabelClass} style={{ color: 'var(--color-text-primary)' }}>Preferred LGA / Location</label>
+              <select id="ce-lga" value={ceLga} onChange={e => setCeLga(e.target.value)}
+                className={`${enquiryFieldClass} appearance-none pr-9`}
+                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', ...enquirySelectStyle }}>
+                <option value="">Not sure yet</option>
+                {lgaOptions.map(lga => <option key={lga} value={lga}>{lga}</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="ce-program" className={enquiryLabelClass} style={{ color: 'var(--color-text-primary)' }}>Program of Interest</label>
+                <select id="ce-program" value={ceProgram} onChange={e => setCeProgram(e.target.value)}
+                  className={`${enquiryFieldClass} appearance-none pr-9`}
+                  style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', ...enquirySelectStyle }}>
+                  <option value="">Not sure yet</option>
+                  {sortedPrograms.map(p => <option key={p.id} value={p.title}>{p.title}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="ce-age" className={enquiryLabelClass} style={{ color: 'var(--color-text-primary)' }}>Age / Education Level</label>
+                <select id="ce-age" value={ceAge} onChange={e => setCeAge(e.target.value)}
+                  className={`${enquiryFieldClass} appearance-none pr-9`}
+                  style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', ...enquirySelectStyle }}>
+                  {CENTRE_ENQUIRY_AGE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-3 mt-1">
+              <button type="submit" disabled={ceSending}
+                className="px-8 py-3.5 rounded-lg text-sm font-bold text-white transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ background: 'var(--color-primary)' }}>
+                {ceSending ? 'Submitting…' : 'Submit Enquiry →'}
+              </button>
+              <button type="button" onClick={() => setCeModalOpen(false)}
+                className="px-6 py-3.5 rounded-lg text-sm font-bold border transition-colors hover:border-primary cursor-pointer"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        )}
+      </Modal>
     </div>
   );
 }

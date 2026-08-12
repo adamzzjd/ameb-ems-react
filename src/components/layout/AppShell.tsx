@@ -1,11 +1,12 @@
 /* Restyled from scratch - Adamawa State Mass Education Board
    Official Government Website */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { GovernmentHeaderBar } from './GovernmentHeaderBar';
 import { useAuth } from '../../hooks/useAuth';
+import { useUnreadContacts } from '../../hooks/useUnreadContacts';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -25,6 +26,11 @@ export function AppShell({
 }: AppShellProps) {
   const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { unread, refresh: refreshUnread } = useUnreadContacts();
+
+  // Re-check the badge whenever the page changes (e.g. after reading/deleting
+  // messages in the inbox) instead of waiting for the next poll tick.
+  useEffect(() => { refreshUnread(); }, [currentPage, refreshUnread]);
 
   const handleLogout = async () => {
     await signOut();
@@ -45,6 +51,7 @@ export function AppShell({
         onPrint={onPrint || (() => {})}
         onLogout={handleLogout}
         employeeCount={employeeCount}
+        unreadContactCount={unread}
         mobileOpen={sidebarOpen}
         onMobileClose={closeSidebar}
       />
