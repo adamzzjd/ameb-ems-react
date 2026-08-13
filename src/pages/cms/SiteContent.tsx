@@ -14,6 +14,32 @@ interface SiteContentProps {
   onNavigate: (page: string) => void;
 }
 
+// Module-level so React never sees a "new" component type on every render —
+// defining a component inside another component makes React unmount and remount
+// the inputs on each keystroke, which steals focus after every character.
+function Field({
+  label,
+  value,
+  onChange,
+  type = 'text',
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: 'text' | 'textarea';
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>{label}</Label>
+      {type === 'textarea' ? (
+        <Textarea value={value} onChange={e => onChange(e.target.value)} rows={3} />
+      ) : (
+        <Input value={value} onChange={e => onChange(e.target.value)} />
+      )}
+    </div>
+  );
+}
+
 export function SiteContent({ onNavigate }: SiteContentProps) {
   const { toast } = useToast();
   const [content, setContent] = useState<SiteContentType | null>(null);
@@ -62,24 +88,6 @@ export function SiteContent({ onNavigate }: SiteContentProps) {
       </div>
     );
   }
-
-  const Field = ({ label, field, type = 'text' }: { label: string; field: keyof SiteContentType; type?: string }) => (
-    <div className="space-y-1.5">
-      <Label>{label}</Label>
-      {type === 'textarea' ? (
-        <Textarea
-          value={content[field] as string}
-          onChange={e => update(field, e.target.value)}
-          rows={3}
-        />
-      ) : (
-        <Input
-          value={content[field] as string}
-          onChange={e => update(field, e.target.value)}
-        />
-      )}
-    </div>
-  );
 
   return (
     <div>
@@ -137,13 +145,13 @@ export function SiteContent({ onNavigate }: SiteContentProps) {
           <CardContent className="p-5 space-y-4">
             <h3 className="text-sm font-bold text-navy">🏛 Hero Section</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Badge Text" field="hero_badge" />
+              <Field label="Badge Text" value={content.hero_badge} onChange={v => update('hero_badge', v)} />
               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Field label="Title (Line 1)" field="hero_title_1" />
-                <Field label="Title (Gold Highlight)" field="hero_title_2" />
+                <Field label="Title (Line 1)" value={content.hero_title_1} onChange={v => update('hero_title_1', v)} />
+                <Field label="Title (Gold Highlight)" value={content.hero_title_2} onChange={v => update('hero_title_2', v)} />
               </div>
-              <Field label="Subtitle" field="hero_title_sub" />
-              <Field label="Description" field="hero_desc" type="textarea" />
+              <Field label="Subtitle" value={content.hero_title_sub} onChange={v => update('hero_title_sub', v)} />
+              <Field label="Description" type="textarea" value={content.hero_desc} onChange={v => update('hero_desc', v)} />
             </div>
           </CardContent>
         </Card>
@@ -153,12 +161,12 @@ export function SiteContent({ onNavigate }: SiteContentProps) {
           <CardContent className="p-5 space-y-4">
             <h3 className="text-sm font-bold text-navy">📖 About Section</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Section Tag" field="about_tag" />
-              <Field label="Section Title" field="about_title" />
-              <Field label="Section Subtitle" field="about_sub" />
-              <Field label="Vision Statement" field="vision_text" type="textarea" />
-              <Field label="Mission Statement" field="mission_text" type="textarea" />
-              <Field label="About Body Text" field="about_body" type="textarea" />
+              <Field label="Section Tag" value={content.about_tag} onChange={v => update('about_tag', v)} />
+              <Field label="Section Title" value={content.about_title} onChange={v => update('about_title', v)} />
+              <Field label="Section Subtitle" value={content.about_sub} onChange={v => update('about_sub', v)} />
+              <Field label="Vision Statement" type="textarea" value={content.vision_text} onChange={v => update('vision_text', v)} />
+              <Field label="Mission Statement" type="textarea" value={content.mission_text} onChange={v => update('mission_text', v)} />
+              <Field label="About Body Text" type="textarea" value={content.about_body} onChange={v => update('about_body', v)} />
             </div>
           </CardContent>
         </Card>
@@ -168,13 +176,13 @@ export function SiteContent({ onNavigate }: SiteContentProps) {
           <CardContent className="p-5 space-y-4">
             <h3 className="text-sm font-bold text-navy">📞 Contact Details</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Address" field="address" />
-              <Field label="Phone 1" field="phone" />
-              <Field label="Phone 2" field="phone_2" />
-              <Field label="Email 1" field="email" />
-              <Field label="Email 2" field="email_2" />
-              <Field label="Weekday Hours" field="hours" />
-              <Field label="Saturday Hours" field="hours_sat" />
+              <Field label="Address" value={content.address} onChange={v => update('address', v)} />
+              <Field label="Phone 1" value={content.phone} onChange={v => update('phone', v)} />
+              <Field label="Phone 2" value={content.phone_2} onChange={v => update('phone_2', v)} />
+              <Field label="Email 1" value={content.email} onChange={v => update('email', v)} />
+              <Field label="Email 2" value={content.email_2} onChange={v => update('email_2', v)} />
+              <Field label="Weekday Hours" value={content.hours} onChange={v => update('hours', v)} />
+              <Field label="Saturday Hours" value={content.hours_sat} onChange={v => update('hours_sat', v)} />
             </div>
           </CardContent>
         </Card>
@@ -184,21 +192,21 @@ export function SiteContent({ onNavigate }: SiteContentProps) {
           <CardContent className="p-5 space-y-4">
             <h3 className="text-sm font-bold text-navy">🏷 Section Labels (for Programs, News, Gallery, Downloads, Contact)</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Programs Tag" field="programs_tag" />
-              <Field label="Programs Title" field="programs_title" />
-              <Field label="Programs Subtitle" field="programs_sub" />
-              <Field label="News Tag" field="news_tag" />
-              <Field label="News Title" field="news_title" />
-              <Field label="News Subtitle" field="news_sub" />
-              <Field label="Gallery Tag" field="gallery_tag" />
-              <Field label="Gallery Title" field="gallery_title" />
-              <Field label="Gallery Subtitle" field="gallery_sub" />
-              <Field label="Downloads Tag" field="downloads_tag" />
-              <Field label="Downloads Title" field="downloads_title" />
-              <Field label="Downloads Subtitle" field="downloads_sub" />
-              <Field label="Contact Tag" field="contact_tag" />
-              <Field label="Contact Title" field="contact_title" />
-              <Field label="Contact Subtitle" field="contact_sub" />
+              <Field label="Programs Tag" value={content.programs_tag} onChange={v => update('programs_tag', v)} />
+              <Field label="Programs Title" value={content.programs_title} onChange={v => update('programs_title', v)} />
+              <Field label="Programs Subtitle" value={content.programs_sub} onChange={v => update('programs_sub', v)} />
+              <Field label="News Tag" value={content.news_tag} onChange={v => update('news_tag', v)} />
+              <Field label="News Title" value={content.news_title} onChange={v => update('news_title', v)} />
+              <Field label="News Subtitle" value={content.news_sub} onChange={v => update('news_sub', v)} />
+              <Field label="Gallery Tag" value={content.gallery_tag} onChange={v => update('gallery_tag', v)} />
+              <Field label="Gallery Title" value={content.gallery_title} onChange={v => update('gallery_title', v)} />
+              <Field label="Gallery Subtitle" value={content.gallery_sub} onChange={v => update('gallery_sub', v)} />
+              <Field label="Downloads Tag" value={content.downloads_tag} onChange={v => update('downloads_tag', v)} />
+              <Field label="Downloads Title" value={content.downloads_title} onChange={v => update('downloads_title', v)} />
+              <Field label="Downloads Subtitle" value={content.downloads_sub} onChange={v => update('downloads_sub', v)} />
+              <Field label="Contact Tag" value={content.contact_tag} onChange={v => update('contact_tag', v)} />
+              <Field label="Contact Title" value={content.contact_title} onChange={v => update('contact_title', v)} />
+              <Field label="Contact Subtitle" value={content.contact_sub} onChange={v => update('contact_sub', v)} />
             </div>
           </CardContent>
         </Card>
