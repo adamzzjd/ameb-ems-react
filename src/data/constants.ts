@@ -89,7 +89,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   promotions:    { title: '📈 Promotions & Progression', subtitle: 'Due/overdue officers & promotion history' },
   leaves:        { title: '🗓 Leave Management',         subtitle: 'Requests, approvals & annual balances' },
   payroll:       { title: '💰 Payroll & Salary',         subtitle: 'Monthly payroll sheet (IPPS-ready)' },
-  'update-requests': { title: '✍️ Update Requests',     subtitle: 'Officer self-service submissions awaiting review' },
+  registrations: { title: '🆕 New Officer Registrations', subtitle: 'Self-service submissions awaiting approval' },
   'psn-check':    { title: '🗂 Register by PSN',         subtitle: 'Check PSNs & register new officers' },
   'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },

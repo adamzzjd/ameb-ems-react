@@ -49,7 +49,7 @@ const RetirementPage = lazy(() => import('./pages/Retirement').then(m => ({ defa
 const PromotionPage = lazy(() => import('./pages/Promotion').then(m => ({ default: m.PromotionPage })));
 const PayrollPage = lazy(() => import('./pages/Payroll').then(m => ({ default: m.PayrollPage })));
 const LeavePage = lazy(() => import('./pages/Leave').then(m => ({ default: m.LeavePage })));
-const UpdateRequestsPage = lazy(() => import('./pages/UpdateRequests').then(m => ({ default: m.UpdateRequestsPage })));
+const RegistrationsPage = lazy(() => import('./pages/Registrations').then(m => ({ default: m.RegistrationsPage })));
 const PsnCheckPage = lazy(() => import('./pages/PsnCheck').then(m => ({ default: m.PsnCheckPage })));
 const DataQualityPage = lazy(() => import('./pages/DataQuality').then(m => ({ default: m.DataQualityPage })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
@@ -212,7 +212,7 @@ export default function App() {
   if (view === 'app' && currentPage === 'payroll' && !can('payroll.manage')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
-  if (view === 'app' && currentPage === 'update-requests' && !can('selfservice.review')) {
+  if (view === 'app' && currentPage === 'registrations' && !can('selfservice.review')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
   if (view === 'app' && currentPage === 'psn-check' && !can('employees.import')) {
@@ -301,8 +301,8 @@ export default function App() {
         return <PayrollPage employees={employees} />;
       case 'leaves':
         return <LeavePage employees={employees} />;
-      case 'update-requests':
-        return <UpdateRequestsPage />;
+      case 'registrations':
+        return <RegistrationsPage />;
       case 'psn-check':
         return <PsnCheckPage />;
       case 'data-quality':

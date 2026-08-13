@@ -175,7 +175,7 @@ export function Login({ onBackToSite, onSelfService }: LoginProps) {
               Update your details with your PSN →
             </button>
             <div className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
-              No password needed — one-time update, approved by the board office.
+              No password needed — changes apply directly; new staff are approved by the board office.
             </div>
           </div>
         </div>

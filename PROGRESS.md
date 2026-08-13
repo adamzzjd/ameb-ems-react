@@ -228,24 +228,25 @@
 
 ## 🚀 Phase 16: Employee Self-Service Portal (Code Complete)
 
-> **One-time go-live:** run `supabase/setup_selfservice.sql` in the Supabase SQL Editor (adds `employees.address` + `employees.self_service_submitted_at`, creates `employee_update_requests` + the two security-definer functions), then re-run `supabase/setup_rls.sql` (idempotent).
+> **One-time go-live:** run `supabase/setup_selfservice.sql` in the Supabase SQL Editor (adds `employees.address` + `employees.self_service_submitted_at`, creates `employee_registrations` + the four security-definer functions), then re-run `supabase/setup_rls.sql` (idempotent).
+
+**Model (per the board, August 13):** existing officers update ALL their fields (everything except PSN) — changes apply **DIRECTLY**, one-shot. New officers (PSN not in the register) self-register their full details → **PENDING** → admin approves (creates the record). The earlier `employee_update_requests` design is superseded (dropped by the script).
 
 | Step | Status | Notes |
 |------|--------|-------|
-| 16.1 PSN lookup (anonymous) | ✅ Done | `public.self_service_lookup(psn)` SECURITY DEFINER function — returns one officer's personal fields (name, PSN, phone, LGA, address, photo) + `already_submitted` flag. No enumeration possible: anon can't read `employees` directly, only this scoped function |
-| 16.2 One-shot submit | ✅ Done | `public.submit_self_service_update(employee_id, changes)` — validates the employee exists, hasn't already submitted, and that `changes` only contains phone/lga/address/photo with string/null values; inserts a PENDING `employee_update_requests` row and stamps `employees.self_service_submitted_at` (never resets) |
+| 16.1 PSN lookup (anonymous) | ✅ Done | `public.self_service_lookup(psn)` SECURITY DEFINER — returns one officer's **full editable profile** (all fields except PSN) + `already_submitted` flag. No enumeration: anon can't read `employees` directly |
+| 16.2 One-shot DIRECT update | ✅ Done | `public.submit_self_service_update(employee_id, changes)` — validates keys against ALL editable fields, applies the changes **immediately** to the employee row, stamps `self_service_submitted_at` (one-shot), writes an audit row |
 | 16.3 Address field | ✅ Done | `employees.address` column (idempotent ALTER), employee form field, profile + print display, CSV import (`address`/`residential address` headers) + export |
-| 16.4 Self-service portal | ✅ Done | `src/pages/SelfService.tsx` — enter PSN → edit personal details (phone, LGA, address, photo via Cloudinary) → review before→after → submit → friendly confirmation. Handles "already submitted" and "PSN not found" (directs to HR; new-employee registration is the separate admin path noted in Phase 17) |
-| 16.5 Admin review queue | ✅ Done | `src/pages/UpdateRequests.tsx` + `src/supabase/updateRequests.ts` — pending/approved/rejected tabs, before→after diff per field, **Approve & Apply** (updates the employee record) or **Reject** with a note; every decision written to the audit log. New `selfservice.review` permission (super_admin + admin), route guard + sidebar entry |
-| 16.6 Entry point | ✅ Done | "Update your details with your PSN →" link on the Login page (no password needed) |
-| 16.7 Tests | ✅ Done | 1 new CSV-address mapping test + `selfservice.review` assertions in the role matrix (128 total) |
-| 16.8 Docs | ✅ Done | `setup_selfservice.sql` setup instructions; README schema note |
-| 16.9 Pending badge | ✅ Done | Update Requests sidebar item shows a live amber badge with the pending count (`usePendingUpdateRequests` hook, RLS-gated, re-checks on page change + 60s poll) |
-| 16.10 Read-only preview | ✅ Done | The "already submitted" screen now shows the officer's stored details read-only (name, PSN, phone, LGA, address, photo) so they can confirm what's on file |
-| 16.11 Register by PSN | ✅ Done | New admin page **Register by PSN** (`src/pages/PsnCheck.tsx`) — paste a list of staff numbers, see which are already in the register vs new, enter names and register the new ones as minimal employee records (audited create; full details editable later). Sidebar entry under Overview, `employees.import` permission + route guard |
+| 16.4 Self-service portal | ✅ Done | `src/pages/SelfService.tsx` — enter PSN → existing officers edit **every field** (name, gender, grade, cadre, dates, phone, LGA, station, address, photo, salary, step, remarks) → review before→after → **Submit — Apply Now** → applied directly. One-shot: "already updated" + full read-only preview afterwards |
+| 16.5 New-officer registration | ✅ Done | `public.check_employee_registration(psn)` (pending/rejected status) + `public.submit_employee_registration(psn, changes)` (validated PENDING insert, unique per PSN, audited). Portal shows: registration form → review → "submitted for approval"; re-entry shows "under review" or allows retry after rejection |
+| 16.6 Admin approval queue | ✅ Done | `src/pages/Registrations.tsx` + `src/supabase/registrations.ts` — pending/approved/rejected tabs, submitted-details display, **Approve & Register** (creates the employee record) or **Reject** with a note; every decision audited. `selfservice.review` permission (super_admin + admin), route guard, sidebar entry + live pending badge (`usePendingRegistrations`) |
+| 16.7 Entry point | ✅ Done | "Update your details with your PSN →" link on the Login page (no password needed) |
+| 16.8 Tests | ✅ Done | 1 new CSV-address mapping test + `selfservice.review` assertions in the role matrix (128 total) |
+| 16.9 Docs | ✅ Done | `setup_selfservice.sql` setup instructions; README schema note |
+| 16.10 Register by PSN (admin) | ✅ Done | New admin page **Register by PSN** (`src/pages/PsnCheck.tsx`) — paste a list of staff numbers, see which are already in the register vs new, enter names and register the new ones as minimal employee records (audited create). Sidebar under Overview, `employees.import` permission + route guard |
 
 ### PSN not in the database
-Unmatched PSNs are **new employees needing registration** — handled by the **Register by PSN** admin page (16.11). The officer-facing portal still shows a friendly "no record found — contact HR" message.
+Two paths: the officer can **self-register** through the portal (16.5) and be approved by an admin, or the admin can register them directly via **Register by PSN** (16.10).
 
 ---
 

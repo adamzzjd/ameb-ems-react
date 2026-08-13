@@ -243,31 +243,22 @@ export const DOCUMENT_CATEGORIES = [
   'Other',
 ] as const;
 
-// ── Employee Self-Service Update Requests ────────────────────────────────────
-// One-shot, admin-approved personal-details change requests submitted by
-// officers through the anonymous PSN portal (see supabase/setup_selfservice.sql).
-export interface EmployeeUpdateRequest {
+// ── New-Officer Self-Service Registrations ───────────────────────────────────
+// Full-detail submissions from officers whose PSN is NOT yet in the register;
+// they are stored PENDING and an admin approves (creating the employee record)
+// or rejects. Existing officers update directly (no approval) — see
+// supabase/setup_selfservice.sql.
+export interface EmployeeRegistration {
   id: string;
-  employee_id: string;
-  requested_changes: Record<string, string | null>;
+  psn: string;
+  full_name: string;
+  requested_data: Record<string, string | number | null>;
   status: 'pending' | 'approved' | 'rejected';
   submitted_at: string;
   decided_by: string | null;
   decided_at: string | null;
   decided_note: string | null;
 }
-
-/** A request joined with the employee's name + PSN + current editable values. */
-export type EmployeeUpdateRequestWithEmployee = EmployeeUpdateRequest & {
-  employees?: {
-    name: string;
-    psn: string | null;
-    phone: string | null;
-    lga: string | null;
-    address: string | null;
-    photo: string | null;
-  } | null;
-};
 
 // ── Leave Requests ───────────────────────────────────────────────────────────
 export interface LeaveRecord {
@@ -384,6 +375,6 @@ export type AppPage =
   | 'promotions'
   | 'leaves'
   | 'payroll'
-  | 'update-requests'
+  | 'registrations'
   | 'psn-check'
   | 'data-quality';

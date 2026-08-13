@@ -7,7 +7,7 @@ import { Topbar } from './Topbar';
 import { GovernmentHeaderBar } from './GovernmentHeaderBar';
 import { useAuth } from '../../hooks/useAuth';
 import { useUnreadContacts } from '../../hooks/useUnreadContacts';
-import { usePendingUpdateRequests } from '../../hooks/usePendingUpdateRequests';
+import { usePendingRegistrations } from '../../hooks/usePendingRegistrations';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -29,7 +29,7 @@ export function AppShell({
   const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { unread, refresh: refreshUnread } = useUnreadContacts();
-  const { pending: pendingUpdates, refresh: refreshPending } = usePendingUpdateRequests();
+  const { pending: pendingRegistrations, refresh: refreshPending } = usePendingRegistrations();
 
   // Re-check the badges whenever the page changes (e.g. after reading/deleting
   // messages in the inbox, or deciding update requests) instead of waiting for
@@ -60,7 +60,7 @@ export function AppShell({
         onLogout={handleLogout}
         employeeCount={employeeCount}
         unreadContactCount={unread}
-        pendingUpdateCount={pendingUpdates}
+        pendingUpdateCount={pendingRegistrations}
         mobileOpen={sidebarOpen}
         onMobileClose={closeSidebar}
       />

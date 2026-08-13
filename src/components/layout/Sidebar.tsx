@@ -52,7 +52,7 @@ const navSections: NavSection[] = [
       { page: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
       { page: 'employees', icon: <Users size={18} />, label: 'All Employees', badge: true },
       { page: 'account', icon: <UserCog size={18} />, label: 'My Account' },
-      { page: 'update-requests', icon: <ClipboardCheck size={18} />, label: 'Update Requests', permission: 'selfservice.review' },
+      { page: 'registrations', icon: <ClipboardCheck size={18} />, label: 'New Officer Registrations', permission: 'selfservice.review' },
       { page: 'psn-check', icon: <UserPlus size={18} />, label: 'Register by PSN', permission: 'employees.import' },
     ],
   },
@@ -207,11 +207,11 @@ export function Sidebar({
                       {unreadContactCount > 99 ? '99+' : unreadContactCount}
                     </span>
                   )}
-                  {item.page === 'update-requests' && pendingUpdateCount > 0 && (
+                  {item.page === 'registrations' && pendingUpdateCount > 0 && (
                     <span
                       className="text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center text-white"
                       style={{ background: 'var(--color-warning)' }}
-                      title={`${pendingUpdateCount} pending update request${pendingUpdateCount !== 1 ? 's' : ''}`}
+                      title={`${pendingUpdateCount} pending registration${pendingUpdateCount !== 1 ? 's' : ''}`}
                     >
                       {pendingUpdateCount > 99 ? '99+' : pendingUpdateCount}
                     </span>

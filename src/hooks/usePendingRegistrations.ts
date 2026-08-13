@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from './useAuth';
-import { dbPendingUpdateCount } from '@/supabase/updateRequests';
+import { dbPendingRegistrationCount } from '@/supabase/registrations';
 
 // How often the badge re-checks while the staff portal is open.
 const POLL_INTERVAL_MS = 60_000;
 
 /**
- * Live count of pending self-service update requests for the sidebar badge.
+ * Live count of pending new-officer registrations for the sidebar badge.
  * Only users with the review permission (admin+) will see a non-zero value;
  * the query is RLS-gated the same way as the review queue itself.
  */
-export function usePendingUpdateRequests() {
+export function usePendingRegistrations() {
   const { can } = useAuth();
   const [pending, setPending] = useState(0);
 
@@ -19,7 +19,7 @@ export function usePendingUpdateRequests() {
       setPending(0);
       return;
     }
-    const { count, error } = await dbPendingUpdateCount();
+    const { count, error } = await dbPendingRegistrationCount();
     if (!error && typeof count === 'number') setPending(count);
   }, [can]);
 
