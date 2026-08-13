@@ -10,10 +10,12 @@ import { GraduationCap, Shield } from 'lucide-react';
 
 interface LoginProps {
   onBackToSite: () => void;
-  onSelfService: () => void;
+  onSelfService: (psn?: string) => void;
 }
 
 export function Login({ onBackToSite, onSelfService }: LoginProps) {
+  // PSN entered here goes straight into the self-service portal.
+  const [selfPsn, setSelfPsn] = useState('');
   const { signIn, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -169,14 +171,19 @@ export function Login({ onBackToSite, onSelfService }: LoginProps) {
             <div className="text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
               Are you an AMEB officer?
             </div>
-            <button type="button" onClick={onSelfService}
-              className="text-[13px] font-semibold cursor-pointer transition-colors hover:text-primary"
-              style={{ color: 'var(--color-primary)', textDecoration: 'none', background: 'none', border: 'none' }}>
-              Update your details with your PSN →
-            </button>
-            <div className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+            <div className="text-[11px] mb-3" style={{ color: 'var(--color-text-muted)' }}>
               No password needed — changes apply directly; new staff are approved by the board office.
             </div>
+            <form onSubmit={(e) => { e.preventDefault(); const v = selfPsn.trim(); if (v) onSelfService(v); }}
+              className="flex items-center gap-2 text-left">
+              <input value={selfPsn} onChange={e => setSelfPsn(e.target.value)}
+                placeholder="Enter your staff PSN…" aria-label="Staff number (PSN)"
+                className="flex-1 h-11 px-4 rounded-lg border text-[14px] outline-none transition-colors focus:ring-2 focus:ring-ring"
+                style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+              <button type="submit"
+                className="h-11 px-4 rounded-lg text-[13px] font-bold text-white border-none cursor-pointer"
+                style={{ background: 'var(--color-primary)' }}>Update</button>
+            </form>
           </div>
         </div>
 

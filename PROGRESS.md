@@ -244,6 +244,7 @@
 | 16.8 Tests | ✅ Done | 1 new CSV-address mapping test + `selfservice.review` assertions in the role matrix (128 total) |
 | 16.9 Docs | ✅ Done | `setup_selfservice.sql` setup instructions; README schema note |
 | 16.10 Register by PSN (admin) | ✅ Done | New admin page **Register by PSN** (`src/pages/PsnCheck.tsx`) — paste a list of staff numbers, see which are already in the register vs new, enter names and register the new ones as minimal employee records (audited create). Sidebar under Overview, `employees.import` permission + route guard |
+| 16.11 Header PSN entry | ✅ Done | The public site header now has a visible **Staff PSN** input (desktop nav + mobile menu) — typing a PSN jumps straight into the self-service portal with it prefilled |
 
 ### PSN not in the database
 Two paths: the officer can **self-register** through the portal (16.5) and be approved by an admin, or the admin can register them directly via **Register by PSN** (16.10).

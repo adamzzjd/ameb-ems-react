@@ -73,6 +73,8 @@ export default function App() {
   const { toast } = useToast();
   const [view, setView] = useState<View>('landing');
   const [currentPage, setCurrentPage] = useState('dashboard');
+  // PSN prefilled into the self-service portal when entered from the site header.
+  const [selfServicePsn, setSelfServicePsn] = useState('');
   const [tableReady, setTableReady] = useState(true);
   // Password-recovery mode: Supabase emails a link that returns here with a
   // `#/reset` hash carrying the recovery tokens (see ResetPassword).
@@ -111,6 +113,10 @@ export default function App() {
 
   const handleGoToLogin = () => setView('login');
   const handleBackToSite = () => setView('landing');
+  const handleGoToSelfService = useCallback((psn?: string) => {
+    setSelfServicePsn(psn || '');
+    setView('selfservice');
+  }, []);
   const handleNavigate = useCallback((page: string) => setCurrentPage(page), []);
 
   const handleViewEmployee = useCallback((id: string) => {
@@ -325,19 +331,19 @@ export default function App() {
 
       {!resetMode && view === 'landing' && (
         <Suspense fallback={<LoadingSpinner />}>
-          <Landing onGoToLogin={handleGoToLogin} />
+          <Landing onGoToLogin={handleGoToLogin} onGoToSelfService={handleGoToSelfService} />
         </Suspense>
       )}
 
       {!resetMode && view === 'login' && (
         <Suspense fallback={<LoadingSpinner />}>
-          <Login onBackToSite={handleBackToSite} onSelfService={() => setView('selfservice')} />
+          <Login onBackToSite={handleBackToSite} onSelfService={handleGoToSelfService} />
         </Suspense>
       )}
 
       {!resetMode && view === 'selfservice' && (
         <Suspense fallback={<LoadingSpinner />}>
-          <SelfService onBack={() => setView('landing')} />
+          <SelfService onBack={() => setView('landing')} initialPsn={selfServicePsn} />
         </Suspense>
       )}
 

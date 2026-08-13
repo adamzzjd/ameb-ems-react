@@ -22,11 +22,12 @@ import {
   GraduationCap, BookOpen, Users, Star, Heart, Wrench,
   MapPin, ClipboardList, Rocket, ChevronRight, ChevronLeft,
   Sun, Moon, Menu, X, Phone, Mail, Clock, Facebook,
-  Twitter, Youtube, Shield, Award, Globe, ArrowDown,
+  Twitter, Youtube, Shield, Award, Globe, ArrowDown, Search,
 } from 'lucide-react';
 
 interface LandingProps {
   onGoToLogin: () => void;
+  onGoToSelfService?: (psn?: string) => void;
 }
 
 // ── Static Data ────────────────────────────────────────────────────────────
@@ -618,8 +619,18 @@ function NewsArticlePage({ article, articles, isDark, toggleTheme, onBack, onGoT
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN LANDING COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
-export function Landing({ onGoToLogin }: LandingProps) {
+export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
   const handleScroll = useCallback(scrollTo, []);
+  // PSN entered in the header — jumps straight into the self-service portal.
+  const [headerPsn, setHeaderPsn] = useState('');
+
+  const handleHeaderPsnSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const v = headerPsn.trim();
+    if (!v || !onGoToSelfService) return;
+    setHeaderPsn('');
+    onGoToSelfService(v);
+  };
   const { site_content, programs, news, team, gallery, loading } = useCmsData();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
@@ -848,6 +859,24 @@ export function Landing({ onGoToLogin }: LandingProps) {
                 {item.label}
               </a>
             ))}
+            {/* Staff self-service — enter your PSN to update your details */}
+            <div className="ml-2 flex flex-col items-start gap-1"
+              title="Enter your staff number (PSN) to update your details">
+              <span className="text-[9px] font-bold uppercase tracking-wider leading-none" style={{ color: 'var(--color-text-muted)' }}>
+                Update your details
+              </span>
+              <form onSubmit={handleHeaderPsnSubmit} className="flex items-center gap-1.5">
+                <input value={headerPsn} onChange={e => setHeaderPsn(e.target.value)}
+                  placeholder="Staff PSN" aria-label="Staff number (PSN)"
+                  className="h-8 w-[110px] px-3 rounded-lg border text-[12px] outline-none transition-colors focus:ring-2 focus:ring-ring"
+                  style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+                <button type="submit" aria-label="Update my details"
+                  className="h-8 px-2.5 rounded-lg flex items-center justify-center border transition-colors cursor-pointer hover:opacity-80"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', background: 'var(--color-surface)' }}>
+                  <Search size={14} />
+                </button>
+              </form>
+            </div>
             {/* Theme Toggle */}
             <button onClick={toggleTheme} className="ml-2 w-9 h-9 rounded-lg flex items-center justify-center transition-colors border"
               style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
@@ -884,8 +913,17 @@ export function Landing({ onGoToLogin }: LandingProps) {
                   {item.label}
                 </a>
               ))}
+              {/* Staff self-service in the mobile menu */}
+              <form onSubmit={(e) => { handleHeaderPsnSubmit(e); setMobileNavOpen(false); }} className="flex items-center gap-2 mt-4">
+                <input value={headerPsn} onChange={e => setHeaderPsn(e.target.value)}
+                  placeholder="Enter your staff PSN…" aria-label="Staff number (PSN)"
+                  className="flex-1 px-4 py-3 rounded-xl text-sm font-bold border outline-none"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', background: 'var(--color-surface-warm)' }} />
+                <button type="submit" className="h-11 px-4 rounded-xl text-sm font-bold text-white border-none cursor-pointer"
+                  style={{ background: 'var(--color-primary)' }}>Update</button>
+              </form>
               <button onClick={() => { onGoToLogin(); setMobileNavOpen(false); }}
-                className="mt-4 px-5 py-4 rounded-xl text-base font-bold text-white border-none"
+                className="mt-3 px-5 py-4 rounded-xl text-base font-bold text-white border-none"
                 style={{ background: 'var(--color-primary)' }}>🔒 Staff Portal</button>
               <button onClick={toggleTheme} className="mt-3 w-full px-4 py-3 rounded-xl text-sm font-bold border"
                 style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>

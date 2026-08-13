@@ -4,7 +4,7 @@
    PSN. New officers (PSN not in the register): full registration, pending
    admin approval. */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../supabase/client';
 import { uploadImageToStorage } from '../supabase/storage';
 import { LGAs, GRADES, CADRE_NAMES, STATIONS } from '../data/constants';
@@ -13,6 +13,8 @@ import { GraduationCap, Shield, Search, ArrowLeft, CheckCircle2, X } from 'lucid
 
 interface SelfServiceProps {
   onBack: () => void;
+  /** PSN entered in the site header — prefilled into the lookup box. */
+  initialPsn?: string;
 }
 
 interface LookupResult {
@@ -86,10 +88,22 @@ const norm = (v: string | number | null | undefined): string => {
   return String(v).trim();
 };
 
-export function SelfService({ onBack }: SelfServiceProps) {
+export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>({ kind: 'enter' });
   const [psn, setPsn] = useState('');
+
+  // Prefill the PSN box when the officer came from the site header or login
+  // page, and run the lookup straight away (no extra click).
+  useEffect(() => {
+    if (initialPsn) {
+      setPsn(initialPsn);
+      setStep({ kind: 'enter' });
+      void runLookup(initialPsn);
+    }
+    // runLookup is recreated each render but only uses stable setters.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialPsn]);
   const [looking, setLooking] = useState(false);
   const [error, setError] = useState('');
 
@@ -120,13 +134,12 @@ export function SelfService({ onBack }: SelfServiceProps) {
     });
   };
 
-  const handleLookup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const value = psn.trim();
-    if (!value) { setError('Enter your staff number (PSN) to continue.'); return; }
+  const runLookup = async (value: string) => {
+    const v = value.trim();
+    if (!v) { setError('Enter your staff number (PSN) to continue.'); return; }
     setLooking(true);
     setError('');
-    const { data, error: rpcError } = await supabase.rpc('self_service_lookup', { psn: value });
+    const { data, error: rpcError } = await supabase.rpc('self_service_lookup', { psn: v });
     setLooking(false);
     if (rpcError) { setError(rpcError.message || 'Something went wrong. Please try again.'); return; }
 
@@ -140,12 +153,17 @@ export function SelfService({ onBack }: SelfServiceProps) {
     }
 
     // Not in the register — check for an earlier registration.
-    const { data: reg, error: regError } = await supabase.rpc('check_employee_registration', { psn: value });
+    const { data: reg, error: regError } = await supabase.rpc('check_employee_registration', { psn: v });
     setError(regError ? regError.message : '');
     const row = Array.isArray(reg) ? reg[0] : reg;
-    if (row?.status === 'pending') { setStep({ kind: 'underReview', psn: value }); return; }
-    if (row?.status === 'rejected') { setStep({ kind: 'regRejected', psn: value }); return; }
-    setStep({ kind: 'register', psn: value });
+    if (row?.status === 'pending') { setStep({ kind: 'underReview', psn: v }); return; }
+    if (row?.status === 'rejected') { setStep({ kind: 'regRejected', psn: v }); return; }
+    setStep({ kind: 'register', psn: v });
+  };
+
+  const handleLookup = (e: React.FormEvent) => {
+    e.preventDefault();
+    void runLookup(psn);
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
