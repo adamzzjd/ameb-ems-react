@@ -71,7 +71,8 @@ export const GRADES = [
 ] as const;
 
 export const STATIONS = [
-  'Yola (HQ)', 'Mubi', 'Ganye', 'Numan', 'Hong', 'Michika', 'Gombi',
+  'Yola (HQ)', 'Women Development Centre Malamre', 'Technical College Yola',
+  'Mubi', 'Ganye', 'Numan', 'Hong', 'Michika', 'Gombi',
   'Song', 'Girei', 'Fufore', 'Demsa', 'Shelleng', 'Lamurde', 'Guyuk',
   'Jada', 'Mayo-Belwa', 'Madagali', 'Maiha', 'Toungo',
   'Yola North Office', 'Yola South Office', 'Other',
@@ -85,6 +86,11 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   grade:         { title: 'By Grade Level',          subtitle: 'Staff grouped by grade' },
   appointment:   { title: 'By Appointment Date',     subtitle: 'Staff sorted by date of first appointment' },
   retirement:    { title: '🎓 Retirement & Tenure',   subtitle: 'Age 60 / 35 years of service projections' },
+  promotions:    { title: '📈 Promotions & Progression', subtitle: 'Due/overdue officers & promotion history' },
+  leaves:        { title: '🗓 Leave Management',         subtitle: 'Requests, approvals & annual balances' },
+  payroll:       { title: '💰 Payroll & Salary',         subtitle: 'Monthly payroll sheet (IPPS-ready)' },
+  'update-requests': { title: '✍️ Update Requests',     subtitle: 'Officer self-service submissions awaiting review' },
+  'psn-check':    { title: '🗂 Register by PSN',         subtitle: 'Check PSNs & register new officers' },
   'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },

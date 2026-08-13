@@ -15,6 +15,7 @@ const state = vi.hoisted(() => ({
     payload?: unknown;
     col?: unknown;
     val?: unknown;
+    opts?: unknown;
   }[],
 }));
 
@@ -26,7 +27,7 @@ vi.mock('../client', () => {
     const chain = Object.assign(() => ({}), {}) as Record<string, unknown> & {
       (): unknown;
     };
-    const record = (op: string, extra?: { payload?: unknown; col?: unknown; val?: unknown }) => {
+    const record = (op: string, extra?: { payload?: unknown; col?: unknown; val?: unknown; opts?: unknown }) => {
       state.ops.push({ op, table, ...extra });
       return chain;
     };

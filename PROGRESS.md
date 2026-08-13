@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 13, 2026 (Phase 14 — E2E tests, Data Quality, backup, deployment readiness)
+> **Last updated:** August 13, 2026 (Phase 16 — Employee self-service portal, address field, update-request review queue)
 
 ---
 
@@ -206,6 +206,47 @@
 | 14.6 Tests | ✅ Done | 6 new data-quality tests (86 total) |
 | 14.7 Docs | ✅ Done | README untouched this phase; `DEPLOYMENT.md` added; `.env.example` (E2E + Sentry build vars) updated |
 
+## 🚀 Phase 15: Promotions, Leave, Payroll, Documents Vault, Password Reset & Contact Alerts (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_promotions.sql`, `setup_leaves.sql`, `setup_payroll.sql` and `setup_documents.sql` in the Supabase SQL Editor (creates the four tables idempotently), then re-run `supabase/setup_rls.sql` for their policies. Deploy the `notify-contact` edge function + secrets (`supabase secrets set RESEND_API_KEY=...`; optional `NOTIFY_CONTACT_SENDER`).
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 15.1 Salary + step fields | ✅ Done | `employees.basic_salary` (number) + `employees.step` columns (idempotent ALTER in `setup_payroll.sql`), employee form fields (with validation), profile display, CSV import (`basic salary`/`step` headers) + export |
+| 15.2 Payroll & Salary page | ✅ Done | `src/pages/Payroll.tsx` — month/year picker, per-officer sheet (PSN, name, grade, step, station, LGA, basic + gross), totals row, IPPS-ready CSV export (`buildIppsCsv` in `src/lib/payroll.ts`), admin-only via new `payroll.manage` permission |
+| 15.3 Promotions & Progression page | ✅ Done | `src/lib/promotion.ts` (pure, tested): 3-year interval from present appointment, next-grade helper (GL NN → next level), due-soon/overdue/on-track flags; `src/pages/Promotion.tsx` — due/overdue summary, searchable list, promotion-history records (`promotion_records` table) with add/edit/delete |
+| 15.4 Leave Management page | ✅ Done | `src/lib/leave.ts` (pure, tested): working-day math (weekends excluded), 12 days/year accrual capped at 36, per-type max-days validation, Monday-first month calendar, CSV exports (requests + balances); `src/pages/Leave.tsx` — request creation, approve/reject (new `leave.approve` permission), balances per officer |
+| 15.5 Documents vault | ✅ Done | `src/pages/EmployeeProfile.tsx` — attach/download/delete employee documents (letters, certificates…) via `src/supabase/documents.ts` + `uploadDocumentToStorage` (Cloudinary-first); `DOCUMENT_CATEGORIES` taxonomy |
+| 15.6 Password reset | ✅ Done | `src/pages/ResetPassword.tsx` — handles Supabase recovery links (`#/reset` hash): sets the session, collects the new password, updates via `updateUser`; App stays out of the app view until the reset finishes |
+| 15.7 Contact-form email alerts | ✅ Done | `supabase/functions/notify-contact/index.ts` — edge function emails super_admin + admin users via Resend when the public contact form is submitted; `src/lib/notifyContact.ts` fire-and-forget caller; no-op (inbox still works) without `RESEND_API_KEY` |
+| 15.8 Dashboard promotion alert | ✅ Done | Dashboard shows an overdue/due-soon promotion banner (count + Review button → Promotions page) using `getPromotionInfo` |
+| 15.9 Tests | ✅ Done | 41 new tests (127 total): `leave.test.ts` (working days, accrual, validation, calendar, CSV), `payroll.test.ts` (rows, naira formatting, IPPS CSV), `promotion.test.ts` (interval, next grade, due flags) |
+| 15.10 Docs | ✅ Done | `.env.example` documents the `notify-contact` secrets (set on Supabase, not Vite) |
+| 15.11 Stations in enrollment form | ✅ Done | Added **Women Development Centre Malamre** + **Technical College Yola** to the `STATIONS` constant so they appear in the employee enrollment form's station dropdown (ADSMEB HQ already present as "Yola (HQ)"). Note: the form dropdown is driven by the code list, while "Manage Stations" manages the separate `stations` DB table — add the same two names there via **+ Add Station** to keep the two lists in sync |
+
+---
+
+## 🚀 Phase 16: Employee Self-Service Portal (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_selfservice.sql` in the Supabase SQL Editor (adds `employees.address` + `employees.self_service_submitted_at`, creates `employee_update_requests` + the two security-definer functions), then re-run `supabase/setup_rls.sql` (idempotent).
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 16.1 PSN lookup (anonymous) | ✅ Done | `public.self_service_lookup(psn)` SECURITY DEFINER function — returns one officer's personal fields (name, PSN, phone, LGA, address, photo) + `already_submitted` flag. No enumeration possible: anon can't read `employees` directly, only this scoped function |
+| 16.2 One-shot submit | ✅ Done | `public.submit_self_service_update(employee_id, changes)` — validates the employee exists, hasn't already submitted, and that `changes` only contains phone/lga/address/photo with string/null values; inserts a PENDING `employee_update_requests` row and stamps `employees.self_service_submitted_at` (never resets) |
+| 16.3 Address field | ✅ Done | `employees.address` column (idempotent ALTER), employee form field, profile + print display, CSV import (`address`/`residential address` headers) + export |
+| 16.4 Self-service portal | ✅ Done | `src/pages/SelfService.tsx` — enter PSN → edit personal details (phone, LGA, address, photo via Cloudinary) → review before→after → submit → friendly confirmation. Handles "already submitted" and "PSN not found" (directs to HR; new-employee registration is the separate admin path noted in Phase 17) |
+| 16.5 Admin review queue | ✅ Done | `src/pages/UpdateRequests.tsx` + `src/supabase/updateRequests.ts` — pending/approved/rejected tabs, before→after diff per field, **Approve & Apply** (updates the employee record) or **Reject** with a note; every decision written to the audit log. New `selfservice.review` permission (super_admin + admin), route guard + sidebar entry |
+| 16.6 Entry point | ✅ Done | "Update your details with your PSN →" link on the Login page (no password needed) |
+| 16.7 Tests | ✅ Done | 1 new CSV-address mapping test + `selfservice.review` assertions in the role matrix (128 total) |
+| 16.8 Docs | ✅ Done | `setup_selfservice.sql` setup instructions; README schema note |
+| 16.9 Pending badge | ✅ Done | Update Requests sidebar item shows a live amber badge with the pending count (`usePendingUpdateRequests` hook, RLS-gated, re-checks on page change + 60s poll) |
+| 16.10 Read-only preview | ✅ Done | The "already submitted" screen now shows the officer's stored details read-only (name, PSN, phone, LGA, address, photo) so they can confirm what's on file |
+| 16.11 Register by PSN | ✅ Done | New admin page **Register by PSN** (`src/pages/PsnCheck.tsx`) — paste a list of staff numbers, see which are already in the register vs new, enter names and register the new ones as minimal employee records (audited create; full details editable later). Sidebar entry under Overview, `employees.import` permission + route guard |
+
+### PSN not in the database
+Unmatched PSNs are **new employees needing registration** — handled by the **Register by PSN** admin page (16.11). The officer-facing portal still shows a friendly "no record found — contact HR" message.
+
 ---
 
 ## 📁 Source Files Created/Modified
@@ -278,7 +319,7 @@
 - `src/hooks/useTheme.tsx` ✅ — Dark/light theme toggle
 - `src/hooks/useToast.tsx` ✅ — Toast notifications (via sonner)
 
-### Unit tests (12 files, 86 tests)
+### Unit tests (15 files, 127 tests)
 - `src/lib/__tests__/utils.test.ts` — cn() utility tests
 - `src/lib/__tests__/roles.test.ts` — Role/permission matrix tests
 - `src/lib/__tests__/retirement.test.ts` — Retirement & tenure math (age 60 / 35 years of service)

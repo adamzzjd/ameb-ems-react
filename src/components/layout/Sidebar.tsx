@@ -11,7 +11,8 @@ import {
   LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
   GraduationCap, BookOpen, Building2, Settings, FileText,
   Download, Printer, Plus, LogOut, UserCog, UsersRound, Save,
-  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck,
+  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp, Wallet, CalendarDays,
+  ClipboardCheck, UserPlus,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,6 +26,7 @@ interface SidebarProps {
   onLogout: () => void;
   employeeCount: number;
   unreadContactCount?: number;
+  pendingUpdateCount?: number;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -50,6 +52,8 @@ const navSections: NavSection[] = [
       { page: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
       { page: 'employees', icon: <Users size={18} />, label: 'All Employees', badge: true },
       { page: 'account', icon: <UserCog size={18} />, label: 'My Account' },
+      { page: 'update-requests', icon: <ClipboardCheck size={18} />, label: 'Update Requests', permission: 'selfservice.review' },
+      { page: 'psn-check', icon: <UserPlus size={18} />, label: 'Register by PSN', permission: 'employees.import' },
     ],
   },
   {
@@ -60,6 +64,8 @@ const navSections: NavSection[] = [
       { page: 'grade', icon: <BarChart3 size={18} />, label: 'Grade Level' },
       { page: 'appointment', icon: <Calendar size={18} />, label: 'Appointment Date' },
       { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
+      { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
+      { page: 'leaves', icon: <CalendarDays size={18} />, label: 'Leave Management' },
       { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
       { page: 'centres', icon: <GraduationCap size={18} />, label: 'Learning Centres' },
     ],
@@ -71,6 +77,7 @@ const navSections: NavSection[] = [
       { page: 'stations', icon: <Building2 size={18} />, label: 'Manage Stations' },
       { page: 'cadres', icon: <BookOpen size={18} />, label: 'Manage Cadres' },
       { page: 'facilitators', icon: <UsersRound size={18} />, label: 'Manage Facilitators' },
+      { page: 'payroll', icon: <Wallet size={18} />, label: 'Payroll & Salary', permission: 'payroll.manage' },
       { page: 'users', icon: <UserCog size={18} />, label: 'User Management', permission: 'users.manage' },
       { page: 'audit-log', icon: <FileText size={18} />, label: 'Audit Log', permission: 'audit.view' },
     ],
@@ -103,7 +110,8 @@ const actions: { icon: React.ReactNode; label: string; key: string; permission: 
 
 export function Sidebar({
   currentPage, onNavigate, onAddEmployee, onImportCsv, onExportCsv,
-  onPrint, onBackup, onLogout, employeeCount, unreadContactCount = 0, mobileOpen, onMobileClose,
+  onPrint, onBackup, onLogout, employeeCount, unreadContactCount = 0, pendingUpdateCount = 0,
+  mobileOpen, onMobileClose,
 }: SidebarProps) {
   const { user, role, can } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -111,9 +119,12 @@ export function Sidebar({
   // Show the board's actual logo (from CMS) in the sidebar when one is set.
   useEffect(() => {
     let cancelled = false;
-    supabase.from('site_content').select('logo_url').single()
-      .then(({ data }) => { if (!cancelled && data?.logo_url) setLogoUrl(data.logo_url); })
-      .catch(() => { /* keep the icon fallback */ });
+    (async () => {
+      try {
+        const { data } = await supabase.from('site_content').select('logo_url').single();
+        if (!cancelled && data?.logo_url) setLogoUrl(data.logo_url);
+      } catch { /* keep the icon fallback */ }
+    })();
     return () => { cancelled = true; };
   }, []);
 
@@ -194,6 +205,15 @@ export function Sidebar({
                       title={`${unreadContactCount} unread message${unreadContactCount !== 1 ? 's' : ''}`}
                     >
                       {unreadContactCount > 99 ? '99+' : unreadContactCount}
+                    </span>
+                  )}
+                  {item.page === 'update-requests' && pendingUpdateCount > 0 && (
+                    <span
+                      className="text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center text-white"
+                      style={{ background: 'var(--color-warning)' }}
+                      title={`${pendingUpdateCount} pending update request${pendingUpdateCount !== 1 ? 's' : ''}`}
+                    >
+                      {pendingUpdateCount > 99 ? '99+' : pendingUpdateCount}
                     </span>
                   )}
                   {item.badge && (

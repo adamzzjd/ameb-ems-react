@@ -13,7 +13,12 @@ export interface Employee {
   psn: string | null;
   station: string | null;
   photo: string | null;
+  basic_salary: number | null;
+  step: string | null;
+  address: string | null;
   remarks: string;
+  /** Set once the officer has used the self-service portal (one-shot lockout). */
+  self_service_submitted_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -31,6 +36,8 @@ export interface EmployeeFormData {
   psn: string;
   station: string;
   photo: string;
+  basic_salary: number | null;
+  step: string | null;
   remarks: string;
 }
 
@@ -213,6 +220,85 @@ export interface PublicCentre {
   facilitators: string[];
 }
 
+// ── Employee Documents (document vault) ──────────────────────────────────────
+export interface EmployeeDocument {
+  id: string;
+  employee_id: string;
+  title: string;
+  category: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  url: string;
+  uploaded_by: string | null;
+  created_at?: string;
+}
+
+export const DOCUMENT_CATEGORIES = [
+  'Appointment Letter',
+  'Promotion Letter',
+  'Certificate',
+  'Identification',
+  'Training',
+  'Other',
+] as const;
+
+// ── Employee Self-Service Update Requests ────────────────────────────────────
+// One-shot, admin-approved personal-details change requests submitted by
+// officers through the anonymous PSN portal (see supabase/setup_selfservice.sql).
+export interface EmployeeUpdateRequest {
+  id: string;
+  employee_id: string;
+  requested_changes: Record<string, string | null>;
+  status: 'pending' | 'approved' | 'rejected';
+  submitted_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  decided_note: string | null;
+}
+
+/** A request joined with the employee's name + PSN + current editable values. */
+export type EmployeeUpdateRequestWithEmployee = EmployeeUpdateRequest & {
+  employees?: {
+    name: string;
+    psn: string | null;
+    phone: string | null;
+    lga: string | null;
+    address: string | null;
+    photo: string | null;
+  } | null;
+};
+
+// ── Leave Requests ───────────────────────────────────────────────────────────
+export interface LeaveRecord {
+  id: string;
+  employee_id: string;
+  leave_type: string;
+  start_date: string;
+  end_date: string;
+  days: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  decided_by: string | null;
+  decided_at: string | null;
+  decided_note: string | null;
+  created_by: string | null;
+  created_at?: string;
+}
+
+// ── Promotion History ─────────────────────────────────────────────────────────
+export interface PromotionRecord {
+  id: string;
+  employee_id: string;
+  promoted_on: string;
+  from_grade: string | null;
+  to_grade: string;
+  reference: string | null;
+  notes: string;
+  created_by: string | null;
+  created_at?: string;
+}
+
 // ── Audit Log ──────────────────────────────────────────────────────────────────
 // Append-only accountability trail: who did what, when, on which record.
 // Written by the app's services after every admin write; readable by
@@ -294,4 +380,10 @@ export type AppPage =
   | 'users'
   | 'audit-log'
   | 'account'
+  | 'retirement'
+  | 'promotions'
+  | 'leaves'
+  | 'payroll'
+  | 'update-requests'
+  | 'psn-check'
   | 'data-quality';

@@ -108,6 +108,54 @@ export async function uploadImageToStorage(
   return uploadToCloudinary(resized);
 }
 
+// ── Document uploads (Cloudinary raw) ─────────────────────────────────────
+// Scanned letters and certificates are stored as raw files on Cloudinary
+// (same unsigned preset — it must allow non-image uploads).
+const ALLOWED_DOC_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'image/jpeg', 'image/png', 'image/webp',
+];
+const MAX_DOC_BYTES = 10 * 1024 * 1024;
+
+/**
+ * Upload a document (PDF, Office file, or image scan) to Cloudinary as a raw
+ * file and return its public URL. The upload preset must be configured to
+ * accept raw files.
+ */
+export async function uploadDocumentToStorage(file: File): Promise<{ url: string | null; error: Error | null }> {
+  if (!CLOUD_NAME || !UPLOAD_PRESET) {
+    return { url: null, error: new Error('Cloudinary is not configured. Set VITE_CLOUDINARY_CLOUD_NAME and VITE_CLOUDINARY_UPLOAD_PRESET.') };
+  }
+  if (!ALLOWED_DOC_TYPES.includes(file.type)) {
+    return { url: null, error: new Error('Only PDF, Word, Excel, PowerPoint and image files are allowed.') };
+  }
+  if (file.size > MAX_DOC_BYTES) {
+    return { url: null, error: new Error('Document must be smaller than 10 MB.') };
+  }
+  const form = new FormData();
+  form.append('file', file);
+  form.append('upload_preset', UPLOAD_PRESET);
+  try {
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/raw/upload`, {
+      method: 'POST',
+      body: form,
+    });
+    const data = await res.json() as { secure_url?: string; error?: { message?: string } };
+    if (!res.ok || !data.secure_url) {
+      return { url: null, error: new Error(data.error?.message || `Upload failed (${res.status}).`) };
+    }
+    return { url: data.secure_url, error: null };
+  } catch (e) {
+    return { url: null, error: new Error(e instanceof Error ? e.message : 'Upload failed.') };
+  }
+}
+
 /**
  * Delete an image by its public URL.
  *

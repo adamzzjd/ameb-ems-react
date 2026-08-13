@@ -2,6 +2,8 @@
    Official Government Website */
 
 import type { Employee } from '../types';
+import type { PayrollRow } from '../lib/payroll';
+import { fmtNaira } from '../lib/payroll';
 
 const GREEN = '#1A5C38';
 const GOLD = '#D4A017';
@@ -78,6 +80,66 @@ export function printEmployees(employees: Employee[], title?: string, subtitle?:
   if (win) { win.document.write(html); win.document.close(); win.print(); }
 }
 
+export function printPayrollSheet(rows: PayrollRow[], title: string) {
+  const body = rows.map(r => `
+    <tr>
+      <td style="padding:6px 8px;border-bottom:1px solid ${BORDER};font-weight:600">${esc(r.name)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid ${BORDER};font-family:'JetBrains Mono',monospace;font-size:10px;color:${GREEN};font-weight:600">${esc(r.psn || '—')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid ${BORDER}">${esc(r.grade || '—')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid ${BORDER}">${esc(r.step || '—')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid ${BORDER}">${esc(r.station || '—')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid ${BORDER};text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(r.basicSalary)}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid ${BORDER};text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(r.gross)}</td>
+    </tr>
+  `).join('');
+  const totalBasic = rows.reduce((s, r) => s + r.basicSalary, 0);
+  const totalGross = rows.reduce((s, r) => s + r.gross, 0);
+
+  const html = `<!DOCTYPE html><html><head><title>${esc(title)} — AMEB Payroll</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Inter',sans-serif;padding:20px;font-size:11px;color:${INK};}
+    .hdr{display:flex;align-items:center;gap:14px;margin-bottom:6px;}
+    .org{font-size:16px;font-weight:800;color:${GREEN};}
+    .sub{font-size:11px;color:${SLATE};margin-top:2px;}
+    h2{font-size:13px;font-weight:700;color:${GREEN};margin:10px 0 3px;}
+    p{font-size:11px;color:${SLATE};margin-bottom:12px;}
+    table{width:100%;border-collapse:collapse;font-size:11px;}
+    th{background:${GREEN};color:#fff;padding:7px 8px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.4px;}
+    td{padding:6px 8px;border-bottom:1px solid ${BORDER};vertical-align:middle;}
+    tr:nth-child(even) td{background:#f5f5f5;}
+    tfoot td{font-weight:800;background:#eef2f0;border-top:2px solid ${GREEN};}
+    .foot{margin-top:14px;font-size:10px;color:#94a3b8;border-top:1px solid ${BORDER};padding-top:8px;display:flex;justify-content:space-between;}
+    @media print{body{padding:0;}@page{margin:.8cm;size:A4 landscape;}}
+  </style></head><body>
+    <div class="hdr">
+      <div style="width:44px;height:44px;background:${GREEN};border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;color:${GOLD};">🎓</div>
+      <div>
+        <div class="org">Adamawa State Mass Education Board</div>
+        <div class="sub">${esc(title)} — ${rows.length} officers</div>
+      </div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Name</th><th>PSN</th><th>Grade</th><th>Step</th><th>Station</th><th style="text-align:right">Basic Salary</th><th style="text-align:right">Gross</th>
+      </tr></thead>
+      <tbody>${body}</tbody>
+      <tfoot><tr>
+        <td colspan="5" style="padding:7px 8px">TOTAL (${rows.length} officers)</td>
+        <td style="padding:7px 8px;text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(totalBasic)}</td>
+        <td style="padding:7px 8px;text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(totalGross)}</td>
+      </tr></tfoot>
+    </table>
+    <div class="foot">
+      <span>© Adamawa State Mass Education Board</span>
+      <span>Federal Republic of Nigeria</span>
+    </div>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  if (win) { win.document.write(html); win.document.close(); win.print(); }
+}
+
 export function printEmployeeProfile(employee: Employee) {
   const photoHtml = employee.photo
     ? `<img src="${employee.photo}" style="width:90px;height:104px;object-fit:cover;border-radius:8px;border:3px solid ${GREEN}" alt="${employee.name}"/>`
@@ -122,6 +184,7 @@ export function printEmployeeProfile(employee: Employee) {
           ['Phone Number', employee.phone || '—'],
           ['LGA of Origin', employee.lga || '—'],
           ['Present Station', employee.station || '—'],
+          ['Residential Address', employee.address || '—'],
         ].map(([l, v]) => `<div class="field"><div class="fl">${l}</div><div class="fv">${v}</div></div>`).join('')}
       </div>
       ${employee.remarks ? `<div style="padding:10px 16px;background:#fffbeb;border-top:1px solid #fde68a;font-size:12px;color:#78350f;"><strong>Remarks:</strong> ${esc(employee.remarks)}</div>` : ''}

@@ -24,7 +24,8 @@ Then create the tables by running the SQL setup scripts in the **Supabase dashbo
 4. [`supabase/setup_facilitators.sql`](./supabase/setup_facilitators.sql) — **facilitator registry** (`facilitators` + `centre_facilitators` join). Migrates the old `centres.facilitator` free-text values into the registry and links them, then drops the legacy column.
 5. [`supabase/setup_enrolments.sql`](./supabase/setup_enrolments.sql) — **enrolment statistics** (`enrolment_stats` per-year table + the `public_centres` view that powers the public centre directory)
 6. [`supabase/setup_audit.sql`](./supabase/setup_audit.sql) — **audit log** (`audit_log` append-only table — who did what, when; readable by super_admin only)
-7. [`supabase/setup_rls.sql`](./supabase/setup_rls.sql) — **Row Level Security** — run **last**, after all the setup scripts above, so the new tables get their policies.
+7. [`supabase/setup_selfservice.sql`](./supabase/setup_selfservice.sql) — **employee self-service portal** (`employees.address` + `self_service_submitted_at` columns, the `employee_update_requests` review table, and the two anonymous PSN lookup/submit functions)
+8. [`supabase/setup_rls.sql`](./supabase/setup_rls.sql) — **Row Level Security** — run **last**, after all the setup scripts above, so the new tables get their policies.
 
 All scripts are idempotent (safe to re-run).
 

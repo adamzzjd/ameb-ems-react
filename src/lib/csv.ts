@@ -17,6 +17,9 @@ export const CSV_COLUMN_MAP: Record<string, string> = {
   'date present appt': 'date_present_appt', 'present appointment': 'date_present_appt',
   'date of present appointment': 'date_present_appt',
   'dob': 'dob', 'date of birth': 'dob', 'birth date': 'dob',
+  'basic salary': 'basic_salary', 'salary': 'basic_salary', 'basic pay': 'basic_salary',
+  'monthly salary': 'basic_salary', 'step': 'step', 'salary step': 'step',
+  'address': 'address', 'residential address': 'address', 'home address': 'address',
   'remarks': 'remarks', 'remark': 'remarks', 'notes': 'remarks', 'comment': 'remarks',
 };
 
@@ -55,6 +58,9 @@ export function mapRowToEmployee(
     date_first_appt: pick('date_first_appt') || null,
     date_present_appt: pick('date_present_appt') || null,
     dob: pick('dob') || null,
+    basic_salary: pick('basic_salary') ? Number(pick('basic_salary')) || null : null,
+    step: pick('step') || null,
+    address: pick('address') || null,
     remarks: pick('remarks') || '',
     photo: null,
   };
@@ -90,13 +96,14 @@ export function exportEmployeesCSV(employees: Employee[]) {
   const headers = [
     'PSN', 'Full Name', 'Gender', 'Cadre', 'Grade',
     'Date First Appt', 'Date Present Appt', 'Date of Birth',
-    'Phone', 'LGA', 'Station', 'Remarks',
+    'Phone', 'LGA', 'Station', 'Address', 'Basic Salary', 'Step', 'Remarks',
   ];
 
   const rows = employees.map(e => [
     e.psn, e.name, e.gender || '', e.cadre, e.grade,
     e.date_first_appt || '', e.date_present_appt || '', e.dob || '',
-    e.phone, e.lga, e.station, e.remarks || '',
+    e.phone, e.lga, e.station, e.address,
+    e.basic_salary ?? '', e.step || '', e.remarks || '',
   ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
 
   const csv = [headers.join(','), ...rows].join('\n');

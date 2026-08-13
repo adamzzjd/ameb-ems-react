@@ -10,6 +10,7 @@ import {
   type Variants,
 } from 'framer-motion';
 import { useCmsData } from '@/hooks/useCmsData';
+import { notifyAdminsOfContact } from '@/lib/notifyContact';
 import { useTheme } from '@/hooks/useTheme';
 import { syncFaviconFromLogo } from '@/lib/favicon';
 import { LGAs } from '@/data/constants';
@@ -694,12 +695,16 @@ export function Landing({ onGoToLogin }: LandingProps) {
     if (!cfName.trim() || !cfEmail.trim() || !cfMessage.trim()) return;
     setCfSending(true);
     setCfError('');
+    const id = crypto.randomUUID();
     const { error } = await supabase.from('cms_contacts').insert({
-      id: crypto.randomUUID(), name: cfName.trim(), email: cfEmail.trim(),
+      id, name: cfName.trim(), email: cfEmail.trim(),
       subject: cfSubject.trim() || '(no subject)', message: cfMessage.trim(), read: false,
     });
     if (error) setCfError('Failed to send. Please try again later.');
-    else { setCfSent(true); setCfName(''); setCfEmail(''); setCfSubject(''); setCfMessage(''); }
+    else {
+      notifyAdminsOfContact(id); // best-effort email alert to the admin team
+      setCfSent(true); setCfName(''); setCfEmail(''); setCfSubject(''); setCfMessage('');
+    }
     setCfSending(false);
   };
 
@@ -709,8 +714,9 @@ export function Landing({ onGoToLogin }: LandingProps) {
     const lga = ceLga.trim() || 'Not sure yet';
     setCeSending(true);
     setCeError('');
+    const id = crypto.randomUUID();
     const { error } = await supabase.from('cms_contacts').insert({
-      id: crypto.randomUUID(),
+      id,
       name: ceName.trim(),
       email: ceEmail.trim(),
       subject: `Learning Centre Enquiry — ${lga} · ${cePhone.trim()}`,
@@ -728,6 +734,7 @@ export function Landing({ onGoToLogin }: LandingProps) {
     });
     if (error) setCeError('Failed to submit. Please try again later.');
     else {
+      notifyAdminsOfContact(id); // best-effort email alert to the admin team
       setCeSent(true);
       setCeName(''); setCePhone(''); setCeEmail(''); setCeLga(''); setCeProgram(''); setCeAge('');
     }

@@ -10,7 +10,11 @@ export type AuditAction =
   | 'import'
   | 'reset'
   | 'assign'
-  | 'mark_read';
+  | 'mark_read'
+  | 'promotion'
+  | 'document'
+  | 'leave'
+  | 'payroll';
 
 interface LogAuditInput {
   action: AuditAction;

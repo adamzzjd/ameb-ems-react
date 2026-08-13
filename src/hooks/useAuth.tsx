@@ -22,12 +22,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
+    // Check for existing session. If Supabase is unreachable (e.g. missing
+    // env vars), resolve as signed out instead of hanging on the
+    // "Authenticating…" screen forever — the public site must still render.
     supabase.auth.getSession().then(({ data: { session: s } }) => {
       setSession(s);
       setUser(s?.user ?? null);
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, s) => {

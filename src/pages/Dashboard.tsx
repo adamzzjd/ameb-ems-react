@@ -3,7 +3,8 @@
 
 import { useMemo } from 'react';
 import type { Employee } from '../types';
-import { Users, MapPin, Award, ChevronRight } from 'lucide-react';
+import { Users, MapPin, Award, ChevronRight, TrendingUp } from 'lucide-react';
+import { getPromotionInfo, DUE_SOON_MONTHS } from '../lib/promotion';
 
 interface DashboardProps {
   employees: Employee[];
@@ -61,6 +62,12 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
     return { byGrade, byLGA, byStation, byGender, male, female, malePct, recent, maxG, maxL };
   }, [employees]);
 
+  const promotionAlerts = useMemo(() => {
+    const due = employees.filter(e => getPromotionInfo(e).dueSoon);
+    const overdue = employees.filter(e => getPromotionInfo(e).overdue);
+    return { due, overdue, total: due.length + overdue.length };
+  }, [employees]);
+
   return (
     <div>
       {/* KPI Stats */}
@@ -96,6 +103,31 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
           );
         })}
       </div>
+
+      {/* Promotion alerts */}
+      {promotionAlerts.total > 0 && (
+        <div className="rounded-xl border px-4 py-3 mb-3.5 flex flex-wrap items-center gap-3"
+          style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', borderLeft: '3px solid var(--color-warning)' }}>
+          <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(198,138,0,0.12)' }}>
+            <TrendingUp size={17} style={{ color: 'var(--color-warning)' }} />
+          </div>
+          <div className="flex-1 min-w-[200px]">
+            <div className="text-[13px] font-bold" style={{ color: 'var(--color-text-primary)' }}>
+              {promotionAlerts.overdue.length > 0
+                ? `${promotionAlerts.overdue.length} officer${promotionAlerts.overdue.length !== 1 ? 's' : ''} overdue for promotion`
+                : `${promotionAlerts.due.length} officer${promotionAlerts.due.length !== 1 ? 's' : ''} due for promotion within ${DUE_SOON_MONTHS} months`}
+            </div>
+            <div className="text-[11px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+              Based on each officer's present appointment date (next grade due after 3 years).
+            </div>
+          </div>
+          <button onClick={() => onNavigate('promotions')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white transition-opacity hover:opacity-90 border-none cursor-pointer"
+            style={{ background: 'var(--color-warning)' }}>
+            Review <ChevronRight size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Gender distribution */}
       {employees.length > 0 && (

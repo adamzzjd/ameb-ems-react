@@ -60,10 +60,21 @@ describe('mapRowToEmployee', () => {
     expect(emp.remarks).toBe('');
     expect(emp.photo).toBeNull();
   });
+
+  it('maps salary, step and address headers', () => {
+    const sysToCSV = buildColumnMapping(['Full Name', 'Basic Salary', 'Step', 'Residential Address']);
+    const emp = mapRowToEmployee(
+      { 'Full Name': 'Aisha Bello', 'Basic Salary': '485200', Step: '3', 'Residential Address': '15 Ahmadu Bello Way, Yola' },
+      Object.fromEntries(Object.entries(sysToCSV).map(([k, v]) => [v!, k]))
+    );
+    expect(emp.basic_salary).toBe(485200);
+    expect(emp.step).toBe('3');
+    expect(emp.address).toBe('15 Ahmadu Bello Way, Yola');
+  });
 });
 
 describe('buildImportRecords', () => {
-  const rows = [
+  const rows: Record<string, string>[] = [
     { 'Full Name': 'Bulus Dauda', Grade: 'GL 12', PSN: 'PS/AM/002' },
     { 'Full Name': 'Aisha Bello', Grade: 'GL 09', PSN: 'PS/AM/003' },
     { 'Full Name': '   ', Grade: 'GL 08' },            // empty name → skipped

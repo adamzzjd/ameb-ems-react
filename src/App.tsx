@@ -21,6 +21,8 @@ import { CADRE_NAMES, CADRE_GRADES, STATIONS } from './data/constants';
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────
 const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
+const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
+const SelfService = lazy(() => import('./pages/SelfService').then(m => ({ default: m.SelfService })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const EmployeesPage = lazy(() => import('./pages/Employees').then(m => ({ default: m.EmployeesPage })));
 const EmployeeProfile = lazy(() => import('./pages/EmployeeProfile').then(m => ({ default: m.EmployeeProfile })));
@@ -44,6 +46,11 @@ const UserManagement = lazy(() => import('./pages/UserManagement').then(m => ({ 
 const AuditLogPage = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLogPage })));
 const MyAccountPage = lazy(() => import('./pages/MyAccount').then(m => ({ default: m.MyAccountPage })));
 const RetirementPage = lazy(() => import('./pages/Retirement').then(m => ({ default: m.RetirementPage })));
+const PromotionPage = lazy(() => import('./pages/Promotion').then(m => ({ default: m.PromotionPage })));
+const PayrollPage = lazy(() => import('./pages/Payroll').then(m => ({ default: m.PayrollPage })));
+const LeavePage = lazy(() => import('./pages/Leave').then(m => ({ default: m.LeavePage })));
+const UpdateRequestsPage = lazy(() => import('./pages/UpdateRequests').then(m => ({ default: m.UpdateRequestsPage })));
+const PsnCheckPage = lazy(() => import('./pages/PsnCheck').then(m => ({ default: m.PsnCheckPage })));
 const DataQualityPage = lazy(() => import('./pages/DataQuality').then(m => ({ default: m.DataQualityPage })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
@@ -59,7 +66,7 @@ function LoadingSpinner({ text = 'Loading…' }: { text?: string }) {
   );
 }
 
-type View = 'landing' | 'login' | 'app';
+type View = 'landing' | 'login' | 'app' | 'selfservice';
 
 export default function App() {
   const { user, loading: authLoading, can } = useAuth();
@@ -67,6 +74,9 @@ export default function App() {
   const [view, setView] = useState<View>('landing');
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [tableReady, setTableReady] = useState(true);
+  // Password-recovery mode: Supabase emails a link that returns here with a
+  // `#/reset` hash carrying the recovery tokens (see ResetPassword).
+  const [resetMode, setResetMode] = useState(() => window.location.hash.startsWith('#/reset'));
 
   const {
     employees, loading: empLoading,
@@ -83,8 +93,11 @@ export default function App() {
   const [showCsvImport, setShowCsvImport] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && user) setView('app');
-  }, [user, authLoading]);
+    // Stay on the reset view while a recovery link is being processed — the
+    // setSession call signs the user in, but they must finish setting the new
+    // password before entering the app.
+    if (!authLoading && user && !resetMode) setView('app');
+  }, [user, authLoading, resetMode]);
 
   useEffect(() => {
     if (view === 'app' && !user && !authLoading) setView('login');
@@ -196,6 +209,15 @@ export default function App() {
   if (view === 'app' && currentPage === 'audit-log' && !can('audit.view')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
+  if (view === 'app' && currentPage === 'payroll' && !can('payroll.manage')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+  }
+  if (view === 'app' && currentPage === 'update-requests' && !can('selfservice.review')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+  }
+  if (view === 'app' && currentPage === 'psn-check' && !can('employees.import')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+  }
 
   // ── Main content ──
   const renderMainContent = () => {
@@ -273,6 +295,16 @@ export default function App() {
         return <MyAccountPage />;
       case 'retirement':
         return <RetirementPage employees={employees} onViewEmployee={handleViewEmployee} />;
+      case 'promotions':
+        return <PromotionPage employees={employees} onViewEmployee={handleViewEmployee} />;
+      case 'payroll':
+        return <PayrollPage employees={employees} />;
+      case 'leaves':
+        return <LeavePage employees={employees} />;
+      case 'update-requests':
+        return <UpdateRequestsPage />;
+      case 'psn-check':
+        return <PsnCheckPage />;
       case 'data-quality':
         return <DataQualityPage employees={employees} onEditEmployee={handleEditEmployee} />;
       default:
@@ -282,15 +314,30 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      {view === 'landing' && (
+      {resetMode && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <ResetPassword
+            onDone={() => { setResetMode(false); setView('app'); }}
+            onCancel={() => { setResetMode(false); setView('login'); }}
+          />
+        </Suspense>
+      )}
+
+      {!resetMode && view === 'landing' && (
         <Suspense fallback={<LoadingSpinner />}>
           <Landing onGoToLogin={handleGoToLogin} />
         </Suspense>
       )}
 
-      {view === 'login' && (
+      {!resetMode && view === 'login' && (
         <Suspense fallback={<LoadingSpinner />}>
-          <Login onBackToSite={handleBackToSite} />
+          <Login onBackToSite={handleBackToSite} onSelfService={() => setView('selfservice')} />
+        </Suspense>
+      )}
+
+      {!resetMode && view === 'selfservice' && (
+        <Suspense fallback={<LoadingSpinner />}>
+          <SelfService onBack={() => setView('landing')} />
         </Suspense>
       )}
 

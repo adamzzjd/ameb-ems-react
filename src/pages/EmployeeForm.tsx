@@ -54,6 +54,9 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   const [lga, setLga] = useState('');
   const [psn, setPsn] = useState('');
   const [station, setStation] = useState('');
+  const [basicSalary, setBasicSalary] = useState('');
+  const [step, setStep] = useState('');
+  const [address, setAddress] = useState('');
   const [remarks, setRemarks] = useState('');
   const [photo, setPhoto] = useState('');
   const [photoPreview, setPhotoPreview] = useState('');
@@ -86,6 +89,9 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
     setLga(employee?.lga || '');
     setPsn(employee?.psn || '');
     setStation(employee?.station || '');
+    setBasicSalary(employee?.basic_salary != null ? String(employee.basic_salary) : '');
+    setStep(employee?.step || '');
+    setAddress(employee?.address || '');
     setRemarks(employee?.remarks || '');
     setPhoto(employee?.photo || '');
     setPhotoPreview(employee?.photo || '');
@@ -100,7 +106,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
 
   const resetForm = () => {
     setName(''); setGender(''); setGrade(''); setCadre(''); setDateFirstAppt(''); setDatePresentAppt('');
-    setDob(''); setPhone(''); setLga(''); setPsn(''); setStation(''); setRemarks('');
+    setDob(''); setPhone(''); setLga(''); setPsn(''); setStation(''); setBasicSalary(''); setStep(''); setAddress(''); setRemarks('');
     setPhoto(''); setPhotoPreview('');
     setPhotoUploading(false);
     setPendingPhotoDelete('');
@@ -143,6 +149,9 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
     if (!cadre) newErrors.cadre = 'Cadre is required';
     const phoneErr = validatePhone(phone);
     if (phoneErr) newErrors.phone = phoneErr;
+    if (basicSalary && (isNaN(Number(basicSalary)) || Number(basicSalary) < 0)) {
+      newErrors.basicSalary = 'Enter a valid amount (numbers only).';
+    }
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) return;
     setSaving(true);
@@ -150,7 +159,9 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
       id: employee?.id, name: name.trim(), gender: gender || null, grade, cadre,
       date_first_appt: dateFirstAppt || null, date_present_appt: datePresentAppt || null,
       dob: dob || null, phone: phone.trim(), lga, psn: psn.trim(), station,
-      photo: photo || null, remarks: remarks.trim(),
+      photo: photo || null, basic_salary: basicSalary ? Number(basicSalary) : null, step: step || null,
+      address: address.trim() || null,
+      remarks: remarks.trim(),
     });
     setSaving(false);
     if (success) {
@@ -344,6 +355,28 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
             style={{ background: 'var(--color-surface)', backgroundImage: chevronSvg, borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
             <option value="">— Select —</option>{selOpts(stations)}
           </select>
+        </div>
+
+        {/* Basic Salary */}
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={{ color: 'var(--color-text-secondary)' }}>11. Basic Salary (₦/month)</label>
+          <input type="number" min="0" value={basicSalary} onChange={e => setBasicSalary(e.target.value)} placeholder="e.g. 485200"
+            className={inputClass} style={{ background: 'var(--color-surface)', borderColor: errors.basicSalary ? 'var(--color-error)' : 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+          {errors.basicSalary && <div className={errorClass} style={{ color: 'var(--color-error)' }}>{errors.basicSalary}</div>}
+        </div>
+
+        {/* Step */}
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={{ color: 'var(--color-text-secondary)' }}>12. Salary Step</label>
+          <input value={step} onChange={e => setStep(e.target.value)} placeholder="e.g. 1"
+            className={inputClass} style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+        </div>
+
+        {/* Residential Address */}
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={{ color: 'var(--color-text-secondary)' }}>13. Residential Address</label>
+          <input value={address} onChange={e => setAddress(e.target.value)} placeholder="e.g. 15 Ahmadu Bello Way, Yola"
+            className={inputClass} style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
         </div>
 
         {/* Remarks */}

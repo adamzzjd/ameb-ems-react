@@ -10,15 +10,18 @@ import { GraduationCap, Shield } from 'lucide-react';
 
 interface LoginProps {
   onBackToSite: () => void;
+  onSelfService: () => void;
 }
 
-export function Login({ onBackToSite }: LoginProps) {
+export function Login({ onBackToSite, onSelfService }: LoginProps) {
   const { signIn, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [mode, setMode] = useState<'signin' | 'reset'>('signin');
+  const [resetSent, setResetSent] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,6 +52,24 @@ export function Login({ onBackToSite }: LoginProps) {
       return;
     }
     toast('✓ Signed in successfully');
+  };
+
+  // Send a password-reset email. Supabase emails a recovery link that returns
+  // to the app with a `#/reset` hash carrying the recovery tokens.
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!email) { setError('Please enter the email address for your account.'); return; }
+    setSubmitting(true);
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/#/reset`,
+    });
+    setSubmitting(false);
+    if (resetError) {
+      setError(resetError.message);
+      return;
+    }
+    setResetSent(true);
   };
 
   return (
@@ -134,7 +155,69 @@ export function Login({ onBackToSite }: LoginProps) {
             style={{ background: 'var(--color-primary)', letterSpacing: '0.3px' }}>
             {submitting ? 'Signing in…' : 'Sign In'}
           </button>
+
+          <button type="button" onClick={() => { setMode('reset'); setError(''); }}
+            className="block mx-auto mt-3.5 text-[12px] cursor-pointer transition-colors hover:text-primary"
+            style={{ color: 'var(--color-text-muted)', textDecoration: 'none', background: 'none', border: 'none' }}>
+            Forgot password?
+          </button>
         </form>
+
+        {/* Employee self-service — no account needed, just your PSN */}
+        <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-border)' }}>
+          <div className="text-center">
+            <div className="text-[11px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-text-muted)' }}>
+              Are you an AMEB officer?
+            </div>
+            <button type="button" onClick={onSelfService}
+              className="text-[13px] font-semibold cursor-pointer transition-colors hover:text-primary"
+              style={{ color: 'var(--color-primary)', textDecoration: 'none', background: 'none', border: 'none' }}>
+              Update your details with your PSN →
+            </button>
+            <div className="text-[11px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
+              No password needed — one-time update, approved by the board office.
+            </div>
+          </div>
+        </div>
+
+        {mode === 'reset' && (
+          <div className="mt-6 pt-6 border-t" style={{ borderColor: 'var(--color-border)' }}>
+            {resetSent ? (
+              <div className="text-center py-2">
+                <div className="text-4xl mb-3">📧</div>
+                <div className="text-sm font-semibold" style={{ color: 'var(--color-text-primary)' }}>Check your email</div>
+                <p className="text-[13px] mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+                  If <strong>{email}</strong> is a registered account, a password-reset link is on its way.
+                </p>
+                <button type="button" onClick={() => { setMode('signin'); setResetSent(false); }}
+                  className="mt-4 text-[12px] cursor-pointer transition-colors hover:text-primary"
+                  style={{ color: 'var(--color-text-muted)', textDecoration: 'none', background: 'none', border: 'none' }}>
+                  ← Back to Sign In
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleReset}>
+                <div className="text-[13px] mb-3" style={{ color: 'var(--color-text-secondary)' }}>
+                  Enter your account email and we'll send you a link to set a new password.
+                </div>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                  placeholder="your@email.com" autoComplete="username"
+                  className="w-full h-12 px-4 rounded-lg border text-[15px] outline-none transition-colors focus:ring-2 focus:ring-ring mb-4"
+                  style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+                <button type="submit" disabled={submitting}
+                  className="w-full h-12 rounded-lg text-[15px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{ background: 'var(--color-primary)', letterSpacing: '0.3px' }}>
+                  {submitting ? 'Sending…' : 'Send Reset Link'}
+                </button>
+                <button type="button" onClick={() => { setMode('signin'); setError(''); }}
+                  className="block mx-auto mt-3.5 text-[12px] cursor-pointer transition-colors hover:text-primary"
+                  style={{ color: 'var(--color-text-muted)', textDecoration: 'none', background: 'none', border: 'none' }}>
+                  ← Back to Sign In
+                </button>
+              </form>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="mt-3.5 px-3.5 py-2.5 rounded-lg text-[13px]"

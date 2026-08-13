@@ -16,6 +16,9 @@ const full: Employee = {
   psn: 'PS/AM/001',
   station: 'Yola (HQ)',
   photo: null,
+  basic_salary: null,
+  step: null,
+  address: null,
   remarks: '',
 };
 
