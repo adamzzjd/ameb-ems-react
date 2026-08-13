@@ -10,8 +10,8 @@ import { ROLE_LABELS, type Permission } from '@/lib/roles';
 import {
   LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
   GraduationCap, BookOpen, Building2, Settings, FileText,
-  Download, Printer, Plus, LogOut, UserCog, UsersRound,
-  Newspaper, Image, MessageSquare, CalendarClock,
+  Download, Printer, Plus, LogOut, UserCog, UsersRound, Save,
+  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -21,6 +21,7 @@ interface SidebarProps {
   onImportCsv: () => void;
   onExportCsv: () => void;
   onPrint: () => void;
+  onBackup?: () => void;
   onLogout: () => void;
   employeeCount: number;
   unreadContactCount?: number;
@@ -59,6 +60,7 @@ const navSections: NavSection[] = [
       { page: 'grade', icon: <BarChart3 size={18} />, label: 'Grade Level' },
       { page: 'appointment', icon: <Calendar size={18} />, label: 'Appointment Date' },
       { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
+      { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
       { page: 'centres', icon: <GraduationCap size={18} />, label: 'Learning Centres' },
     ],
   },
@@ -96,11 +98,12 @@ const actions: { icon: React.ReactNode; label: string; key: string; permission: 
   { icon: <Download size={18} />, label: 'Import from Register', key: 'import', permission: 'employees.import' },
   { icon: <Download size={18} />, label: 'Export to CSV', key: 'export', permission: 'employees.export' },
   { icon: <Printer size={18} />, label: 'Print Full Register', key: 'print', permission: 'employees.view' },
+  { icon: <Save size={18} />, label: 'Backup Register', key: 'backup', permission: 'settings.manage' },
 ];
 
 export function Sidebar({
   currentPage, onNavigate, onAddEmployee, onImportCsv, onExportCsv,
-  onPrint, onLogout, employeeCount, unreadContactCount = 0, mobileOpen, onMobileClose,
+  onPrint, onBackup, onLogout, employeeCount, unreadContactCount = 0, mobileOpen, onMobileClose,
 }: SidebarProps) {
   const { user, role, can } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -128,6 +131,7 @@ export function Sidebar({
       case 'import': onImportCsv(); break;
       case 'export': onExportCsv(); break;
       case 'print': onPrint(); break;
+      case 'backup': onBackup?.(); break;
     }
     if (onMobileClose) onMobileClose();
   };

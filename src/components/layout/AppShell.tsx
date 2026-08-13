@@ -16,13 +16,14 @@ interface AppShellProps {
   onImportCsv?: () => void;
   onExportCsv?: () => void;
   onPrint?: () => void;
+  onBackup?: () => void;
   employeeCount: number;
   canAdd?: boolean;
 }
 
 export function AppShell({
   children, currentPage, onNavigate, onAddEmployee,
-  onImportCsv, onExportCsv, onPrint, employeeCount, canAdd,
+  onImportCsv, onExportCsv, onPrint, onBackup, employeeCount, canAdd,
 }: AppShellProps) {
   const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -49,6 +50,7 @@ export function AppShell({
         onImportCsv={onImportCsv || (() => {})}
         onExportCsv={onExportCsv || (() => {})}
         onPrint={onPrint || (() => {})}
+        onBackup={onBackup}
         onLogout={handleLogout}
         employeeCount={employeeCount}
         unreadContactCount={unread}

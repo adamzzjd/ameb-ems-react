@@ -30,3 +30,29 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  e2e:
+    name: E2E smoke tests
+    runs-on: ubuntu-latest
+    # Portal tests need a test account; the public-site spec runs regardless.
+    # Secrets: E2E_USER_EMAIL / E2E_USER_PASSWORD (admin+ account for CRUD).
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+      E2E_USER_EMAIL: ${{ secrets.E2E_USER_EMAIL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run E2E tests (uses preinstalled Chrome; portal tests skip without secrets)
+        run: npx playwright test

@@ -14,6 +14,7 @@ import type { Employee } from './types';
 import { dbCheckTable } from './supabase/employees';
 import { CsvImportModal } from './pages/CsvImportModal';
 import { exportEmployeesCSV } from './lib/csv';
+import { fetchFullBackup, downloadBackup } from './lib/backup';
 import { printEmployees } from './utils/print';
 import { CADRE_NAMES, CADRE_GRADES, STATIONS } from './data/constants';
 
@@ -43,6 +44,7 @@ const UserManagement = lazy(() => import('./pages/UserManagement').then(m => ({ 
 const AuditLogPage = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLogPage })));
 const MyAccountPage = lazy(() => import('./pages/MyAccount').then(m => ({ default: m.MyAccountPage })));
 const RetirementPage = lazy(() => import('./pages/Retirement').then(m => ({ default: m.RetirementPage })));
+const DataQualityPage = lazy(() => import('./pages/DataQuality').then(m => ({ default: m.DataQualityPage })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 // ── Loading spinner ───────────────────────────────────────────────────────
@@ -164,6 +166,14 @@ export default function App() {
     return await bulkImport(records);
   }, [can, bulkImport, toast]);
 
+  const handleBackup = useCallback(async () => {
+    if (!can('settings.manage')) { toast('Admin access required to back up the register.', true); return; }
+    toast('💾 Creating backup…');
+    const backup = await fetchFullBackup();
+    downloadBackup(backup);
+    toast(`💾 Backup downloaded — ${backup.tables.employees?.length ?? 0} officers, ${Object.keys(backup.tables).length} tables.`);
+  }, [can, toast]);
+
   const deletingName = showDeleteConfirm
     ? employees.find(e => e.id === showDeleteConfirm)?.name
     : null;
@@ -263,6 +273,8 @@ export default function App() {
         return <MyAccountPage />;
       case 'retirement':
         return <RetirementPage employees={employees} onViewEmployee={handleViewEmployee} />;
+      case 'data-quality':
+        return <DataQualityPage employees={employees} onEditEmployee={handleEditEmployee} />;
       default:
         return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={() => setCurrentPage('dashboard')} />;
     }
@@ -292,6 +304,7 @@ export default function App() {
           onPrint={handlePrint}
           employeeCount={employees.length}
           canAdd={can('employees.create')}
+          onBackup={handleBackup}
         >
           <Suspense fallback={<LoadingSpinner />}>
             {renderMainContent()}

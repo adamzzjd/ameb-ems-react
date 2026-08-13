@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 13, 2026 (Phase 13 — animated gallery slideshow + schema drift fix)
+> **Last updated:** August 13, 2026 (Phase 14 — E2E tests, Data Quality, backup, deployment readiness)
 
 ---
 
@@ -194,6 +194,18 @@
 | 13.4 Verification | ✅ Done | Typecheck + lint (0 errors) + build pass; headless-Chrome render confirmed gallery loads, autoplay advances (counter 1→2), arrows render, no errors |
 | 13.5 Custom favicon | ✅ Done | `public/favicon.svg` replaced with the board's own flame-of-knowledge mark (ADSMEB) — the tab icon now matches the brand |
 
+## 🚀 Phase 14: E2E Tests, Data Quality, Backup & Deployment Readiness (Complete)
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 14.1 E2E tests | ✅ Done | `playwright.config.ts` uses the system-installed Chrome (`channel: 'chrome'` — no browser download, works in CI where Chrome is preinstalled). `e2e/public-site.spec.ts` (landing + slideshow) runs everywhere; `e2e/portal.spec.ts` (login, employee CRUD, retirement, My Account) skips gracefully without `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`. `npm run test:e2e`; CI `e2e` job added |
+| 14.2 Data Quality dashboard | ✅ Done | `src/lib/dataQuality.ts` (pure, tested) + `src/pages/DataQuality.tsx` — summary cards, per-field missing filters, duplicate-name detection, per-row Edit (opens the standard form) and CSV export of the current list |
+| 14.3 Register backup | ✅ Done | `src/lib/backup.ts` — `fetchFullBackup()` pulls all 14 tables (missing tables degrade to null) + `downloadBackup()` JSON; sidebar action **Backup Register** (admin+) on the portal |
+| 14.4 Production monitoring | ✅ Done | Sentry release stamping (`__APP_RELEASE__` via `VITE_APP_RELEASE`) + optional source-map upload via `@sentry/vite-plugin` (guarded — skipped when `SENTRY_AUTH_TOKEN`/`SENTRY_ORG`/`SENTRY_PROJECT` unset); `.env.example` documented |
+| 14.5 Deployment readiness | ✅ Done | `DEPLOYMENT.md` — full checklist: setup scripts, roles, env vars (local + Vercel), deploy, Sentry source maps, suggested Board demo flow, go-live day steps |
+| 14.6 Tests | ✅ Done | 6 new data-quality tests (86 total) |
+| 14.7 Docs | ✅ Done | README untouched this phase; `DEPLOYMENT.md` added; `.env.example` (E2E + Sentry build vars) updated |
+
 ---
 
 ## 📁 Source Files Created/Modified
@@ -266,17 +278,23 @@
 - `src/hooks/useTheme.tsx` ✅ — Dark/light theme toggle
 - `src/hooks/useToast.tsx` ✅ — Toast notifications (via sonner)
 
-### Tests (10 files, 78 tests)
+### Unit tests (12 files, 86 tests)
 - `src/lib/__tests__/utils.test.ts` — cn() utility tests
 - `src/lib/__tests__/roles.test.ts` — Role/permission matrix tests
 - `src/lib/__tests__/retirement.test.ts` — Retirement & tenure math (age 60 / 35 years of service)
+- `src/lib/__tests__/dataQuality.test.ts` — Completeness stats, missing fields, duplicate names
 - `src/pages/__tests__/CsvImport.test.ts` — CSV import helpers (mapping, dedup)
+- `src/pages/cms/__tests__/SiteContent.test.tsx` — CMS editor keeps focus while typing
 - `src/components/__tests__/Button.test.tsx` — Button component tests
 - `src/components/__tests__/Card.test.tsx` — Card component tests
 - `src/components/__tests__/Input.test.tsx` — Input component tests
 - `src/components/__tests__/ErrorBoundary.test.tsx` — Error boundary tests
 - `src/hooks/__tests__/useToast.test.tsx` — Toast context tests
 - `src/supabase/__tests__/registerServices.test.ts` — centres/facilitators/enrolments services with mocked Supabase
+
+### E2E tests (Playwright, 6 specs)
+- `e2e/public-site.spec.ts` — landing page renders core sections, gallery slideshow controls (no login)
+- `e2e/portal.spec.ts` — dashboard, employee create/edit/delete, retirement view, My Account (skips without `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`)
 
 ### Config Files
 - `vercel.json` ✅ — SPA rewrites, Vite framework preset
@@ -291,7 +309,8 @@
 ```bash
 cd ameb-ems-react
 npm run dev       # Development server (localhost:5173)
-npm test          # Run 78 tests
+npm test          # Run 86 unit tests
+npm run test:e2e  # Run Playwright browser smoke tests
 npm run build     # Production build
 ```
 

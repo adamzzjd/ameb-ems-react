@@ -19,6 +19,9 @@ export async function initSentry(): Promise<void> {
   init({
     dsn: DSN,
     environment: import.meta.env.PROD ? 'production' : 'development',
+    // Build stamp (VITE_APP_RELEASE at build time) so events are tied to a
+    // specific deploy — pairs with the source maps uploaded by the vite plugin.
+    release: (typeof __APP_RELEASE__ !== 'undefined' && __APP_RELEASE__) || undefined,
     // Minimal sampling — this is an internal system, we care about errors
     // more than performance traces.
     tracesSampleRate: 0.1,

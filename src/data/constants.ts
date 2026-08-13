@@ -85,6 +85,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   grade:         { title: 'By Grade Level',          subtitle: 'Staff grouped by grade' },
   appointment:   { title: 'By Appointment Date',     subtitle: 'Staff sorted by date of first appointment' },
   retirement:    { title: '🎓 Retirement & Tenure',   subtitle: 'Age 60 / 35 years of service projections' },
+  'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
   facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },

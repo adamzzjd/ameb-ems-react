@@ -293,4 +293,5 @@ export type AppPage =
   | 'cms-enrolments'
   | 'users'
   | 'audit-log'
-  | 'account';
+  | 'account'
+  | 'data-quality';
