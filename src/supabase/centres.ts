@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { logAudit } from './audit';
 import type { Centre } from '../types';
 
 export async function dbLoadCentres(): Promise<{ data: Centre[] | null; error: Error | null }> {
@@ -41,6 +42,7 @@ export async function dbSaveCentre(
       .eq('id', centre.id)
       .select()
       .single();
+    if (!error) await logAudit({ action: 'update', table: 'centres', rowId: centre.id, details: { name: centre.name, lga: centre.lga } });
     return { data: data as Centre | null, error };
   } else {
     // Insert
@@ -61,11 +63,13 @@ export async function dbSaveCentre(
       })
       .select()
       .single();
+    if (!error && data) await logAudit({ action: 'create', table: 'centres', rowId: data.id, details: { name: centre.name, lga: centre.lga } });
     return { data: data as Centre | null, error };
   }
 }
 
 export async function dbDeleteCentre(id: string): Promise<{ error: Error | null }> {
   const { error } = await supabase.from('centres').delete().eq('id', id);
+  if (!error) await logAudit({ action: 'delete', table: 'centres', rowId: id });
   return { error };
 }

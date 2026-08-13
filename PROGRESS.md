@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 11, 2026 (Phase 9 — Facilitator Registry & multi-facilitator centre assignments)
+> **Last updated:** August 13, 2026 (Phase 11 — CI, audit trail, monitoring & expanded tests)
 
 ---
 
@@ -153,6 +153,22 @@
 | 10.8 Hausa toggle removed | ✅ Done | Removed the incomplete EN/HA language toggle (state, header + mobile buttons, all `lang ===` ternaries) so the site no longer looks half-translated |
 | 10.9 Docs | ✅ Done | README schema + setup order updated (`setup_enrolments.sql` before `setup_rls.sql`) |
 
+## 🚀 Phase 11: CI, Audit Trail, Monitoring & Test Coverage (Complete)
+
+> **One-time go-live:** run `supabase/setup_audit.sql` in the Supabase SQL Editor, then re-run `supabase/setup_rls.sql`. Optionally add `VITE_SENTRY_DSN` (Sentry) and `VITE_PLAUSIBLE_DOMAIN` (Plausible) — both are opt-in.
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 11.1 CI pipeline | ✅ Done | `.github/workflows/ci.yml` — runs `npm ci` → lint → tests → build on every push to `main` and on PRs, so broken code can never silently reach the Vercel auto-deploy |
+| 11.2 Audit trail | ✅ Done | `supabase/setup_audit.sql` (`audit_log` append-only table — insert by any signed-in user, select by super_admin only, no update/delete policies) + `src/supabase/audit.ts` (`logAudit()` best-effort helper + `dbLoadAuditLog()`) |
+| 11.3 Audit wired into all writes | ✅ Done | Every admin write path logs create/update/delete/import/reset/assign/mark_read: employees, stations, cadres, centres, facilitators (+ centre assignments), enrolment stats, all CMS content + inbox actions — logging never breaks the primary operation |
+| 11.4 Audit Log page | ✅ Done | `src/pages/AuditLog.tsx` — super_admin-only viewer (new `audit.view` permission, RLS-protected), search + table filter + refresh, last 500 entries, action badges, user/role/row-id/details columns |
+| 11.5 Service + CSV tests | ✅ Done | 21 new tests (68 total): `registerServices.test.ts` (centres/facilitators/enrolments CRUD with mocked Supabase — call shapes, defaults, audit on success, no audit on failure) + `CsvImport.test.ts` (column mapping, value mapping, duplicate-safe import); CSV helpers extracted to `src/lib/csv.ts` |
+| 11.6 Error monitoring | ✅ Done | `src/lib/sentry.ts` — optional Sentry via `VITE_SENTRY_DSN` (lazy-loads the SDK only when set), captures uncaught exceptions/rejections + ErrorBoundary failures, PII scrubbed. **Verified live** — DSN configured, test event accepted by Sentry ingest (HTTP 200), and a real capture confirmed from the running app |
+| 11.7 Site analytics | ✅ Done | Optional cookie-less Plausible script loaded when `VITE_PLAUSIBLE_DOMAIN` is set |
+| 11.8 Docs | ✅ Done | README: `setup_audit.sql` in setup order, `audit_log` schema row, Monitoring & Analytics section; `.env.example` updated |
+| 11.9 Sentry go-live | ✅ Done | `VITE_SENTRY_DSN` added to `.env` (gitignored — never committed); DSN validity + app wiring verified. A dev-only "Send Test Error" button was used to confirm capture end-to-end, then removed before commit |
+
 ---
 
 ## 📁 Source Files Created/Modified
@@ -225,14 +241,16 @@
 - `src/hooks/useTheme.tsx` ✅ — Dark/light theme toggle
 - `src/hooks/useToast.tsx` ✅ — Toast notifications (via sonner)
 
-### Tests (7 files, 47 tests)
+### Tests (9 files, 68 tests)
 - `src/lib/__tests__/utils.test.ts` — cn() utility tests
 - `src/lib/__tests__/roles.test.ts` — Role/permission matrix tests
+- `src/pages/__tests__/CsvImport.test.ts` — CSV import helpers (mapping, dedup)
 - `src/components/__tests__/Button.test.tsx` — Button component tests
 - `src/components/__tests__/Card.test.tsx` — Card component tests
 - `src/components/__tests__/Input.test.tsx` — Input component tests
 - `src/components/__tests__/ErrorBoundary.test.tsx` — Error boundary tests
 - `src/hooks/__tests__/useToast.test.tsx` — Toast context tests
+- `src/supabase/__tests__/registerServices.test.ts` — centres/facilitators/enrolments services with mocked Supabase
 
 ### Config Files
 - `vercel.json` ✅ — SPA rewrites, Vite framework preset
@@ -247,7 +265,7 @@
 ```bash
 cd ameb-ems-react
 npm run dev       # Development server (localhost:5173)
-npm test          # Run 47 tests
+npm test          # Run 68 tests
 npm run build     # Production build
 ```
 

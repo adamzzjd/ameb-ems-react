@@ -39,6 +39,7 @@ describe('can', () => {
     expect(can('staff', 'settings.manage')).toBe(false);
     expect(can('staff', 'cms.edit')).toBe(false);
     expect(can('staff', 'users.manage')).toBe(false);
+    expect(can('staff', 'audit.view')).toBe(false);
   });
 
   it('data collector can view/create/edit employees only', () => {
@@ -51,6 +52,7 @@ describe('can', () => {
     expect(can('data_collector', 'settings.manage')).toBe(false);
     expect(can('data_collector', 'cms.edit')).toBe(false);
     expect(can('data_collector', 'users.manage')).toBe(false);
+    expect(can('data_collector', 'audit.view')).toBe(false);
   });
 
   it('admin has full operational access but no user management', () => {
@@ -63,6 +65,7 @@ describe('can', () => {
     expect(can('admin', 'settings.manage')).toBe(true);
     expect(can('admin', 'cms.edit')).toBe(true);
     expect(can('admin', 'users.manage')).toBe(false);
+    expect(can('admin', 'audit.view')).toBe(false);
   });
 
   it('super_admin has everything', () => {
@@ -76,6 +79,7 @@ describe('can', () => {
       'settings.manage',
       'cms.edit',
       'users.manage',
+      'audit.view',
     ] as const) {
       expect(can('super_admin', permission)).toBe(true);
     }

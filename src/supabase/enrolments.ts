@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { logAudit } from './audit';
 import type { EnrolmentStat, PublicCentre } from '../types';
 
 export async function dbLoadEnrolmentStats(): Promise<{ data: EnrolmentStat[] | null; error: Error | null }> {
@@ -27,6 +28,7 @@ export async function dbSaveEnrolmentStat(
       .eq('id', stat.id)
       .select()
       .single();
+    if (!error) await logAudit({ action: 'update', table: 'enrolment_stats', rowId: stat.id, details: { year: stat.year } });
     return { data: data as EnrolmentStat | null, error };
   }
   const { data, error } = await supabase
@@ -34,11 +36,13 @@ export async function dbSaveEnrolmentStat(
     .insert({ id: crypto.randomUUID(), ...payload })
     .select()
     .single();
+  if (!error && data) await logAudit({ action: 'create', table: 'enrolment_stats', rowId: data.id, details: { year: stat.year } });
   return { data: data as EnrolmentStat | null, error };
 }
 
 export async function dbDeleteEnrolmentStat(id: string): Promise<{ error: Error | null }> {
   const { error } = await supabase.from('enrolment_stats').delete().eq('id', id);
+  if (!error) await logAudit({ action: 'delete', table: 'enrolment_stats', rowId: id });
   return { error };
 }
 

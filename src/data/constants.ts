@@ -98,4 +98,5 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   'cms-inbox':    { title: '✉️ Contact Inbox',         subtitle: 'View contact form messages' },
   'cms-enrolments': { title: '📈 Enrolment Statistics', subtitle: 'Per-year learner figures & NGO partners' },
   users:          { title: '👤 User Management',       subtitle: 'Create users and assign roles' },
+  'audit-log':    { title: '🕵️ Audit Log',              subtitle: 'Who did what, when' },
 };

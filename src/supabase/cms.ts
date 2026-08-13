@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { logAudit } from './audit';
 import type { SiteContent, CmsProgram, CmsNews, CmsTeam, CmsGallery, CmsDownload, CmsContact } from '../types';
 
 // ── Site Content ──────────────────────────────────────────────────────────────
@@ -19,6 +20,7 @@ export async function dbSaveSiteContent(content: Partial<SiteContent>): Promise<
     .upsert({ ...content, id: SITE_CONTENT_ID })
     .select()
     .single();
+  if (!error) await logAudit({ action: 'update', table: 'site_content', rowId: SITE_CONTENT_ID });
   return { data: data as SiteContent | null, error };
 }
 
@@ -41,6 +43,7 @@ export async function dbSaveProgram(program: Omit<Partial<CmsProgram>, 'image'> 
       .eq('id', program.id)
       .select()
       .single();
+    if (!error) await logAudit({ action: 'update', table: 'cms_programs', rowId: program.id, details: { title: program.title || null } });
     return { data: data as CmsProgram | null, error };
   }
   const { data, error } = await supabase
@@ -48,11 +51,14 @@ export async function dbSaveProgram(program: Omit<Partial<CmsProgram>, 'image'> 
     .insert({ ...program, id: crypto.randomUUID() })
     .select()
     .single();
+  if (!error && data) await logAudit({ action: 'create', table: 'cms_programs', rowId: data.id, details: { title: program.title || null } });
   return { data: data as CmsProgram | null, error };
 }
 
 export async function dbDeleteProgram(id: string): Promise<{ error: Error | null }> {
-  return supabase.from('cms_programs').delete().eq('id', id);
+  const res = await supabase.from('cms_programs').delete().eq('id', id);
+  if (!res.error) await logAudit({ action: 'delete', table: 'cms_programs', rowId: id });
+  return res;
 }
 
 // ── News ──────────────────────────────────────────────────────────────────────
@@ -72,6 +78,7 @@ export async function dbSaveNewsArticle(article: Partial<CmsNews>): Promise<{ da
       .eq('id', article.id)
       .select()
       .single();
+    if (!error) await logAudit({ action: 'update', table: 'cms_news', rowId: article.id, details: { title: article.title || null } });
     return { data: data as CmsNews | null, error };
   }
   const { data, error } = await supabase
@@ -79,11 +86,14 @@ export async function dbSaveNewsArticle(article: Partial<CmsNews>): Promise<{ da
     .insert({ ...article, id: crypto.randomUUID() })
     .select()
     .single();
+  if (!error && data) await logAudit({ action: 'create', table: 'cms_news', rowId: data.id, details: { title: article.title || null } });
   return { data: data as CmsNews | null, error };
 }
 
 export async function dbDeleteNews(id: string): Promise<{ error: Error | null }> {
-  return supabase.from('cms_news').delete().eq('id', id);
+  const res = await supabase.from('cms_news').delete().eq('id', id);
+  if (!res.error) await logAudit({ action: 'delete', table: 'cms_news', rowId: id });
+  return res;
 }
 
 // ── Team ──────────────────────────────────────────────────────────────────────
@@ -103,6 +113,7 @@ export async function dbSaveTeamMember(member: Partial<CmsTeam>): Promise<{ data
       .eq('id', member.id)
       .select()
       .single();
+    if (!error) await logAudit({ action: 'update', table: 'cms_team', rowId: member.id, details: { name: member.name || null } });
     return { data: data as CmsTeam | null, error };
   }
   const { data, error } = await supabase
@@ -110,11 +121,14 @@ export async function dbSaveTeamMember(member: Partial<CmsTeam>): Promise<{ data
     .insert({ ...member, id: crypto.randomUUID() })
     .select()
     .single();
+  if (!error && data) await logAudit({ action: 'create', table: 'cms_team', rowId: data.id, details: { name: member.name || null } });
   return { data: data as CmsTeam | null, error };
 }
 
 export async function dbDeleteTeamMember(id: string): Promise<{ error: Error | null }> {
-  return supabase.from('cms_team').delete().eq('id', id);
+  const res = await supabase.from('cms_team').delete().eq('id', id);
+  if (!res.error) await logAudit({ action: 'delete', table: 'cms_team', rowId: id });
+  return res;
 }
 
 // ── Gallery ───────────────────────────────────────────────────────────────────
@@ -136,6 +150,7 @@ export async function dbSaveGalleryImage(image: Omit<Partial<CmsGallery>, 'image
       .eq('id', image.id)
       .select()
       .single();
+    if (!error) await logAudit({ action: 'update', table: 'cms_gallery', rowId: image.id, details: { label: image.label || null } });
     return { data: data as CmsGallery | null, error };
   }
   const { data, error } = await supabase
@@ -143,11 +158,14 @@ export async function dbSaveGalleryImage(image: Omit<Partial<CmsGallery>, 'image
     .insert({ ...image, id: crypto.randomUUID() })
     .select()
     .single();
+  if (!error && data) await logAudit({ action: 'create', table: 'cms_gallery', rowId: data.id, details: { label: image.label || null } });
   return { data: data as CmsGallery | null, error };
 }
 
 export async function dbDeleteGalleryImage(id: string): Promise<{ error: Error | null }> {
-  return supabase.from('cms_gallery').delete().eq('id', id);
+  const res = await supabase.from('cms_gallery').delete().eq('id', id);
+  if (!res.error) await logAudit({ action: 'delete', table: 'cms_gallery', rowId: id });
+  return res;
 }
 
 // ── Downloads ─────────────────────────────────────────────────────────────────
@@ -167,6 +185,7 @@ export async function dbSaveDownload(item: Partial<CmsDownload>): Promise<{ data
       .eq('id', item.id)
       .select()
       .single();
+    if (!error) await logAudit({ action: 'update', table: 'cms_downloads', rowId: item.id, details: { title: item.title || null } });
     return { data: data as CmsDownload | null, error };
   }
   const { data, error } = await supabase
@@ -174,11 +193,14 @@ export async function dbSaveDownload(item: Partial<CmsDownload>): Promise<{ data
     .insert({ ...item, id: crypto.randomUUID() })
     .select()
     .single();
+  if (!error && data) await logAudit({ action: 'create', table: 'cms_downloads', rowId: data.id, details: { title: item.title || null } });
   return { data: data as CmsDownload | null, error };
 }
 
 export async function dbDeleteDownload(id: string): Promise<{ error: Error | null }> {
-  return supabase.from('cms_downloads').delete().eq('id', id);
+  const res = await supabase.from('cms_downloads').delete().eq('id', id);
+  if (!res.error) await logAudit({ action: 'delete', table: 'cms_downloads', rowId: id });
+  return res;
 }
 
 // ── Contacts / Inbox ──────────────────────────────────────────────────────────
@@ -205,9 +227,12 @@ export async function dbMarkContactRead(id: string): Promise<{ error: Error | nu
     .from('cms_contacts')
     .update({ read: true })
     .eq('id', id);
+  if (!error) await logAudit({ action: 'mark_read', table: 'cms_contacts', rowId: id });
   return { error };
 }
 
 export async function dbDeleteContact(id: string): Promise<{ error: Error | null }> {
-  return supabase.from('cms_contacts').delete().eq('id', id);
+  const res = await supabase.from('cms_contacts').delete().eq('id', id);
+  if (!res.error) await logAudit({ action: 'delete', table: 'cms_contacts', rowId: id });
+  return res;
 }

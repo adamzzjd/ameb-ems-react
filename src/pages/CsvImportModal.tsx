@@ -2,34 +2,13 @@ import { useState } from 'react';
 import Papa from 'papaparse';
 import { Modal } from '../components/ui/Modal';
 import type { Employee } from '../types';
+import { buildColumnMapping, buildImportRecords } from '../lib/csv';
 
 interface CsvImportModalProps {
   open: boolean;
   onClose: () => void;
   onImport: (records: Partial<Employee>[]) => Promise<number>;
   existingEmployees: Employee[];
-}
-
-// Column name mapping
-const CSV_COLUMN_MAP: Record<string, string> = {
-  'name': 'name', 'full name': 'name', 'employee name': 'name',
-  'staff name': 'name', 'surname': 'name',
-  'grade': 'grade', 'grade level': 'grade', 'gl': 'grade',
-  'cadre': 'cadre', 'role': 'cadre', 'designation': 'cadre', 'position': 'cadre',
-  'phone': 'phone', 'telephone': 'phone', 'mobile': 'phone', 'contact': 'phone',
-  'station': 'station', 'posting': 'station', 'location': 'station',
-  'lga': 'lga', 'l.g.a': 'lga', 'local government': 'lga',
-  'psn': 'psn', 'staff id': 'psn', 'employee id': 'psn', 'file number': 'psn',
-  'date first appt': 'date_first_appt', 'first appointment': 'date_first_appt',
-  'date of first appointment': 'date_first_appt',
-  'date present appt': 'date_present_appt', 'present appointment': 'date_present_appt',
-  'date of present appointment': 'date_present_appt',
-  'dob': 'dob', 'date of birth': 'dob', 'birth date': 'dob',
-  'remarks': 'remarks', 'remark': 'remarks', 'notes': 'remarks', 'comment': 'remarks',
-};
-
-function normalizeCol(str: string): string {
-  return str.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function esc(s: string): string {
@@ -76,12 +55,8 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
           }
           setHeaders(results.meta.fields || []);
           setRows(data);
-          // Build mapping
-          const m: Record<string, string | null> = {};
-          (results.meta.fields || []).forEach(h => {
-            const key = normalizeCol(h);
-            m[h] = CSV_COLUMN_MAP[key] || null;
-          });
+          // Build mapping (CSV headers → system fields)
+          const m = buildColumnMapping(results.meta.fields || []);
           setMapping(m);
 
           // Check for name column
@@ -107,31 +82,8 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
 
     const existingNames = new Set(existingEmployees.map(e => e.name.toLowerCase().trim()));
 
-    // Build records to insert
-    const sysToCSV: Record<string, string> = {};
-    Object.entries(mapping).forEach(([csv, sys]) => {
-      if (sys) sysToCSV[sys] = csv;
-    });
-
-    const toInsert = rows
-      .filter(r => {
-        const name = (r[nameCol] || '').trim();
-        return name && !existingNames.has(name.toLowerCase());
-      })
-      .map(r => ({
-        name: (r[sysToCSV['name']] || '').trim(),
-        grade: (r[sysToCSV['grade']] || '').trim() || null,
-        cadre: (r[sysToCSV['cadre']] || '').trim() || null,
-        phone: (r[sysToCSV['phone']] || '').trim() || null,
-        station: (r[sysToCSV['station']] || '').trim() || null,
-        lga: (r[sysToCSV['lga']] || '').trim() || null,
-        psn: (r[sysToCSV['psn']] || '').trim() || null,
-        date_first_appt: (r[sysToCSV['date_first_appt']] || '').trim() || null,
-        date_present_appt: (r[sysToCSV['date_present_appt']] || '').trim() || null,
-        dob: (r[sysToCSV['dob']] || '').trim() || null,
-        remarks: (r[sysToCSV['remarks']] || '').trim() || '',
-        photo: null,
-      }));
+    // Build records to insert (duplicate-safe — existing names are skipped)
+    const toInsert = buildImportRecords(rows, mapping, existingNames);
 
     if (toInsert.length === 0) {
       setStep('preview');
@@ -354,26 +306,3 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
   );
 }
 
-// ── CSV Export ────────────────────────────────────────────────────────────────
-export function exportEmployeesCSV(employees: Employee[]) {
-  const headers = [
-    'PSN', 'Full Name', 'Cadre', 'Grade',
-    'Date First Appt', 'Date Present Appt', 'Date of Birth',
-    'Phone', 'LGA', 'Station', 'Remarks',
-  ];
-
-  const rows = employees.map(e => [
-    e.psn, e.name, e.cadre, e.grade,
-    e.date_first_appt || '', e.date_present_appt || '', e.dob || '',
-    e.phone, e.lga, e.station, e.remarks || '',
-  ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
-
-  const csv = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `AMEB_Staff_${new Date().toISOString().slice(0, 10)}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}

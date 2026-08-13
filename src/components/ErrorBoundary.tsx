@@ -1,6 +1,7 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { captureError } from '@/lib/sentry';
 
 interface Props {
   children: ReactNode;
@@ -24,6 +25,8 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
+    // Report to Sentry when configured (no-op otherwise).
+    captureError(error, { componentStack: errorInfo.componentStack });
   }
 
   handleRetry = () => {

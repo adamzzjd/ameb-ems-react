@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { logAudit } from './audit';
 import type { Facilitator, CentreFacilitator } from '../types';
 
 export async function dbLoadFacilitators(): Promise<{ data: Facilitator[] | null; error: Error | null }> {
@@ -26,6 +27,7 @@ export async function dbAddFacilitator(
     })
     .select()
     .single();
+  if (!error && data) await logAudit({ action: 'create', table: 'facilitators', rowId: data.id, details: { name } });
   return { data: data as Facilitator | null, error };
 }
 
@@ -48,11 +50,13 @@ export async function dbUpdateFacilitator(
     .eq('id', id)
     .select()
     .single();
+  if (!error) await logAudit({ action: 'update', table: 'facilitators', rowId: id, details: { name } });
   return { data: data as Facilitator | null, error };
 }
 
 export async function dbDeleteFacilitator(id: string): Promise<{ error: Error | null }> {
   const { error } = await supabase.from('facilitators').delete().eq('id', id);
+  if (!error) await logAudit({ action: 'delete', table: 'facilitators', rowId: id });
   return { error };
 }
 
@@ -83,5 +87,6 @@ export async function dbSetCentreFacilitators(
   const { error: insErr } = await supabase
     .from('centre_facilitators')
     .insert(facilitatorIds.map(fid => ({ centre_id: centreId, facilitator_id: fid })));
+  if (!insErr) await logAudit({ action: 'assign', table: 'centre_facilitators', rowId: centreId, details: { count: facilitatorIds.length } });
   return { error: insErr };
 }

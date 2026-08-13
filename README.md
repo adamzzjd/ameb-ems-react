@@ -23,7 +23,8 @@ Then create the tables by running the SQL setup scripts in the **Supabase dashbo
 3. [`supabase/setup_storage.sql`](./supabase/setup_storage.sql) — **image URL columns** (adds the image columns to the CMS tables — images themselves live on Cloudinary, see below)
 4. [`supabase/setup_facilitators.sql`](./supabase/setup_facilitators.sql) — **facilitator registry** (`facilitators` + `centre_facilitators` join). Migrates the old `centres.facilitator` free-text values into the registry and links them, then drops the legacy column.
 5. [`supabase/setup_enrolments.sql`](./supabase/setup_enrolments.sql) — **enrolment statistics** (`enrolment_stats` per-year table + the `public_centres` view that powers the public centre directory)
-6. [`supabase/setup_rls.sql`](./supabase/setup_rls.sql) — **Row Level Security** — run **last**, after all the setup scripts above, so the new tables get their policies.
+6. [`supabase/setup_audit.sql`](./supabase/setup_audit.sql) — **audit log** (`audit_log` append-only table — who did what, when; readable by super_admin only)
+7. [`supabase/setup_rls.sql`](./supabase/setup_rls.sql) — **Row Level Security** — run **last**, after all the setup scripts above, so the new tables get their policies.
 
 All scripts are idempotent (safe to re-run).
 
@@ -50,6 +51,13 @@ All images are uploaded to and served from **Cloudinary** (CDN with automatic fo
 
 > Cloudinary URLs can't be deleted from the browser (unsigned presets have no delete permission) — clean up unused assets in the **Cloudinary Media Library** dashboard when needed.
 
+#### 🛰 Monitoring & Analytics (optional)
+
+Both are opt-in — the app runs fine without them:
+
+- **Sentry error tracking** — set `VITE_SENTRY_DSN` (create a project at [sentry.io](https://sentry.io) → Settings → Projects → Client Keys). Captures uncaught exceptions, unhandled promise rejections, and `ErrorBoundary` failures. When the var is empty, no Sentry code is loaded.
+- **Plausible analytics** — cookie-less, GDPR-friendly site analytics. Set `VITE_PLAUSIBLE_DOMAIN` to your registered Plausible domain and the script loads on the public site. Leave empty to disable.
+
 #### 🧹 Purging legacy image values (one-time cleanup)
 
 If any rows still hold base64 or Supabase Storage URLs (left over from before the Cloudinary migration), run [`supabase/purge_non_cloudinary_images.sql`](./supabase/purge_non_cloudinary_images.sql) in the Supabase SQL Editor — it clears every non-Cloudinary image value so only Cloudinary URLs (or NULL) remain.
@@ -68,6 +76,7 @@ If any rows still hold base64 or Supabase Storage URLs (left over from before th
 | `centre_facilitators` | `centre_id` (FK → centres, cascade), `facilitator_id` (FK → facilitators, cascade), `created_at` — PK `(centre_id, facilitator_id)` | Many-to-many: a centre can have many facilitators, a facilitator can serve many centres. |
 | `enrolment_stats` | `id` (uuid PK), `year` (int, UNIQUE), `learners_enrolled`, `certified`, `dropped_out`, `no_exam` (ints), `ngos` (text[]), `created_at`, `updated_at` | Per-year learner outcome figures managed from **CMS → Enrolment Stats** and shown live on the public site hero stats. |
 | `public_centres` (view) | Safe projection of `centres` + facilitator names — public fields only, never `remarks`. Powers the public "Find a Learning Center" directory. |
+| `audit_log` | `id` (uuid PK), `user_id`, `user_email`, `user_role`, `action`, `table_name`, `row_id`, `details` (jsonb), `created_at` | Append-only accountability trail: every admin/editor write is recorded with the signed-in user. **Insert** by any signed-in user; **select** by `super_admin` only (no update/delete policies, so the log can't be tampered with). Viewed from **Settings → Audit Log**. |
 
 ### CMS tables (public website)
 

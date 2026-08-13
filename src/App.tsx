@@ -12,7 +12,8 @@ import {
 import { Card, CardContent } from '@/components/ui/card';
 import type { Employee } from './types';
 import { dbCheckTable } from './supabase/employees';
-import { CsvImportModal, exportEmployeesCSV } from './pages/CsvImportModal';
+import { CsvImportModal } from './pages/CsvImportModal';
+import { exportEmployeesCSV } from './lib/csv';
 import { printEmployees } from './utils/print';
 import { CADRE_NAMES, CADRE_GRADES, STATIONS } from './data/constants';
 
@@ -39,6 +40,7 @@ const CmsGallery = lazy(() => import('./pages/cms/CmsGallery').then(m => ({ defa
 const CmsInbox = lazy(() => import('./pages/cms/CmsInbox').then(m => ({ default: m.CmsInbox })));
 const CmsEnrolments = lazy(() => import('./pages/cms/CmsEnrolments').then(m => ({ default: m.CmsEnrolments })));
 const UserManagement = lazy(() => import('./pages/UserManagement').then(m => ({ default: m.UserManagement })));
+const AuditLogPage = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLogPage })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 // ── Loading spinner ───────────────────────────────────────────────────────
@@ -176,6 +178,9 @@ export default function App() {
   if (view === 'app' && currentPage === 'users' && !can('users.manage')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
+  if (view === 'app' && currentPage === 'audit-log' && !can('audit.view')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+  }
 
   // ── Main content ──
   const renderMainContent = () => {
@@ -247,6 +252,8 @@ export default function App() {
         return <CmsEnrolments />;
       case 'users':
         return <UserManagement />;
+      case 'audit-log':
+        return <AuditLogPage />;
       default:
         return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={() => setCurrentPage('dashboard')} />;
     }

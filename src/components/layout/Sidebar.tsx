@@ -66,6 +66,7 @@ const navSections: NavSection[] = [
       { page: 'cadres', icon: <BookOpen size={18} />, label: 'Manage Cadres' },
       { page: 'facilitators', icon: <UsersRound size={18} />, label: 'Manage Facilitators' },
       { page: 'users', icon: <UserCog size={18} />, label: 'User Management', permission: 'users.manage' },
+      { page: 'audit-log', icon: <FileText size={18} />, label: 'Audit Log', permission: 'audit.view' },
     ],
   },
 

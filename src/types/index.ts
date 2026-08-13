@@ -211,6 +211,22 @@ export interface PublicCentre {
   facilitators: string[];
 }
 
+// ── Audit Log ──────────────────────────────────────────────────────────────────
+// Append-only accountability trail: who did what, when, on which record.
+// Written by the app's services after every admin write; readable by
+// super_admin only (see supabase/setup_audit.sql).
+export interface AuditLog {
+  id: string;
+  user_id: string | null;
+  user_email: string | null;
+  user_role: string | null;
+  action: 'create' | 'update' | 'delete' | 'import' | 'reset' | 'assign' | 'mark_read' | string;
+  table_name: string;
+  row_id: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
 // ── Enrolment Stats ───────────────────────────────────────────────────────────
 // Per-year learner outcome figures managed from the CMS and shown live on the
 // public site hero stats.
@@ -273,4 +289,5 @@ export type AppPage =
   | 'cms-downloads'
   | 'cms-inbox'
   | 'cms-enrolments'
-  | 'users';
+  | 'users'
+  | 'audit-log';

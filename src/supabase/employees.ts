@@ -1,4 +1,5 @@
 import { supabase } from './client';
+import { logAudit } from './audit';
 import type { Employee } from '../types';
 
 export async function dbCheckTable(): Promise<boolean> {
@@ -39,6 +40,7 @@ export async function dbSave(emp: Partial<Employee> & { name: string }): Promise
       .eq('id', emp.id)
       .select()
       .single();
+    if (!error) await logAudit({ action: 'update', table: 'employees', rowId: emp.id, details: { name: emp.name, psn: emp.psn || null } });
     return { data: data as Employee | null, error };
   } else {
     const { data, error } = await supabase
@@ -46,12 +48,14 @@ export async function dbSave(emp: Partial<Employee> & { name: string }): Promise
       .insert({ ...payload, id: crypto.randomUUID() })
       .select()
       .single();
+    if (!error && data) await logAudit({ action: 'create', table: 'employees', rowId: data.id, details: { name: emp.name, psn: emp.psn || null } });
     return { data: data as Employee | null, error };
   }
 }
 
 export async function dbDelete(id: string): Promise<{ error: Error | null }> {
   const { error } = await supabase.from('employees').delete().eq('id', id);
+  if (!error) await logAudit({ action: 'delete', table: 'employees', rowId: id });
   return { error };
 }
 
@@ -60,5 +64,6 @@ export async function dbBulkInsert(records: Partial<Employee>[]): Promise<{ data
     .from('employees')
     .insert(records.map(r => ({ ...r, id: r.id || crypto.randomUUID() })))
     .select();
+  if (!error && data) await logAudit({ action: 'import', table: 'employees', details: { count: data.length } });
   return { data: data as Employee[] | null, error };
 }
