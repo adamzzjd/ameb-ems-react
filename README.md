@@ -68,7 +68,7 @@ If any rows still hold base64 or Supabase Storage URLs (left over from before th
 
 | Table | Columns | Notes |
 |---|---|---|
-| `employees` | `id` (uuid PK), `name`, `grade`, `cadre`, `date_first_appt`, `date_present_appt`, `dob`, `phone`, `lga`, `psn`, `station`, `photo`, `remarks`, `created_at`, `updated_at` | Core staff register. `psn` is UNIQUE — the app rejects duplicate PSNs. |
+| `employees` | `id` (uuid PK), `name`, `gender`, `grade`, `cadre`, `date_first_appt`, `date_present_appt`, `dob`, `phone`, `lga`, `psn`, `station`, `photo`, `remarks`, `created_at`, `updated_at` | Core staff register. `psn` is UNIQUE — the app rejects duplicate PSNs. `gender` powers the Dashboard distribution; `dob` + `date_first_appt` power the Retirement & Tenure view (age 60 / 35 years of service). |
 | `stations` | `id` (uuid PK), `name`, `lga`, `type`, `created_at`, `updated_at` | Posting stations. Auto-seeded from `src/data/constants.ts` on first load if empty. |
 | `cadres` | `id` (uuid PK), `name`, `grade`, `category`, `created_at`, `updated_at` | Staff cadres (AMEB establishment: Adult Education Officer ladder, directorate, admin & support) with each cadre's typical grade level. Auto-seeded from `src/data/constants.ts` on first load if empty; the employee form auto-fills the grade from the selected cadre. |
 | `centres` | `id` (uuid PK), `name`, `lga`, `ward`, `community`, `type`, `status`, `capacity` (int), `phone`, `ngo_partner`, `remarks`, `created_at`, `updated_at` | Learning centres register. Facilitators are assigned separately via `centre_facilitators`. |

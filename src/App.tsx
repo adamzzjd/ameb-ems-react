@@ -41,6 +41,8 @@ const CmsInbox = lazy(() => import('./pages/cms/CmsInbox').then(m => ({ default:
 const CmsEnrolments = lazy(() => import('./pages/cms/CmsEnrolments').then(m => ({ default: m.CmsEnrolments })));
 const UserManagement = lazy(() => import('./pages/UserManagement').then(m => ({ default: m.UserManagement })));
 const AuditLogPage = lazy(() => import('./pages/AuditLog').then(m => ({ default: m.AuditLogPage })));
+const MyAccountPage = lazy(() => import('./pages/MyAccount').then(m => ({ default: m.MyAccountPage })));
+const RetirementPage = lazy(() => import('./pages/Retirement').then(m => ({ default: m.RetirementPage })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
 
 // ── Loading spinner ───────────────────────────────────────────────────────
@@ -150,9 +152,12 @@ export default function App() {
 
   const handleExportCSV = useCallback(() => {
     if (!can('employees.export')) { toast('You need export access for this action.', true); return; }
-    exportEmployeesCSV(employees);
-    toast('💾 CSV exported successfully.');
-  }, [can, employees, toast]);
+    // On the Employees page, export exactly what's on screen (current filters &
+    // sort); everywhere else, the full register.
+    const rows = currentPage === 'employees' ? filtered : employees;
+    exportEmployeesCSV(rows);
+    toast(`💾 ${rows.length} record${rows.length !== 1 ? 's' : ''} exported${currentPage === 'employees' ? ' (current filter view)' : ''}.`);
+  }, [can, employees, filtered, currentPage, toast]);
 
   const handleImport = useCallback(async (records: Partial<Employee>[]) => {
     if (!can('employees.import')) { toast('You need import access for this action.', true); return 0; }
@@ -254,6 +259,10 @@ export default function App() {
         return <UserManagement />;
       case 'audit-log':
         return <AuditLogPage />;
+      case 'account':
+        return <MyAccountPage />;
+      case 'retirement':
+        return <RetirementPage employees={employees} onViewEmployee={handleViewEmployee} />;
       default:
         return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={() => setCurrentPage('dashboard')} />;
     }

@@ -5,6 +5,7 @@ import type { Employee } from '../types';
 export const CSV_COLUMN_MAP: Record<string, string> = {
   'name': 'name', 'full name': 'name', 'employee name': 'name',
   'staff name': 'name', 'surname': 'name',
+  'gender': 'gender', 'sex': 'gender',
   'grade': 'grade', 'grade level': 'grade', 'gl': 'grade',
   'cadre': 'cadre', 'role': 'cadre', 'designation': 'cadre', 'position': 'cadre',
   'phone': 'phone', 'telephone': 'phone', 'mobile': 'phone', 'contact': 'phone',
@@ -44,6 +45,7 @@ export function mapRowToEmployee(
   const pick = (field: string): string => (row[sysToCSV[field]] || '').trim();
   return {
     name: pick('name'),
+    gender: pick('gender') || null,
     grade: pick('grade') || null,
     cadre: pick('cadre') || null,
     phone: pick('phone') || null,
@@ -86,13 +88,13 @@ export function buildImportRecords(
 // ── CSV Export ────────────────────────────────────────────────────────────────
 export function exportEmployeesCSV(employees: Employee[]) {
   const headers = [
-    'PSN', 'Full Name', 'Cadre', 'Grade',
+    'PSN', 'Full Name', 'Gender', 'Cadre', 'Grade',
     'Date First Appt', 'Date Present Appt', 'Date of Birth',
     'Phone', 'LGA', 'Station', 'Remarks',
   ];
 
   const rows = employees.map(e => [
-    e.psn, e.name, e.cadre, e.grade,
+    e.psn, e.name, e.gender || '', e.cadre, e.grade,
     e.date_first_appt || '', e.date_present_appt || '', e.dob || '',
     e.phone, e.lga, e.station, e.remarks || '',
   ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','));

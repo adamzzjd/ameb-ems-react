@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 13, 2026 (Phase 11 — CI, audit trail, monitoring & expanded tests)
+> **Last updated:** August 13, 2026 (Phase 12 — Logo/favicon, gender reporting, filtered export, My Account, retirement tracking)
 
 ---
 
@@ -169,6 +169,21 @@
 | 11.8 Docs | ✅ Done | README: `setup_audit.sql` in setup order, `audit_log` schema row, Monitoring & Analytics section; `.env.example` updated |
 | 11.9 Sentry go-live | ✅ Done | `VITE_SENTRY_DSN` added to `.env` (gitignored — never committed); DSN validity + app wiring verified. A dev-only "Send Test Error" button was used to confirm capture end-to-end, then removed before commit |
 
+## 🚀 Phase 12: Logo & Favicon, Gender Reporting, Filtered Export, My Account, Retirement Tracking (Complete)
+
+> **One-time go-live:** re-run `supabase/setup_ems.sql` in the Supabase SQL Editor (adds the `employees.gender` column idempotently).
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 12.1 Logo everywhere | ✅ Done | CMS `logo_url` now drives the public header/footer, program/news detail pages, login, the staff-portal sidebar and the favicon (`src/lib/favicon.ts` runtime swap) — with the gold GraduationCap fallback wherever no logo is set; `index.html` now ships a `<link rel="icon">` |
+| 12.2 Gender field | ✅ Done | `employees.gender` column (idempotent ALTER in `setup_ems.sql`), form select, profile display, CSV import (`gender`/`sex` headers) + export |
+| 12.3 Gender reporting | ✅ Done | Dashboard "Gender Distribution" card (Male/Female split bar + counts, "not stated" when missing) |
+| 12.4 Filtered CSV export | ✅ Done | Export on the Employees page now downloads the current filter/sort view (with a toast confirming the row count); elsewhere it still exports the full register |
+| 12.5 My Account | ✅ Done | `src/pages/MyAccount.tsx` — any signed-in user sees their email/role and changes their own password (current-password verification + confirm match) |
+| 12.6 Retirement & tenure | ✅ Done | `src/lib/retirement.ts` (pure, tested): age 60 / 35 years of service, whichever first. New **Retirement & Tenure** page (summary cards, search, status chips, sortable list) + Years of Service / Retirement Date on the employee profile |
+| 12.7 Tests | ✅ Done | 10 new retirement tests (78 total) — age, service years, earlier-of rule, retired/due-soon flags; timezone-safe date parsing |
+| 12.8 Docs | ✅ Done | README employees schema row updated (gender, retirement source fields) |
+
 ---
 
 ## 📁 Source Files Created/Modified
@@ -241,9 +256,10 @@
 - `src/hooks/useTheme.tsx` ✅ — Dark/light theme toggle
 - `src/hooks/useToast.tsx` ✅ — Toast notifications (via sonner)
 
-### Tests (9 files, 68 tests)
+### Tests (10 files, 78 tests)
 - `src/lib/__tests__/utils.test.ts` — cn() utility tests
 - `src/lib/__tests__/roles.test.ts` — Role/permission matrix tests
+- `src/lib/__tests__/retirement.test.ts` — Retirement & tenure math (age 60 / 35 years of service)
 - `src/pages/__tests__/CsvImport.test.ts` — CSV import helpers (mapping, dedup)
 - `src/components/__tests__/Button.test.tsx` — Button component tests
 - `src/components/__tests__/Card.test.tsx` — Card component tests
@@ -265,7 +281,7 @@
 ```bash
 cd ameb-ems-react
 npm run dev       # Development server (localhost:5173)
-npm test          # Run 68 tests
+npm test          # Run 78 tests
 npm run build     # Production build
 ```
 

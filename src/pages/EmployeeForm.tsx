@@ -44,6 +44,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [name, setName] = useState('');
+  const [gender, setGender] = useState('');
   const [grade, setGrade] = useState('');
   const [cadre, setCadre] = useState('');
   const [dateFirstAppt, setDateFirstAppt] = useState('');
@@ -75,6 +76,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   // would only run on first mount and leave the form blank on edit.
   useEffect(() => {
     setName(employee?.name || '');
+    setGender(employee?.gender || '');
     setGrade(employee?.grade || '');
     setCadre(employee?.cadre || '');
     setDateFirstAppt(employee?.date_first_appt || '');
@@ -97,7 +99,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   }, [employee]);
 
   const resetForm = () => {
-    setName(''); setGrade(''); setCadre(''); setDateFirstAppt(''); setDatePresentAppt('');
+    setName(''); setGender(''); setGrade(''); setCadre(''); setDateFirstAppt(''); setDatePresentAppt('');
     setDob(''); setPhone(''); setLga(''); setPsn(''); setStation(''); setRemarks('');
     setPhoto(''); setPhotoPreview('');
     setPhotoUploading(false);
@@ -145,7 +147,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
     if (Object.keys(newErrors).length > 0) return;
     setSaving(true);
     const success = await onSave({
-      id: employee?.id, name: name.trim(), grade, cadre,
+      id: employee?.id, name: name.trim(), gender: gender || null, grade, cadre,
       date_first_appt: dateFirstAppt || null, date_present_appt: datePresentAppt || null,
       dob: dob || null, phone: phone.trim(), lga, psn: psn.trim(), station,
       photo: photo || null, remarks: remarks.trim(),
@@ -245,6 +247,17 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
             className={inputClass}
             style={{ background: 'var(--color-surface)', borderColor: errors.name ? 'var(--color-error)' : 'var(--color-border)', color: 'var(--color-text-primary)' }} />
           {errors.name && <div className={errorClass} style={{ color: 'var(--color-error)' }}>{errors.name}</div>}
+        </div>
+
+        {/* Gender */}
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={{ color: 'var(--color-text-secondary)' }}>Gender</label>
+          <select value={gender} onChange={e => setGender(e.target.value)} className={selectClass}
+            style={{ background: 'var(--color-surface)', backgroundImage: chevronSvg, borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
+            <option value="">— Select —</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+          </select>
         </div>
 
         {/* Grade */}

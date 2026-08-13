@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabase/client';
+import { syncFaviconFromLogo } from '../lib/favicon';
 import { GraduationCap, Shield } from 'lucide-react';
 
 interface LoginProps {
@@ -25,7 +26,10 @@ export function Login({ onBackToSite }: LoginProps) {
     (async () => {
       try {
         const { data } = await supabase.from('site_content').select('logo_url').single();
-        if (!cancelled && data?.logo_url) setLogoUrl(data.logo_url);
+        if (!cancelled && data?.logo_url) {
+          setLogoUrl(data.logo_url);
+          syncFaviconFromLogo(data.logo_url);
+        }
       } catch { /* keep fallback */ }
     })();
     return () => { cancelled = true; };

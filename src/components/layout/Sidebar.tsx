@@ -1,7 +1,9 @@
 /* Restyled from scratch - Adamawa State Mass Education Board
    Official Government Website */
 
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '@/supabase/client';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { ROLE_LABELS, type Permission } from '@/lib/roles';
@@ -9,7 +11,7 @@ import {
   LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
   GraduationCap, BookOpen, Building2, Settings, FileText,
   Download, Printer, Plus, LogOut, UserCog, UsersRound,
-  Newspaper, Image, MessageSquare,
+  Newspaper, Image, MessageSquare, CalendarClock,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -46,6 +48,7 @@ const navSections: NavSection[] = [
     items: [
       { page: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
       { page: 'employees', icon: <Users size={18} />, label: 'All Employees', badge: true },
+      { page: 'account', icon: <UserCog size={18} />, label: 'My Account' },
     ],
   },
   {
@@ -55,6 +58,7 @@ const navSections: NavSection[] = [
       { page: 'lga', icon: <Map size={18} />, label: 'LGA of Origin' },
       { page: 'grade', icon: <BarChart3 size={18} />, label: 'Grade Level' },
       { page: 'appointment', icon: <Calendar size={18} />, label: 'Appointment Date' },
+      { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
       { page: 'centres', icon: <GraduationCap size={18} />, label: 'Learning Centres' },
     ],
   },
@@ -99,6 +103,16 @@ export function Sidebar({
   onPrint, onLogout, employeeCount, unreadContactCount = 0, mobileOpen, onMobileClose,
 }: SidebarProps) {
   const { user, role, can } = useAuth();
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+
+  // Show the board's actual logo (from CMS) in the sidebar when one is set.
+  useEffect(() => {
+    let cancelled = false;
+    supabase.from('site_content').select('logo_url').single()
+      .then(({ data }) => { if (!cancelled && data?.logo_url) setLogoUrl(data.logo_url); })
+      .catch(() => { /* keep the icon fallback */ });
+    return () => { cancelled = true; };
+  }, []);
 
   const visibleSections = navSections.filter(s => !s.permission || can(s.permission));
   const visibleActions = actions.filter(a => can(a.permission));
@@ -122,9 +136,15 @@ export function Sidebar({
     <aside className="w-64 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col h-full overflow-hidden">
       {/* Logo / Brand */}
       <div className="flex items-center gap-3 px-4 py-4 border-b border-sidebar-border shrink-0">
-        <div className="w-10 h-10 rounded-lg bg-gold flex items-center justify-center shrink-0">
-          <GraduationCap className="w-5 h-5 text-primary-dark" />
-        </div>
+        {logoUrl ? (
+          <div className="w-10 h-10 rounded-lg bg-sidebar-accent border border-sidebar-border flex items-center justify-center shrink-0 overflow-hidden">
+            <img src={logoUrl} alt="AMEB logo" className="w-full h-full object-contain p-1" />
+          </div>
+        ) : (
+          <div className="w-10 h-10 rounded-lg bg-gold flex items-center justify-center shrink-0">
+            <GraduationCap className="w-5 h-5 text-primary-dark" />
+          </div>
+        )}
         <div className="min-w-0">
           <div className="text-xs font-bold font-heading leading-tight text-sidebar-primary truncate">
             Adamawa MEB

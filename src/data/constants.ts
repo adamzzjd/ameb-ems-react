@@ -84,6 +84,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   lga:           { title: 'By LGA of Origin',        subtitle: 'Staff grouped by local government' },
   grade:         { title: 'By Grade Level',          subtitle: 'Staff grouped by grade' },
   appointment:   { title: 'By Appointment Date',     subtitle: 'Staff sorted by date of first appointment' },
+  retirement:    { title: '🎓 Retirement & Tenure',   subtitle: 'Age 60 / 35 years of service projections' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
   facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },
@@ -99,4 +100,5 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   'cms-enrolments': { title: '📈 Enrolment Statistics', subtitle: 'Per-year learner figures & NGO partners' },
   users:          { title: '👤 User Management',       subtitle: 'Create users and assign roles' },
   'audit-log':    { title: '🕵️ Audit Log',              subtitle: 'Who did what, when' },
+  account:        { title: '👤 My Account',            subtitle: 'Profile & password' },
 };

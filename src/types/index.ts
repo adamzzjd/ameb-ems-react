@@ -2,6 +2,7 @@
 export interface Employee {
   id: string;
   name: string;
+  gender: string | null;
   grade: string | null;
   cadre: string | null;
   date_first_appt: string | null;
@@ -19,6 +20,7 @@ export interface Employee {
 
 export interface EmployeeFormData {
   name: string;
+  gender: string;
   grade: string;
   cadre: string;
   date_first_appt: string;
@@ -290,4 +292,5 @@ export type AppPage =
   | 'cms-inbox'
   | 'cms-enrolments'
   | 'users'
-  | 'audit-log';
+  | 'audit-log'
+  | 'account';

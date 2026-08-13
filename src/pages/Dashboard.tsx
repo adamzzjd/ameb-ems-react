@@ -38,20 +38,27 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
     const byGrade: Record<string, number> = {};
     const byLGA: Record<string, number> = {};
     const byStation: Record<string, number> = {};
+    const byGender: Record<string, number> = {};
     employees.forEach(e => {
       const g = e.grade || 'Unknown';
       const l = e.lga || 'Unknown';
       const s = e.station || 'Unknown';
+      const x = e.gender || 'Not stated';
       byGrade[g] = (byGrade[g] || 0) + 1;
       byLGA[l] = (byLGA[l] || 0) + 1;
       byStation[s] = (byStation[s] || 0) + 1;
+      byGender[x] = (byGender[x] || 0) + 1;
     });
+    const male = byGender['Male'] || 0;
+    const female = byGender['Female'] || 0;
+    const genderKnown = male + female;
+    const malePct = genderKnown ? Math.round((male / genderKnown) * 100) : 0;
     const recent = [...employees]
       .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
       .slice(0, 6);
     const maxG = Math.max(1, ...Object.values(byGrade));
     const maxL = Math.max(1, ...Object.values(byLGA));
-    return { byGrade, byLGA, byStation, recent, maxG, maxL };
+    return { byGrade, byLGA, byStation, byGender, male, female, malePct, recent, maxG, maxL };
   }, [employees]);
 
   return (
@@ -89,6 +96,26 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
           );
         })}
       </div>
+
+      {/* Gender distribution */}
+      {employees.length > 0 && (
+        <div className="rounded-xl border px-4 py-3 mb-3.5" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+          <div className="flex items-center justify-between mb-2.5">
+            <span className="text-[13px] font-bold" style={{ color: 'var(--color-text-primary)' }}>Gender Distribution</span>
+            <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+              {stats.male} ♂ · {stats.female} ♀ {stats.byGender['Not stated'] ? `· ${stats.byGender['Not stated']} not stated` : ''}
+            </span>
+          </div>
+          <div className="flex h-[9px] rounded overflow-hidden" style={{ background: 'var(--color-surface-raised)' }}>
+            <div className="h-full transition-all duration-500" style={{ background: 'var(--color-primary)', width: `${stats.malePct}%` }} />
+            <div className="h-full transition-all duration-500" style={{ background: 'var(--color-gold)', width: `${100 - stats.malePct}%` }} />
+          </div>
+          <div className="flex justify-between mt-1.5 text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+            <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{ background: 'var(--color-primary)' }} />Male {stats.malePct}%</span>
+            <span><span className="inline-block w-2 h-2 rounded-full mr-1" style={{ background: 'var(--color-gold)' }} />Female {100 - stats.malePct}%</span>
+          </div>
+        </div>
+      )}
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5 mb-4">

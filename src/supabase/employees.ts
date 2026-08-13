@@ -19,6 +19,7 @@ export async function dbLoadAll(): Promise<{ data: Employee[] | null; error: Err
 export async function dbSave(emp: Partial<Employee> & { name: string }): Promise<{ data: Employee | null; error: Error | null }> {
   const payload = {
     name: emp.name,
+    gender: emp.gender || null,
     grade: emp.grade || null,
     cadre: emp.cadre || null,
     date_first_appt: emp.date_first_appt || null,

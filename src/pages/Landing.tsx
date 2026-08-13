@@ -11,6 +11,7 @@ import {
 } from 'framer-motion';
 import { useCmsData } from '@/hooks/useCmsData';
 import { useTheme } from '@/hooks/useTheme';
+import { syncFaviconFromLogo } from '@/lib/favicon';
 import { LGAs } from '@/data/constants';
 import { Modal } from '@/components/ui/Modal';
 import { supabase } from '@/supabase/client';
@@ -246,12 +247,33 @@ function renderDetails(details: string | undefined | null): ReactNode[] {
 // SHARED DETAIL-PAGE SHELL (govt bar + sticky header + footer)
 // Used by the Program detail and News article pages.
 // ═══════════════════════════════════════════════════════════════════════════
-function DetailShell({ backLabel, isDark, toggleTheme, onBack, onGoToLogin, children }: {
+// Logo mark used across the public site: shows the CMS logo image when one is
+// uploaded, otherwise the gold GraduationCap placeholder.
+function LogoMark({ url, size = 36 }: { url?: string | null; size?: number }) {
+  if (url) {
+    return (
+      <div
+        className="rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
+        style={{ width: size, height: size, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+      >
+        <img src={url} alt="AMEB logo" className="w-full h-full object-contain" style={{ padding: 3 }} />
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg flex items-center justify-center shrink-0" style={{ width: size, height: size, background: 'var(--color-gold)' }}>
+      <GraduationCap size={Math.round(size * 0.45)} style={{ color: 'var(--color-gold-fg)' }} />
+    </div>
+  );
+}
+
+function DetailShell({ backLabel, isDark, toggleTheme, onBack, onGoToLogin, logoUrl, children }: {
   backLabel: string;
   isDark: boolean;
   toggleTheme: () => void;
   onBack: () => void;
   onGoToLogin: () => void;
+  logoUrl?: string | null;
   children: ReactNode;
 }) {
   return (
@@ -280,9 +302,7 @@ function DetailShell({ backLabel, isDark, toggleTheme, onBack, onGoToLogin, chil
               <ChevronLeft size={16} /> {backLabel}
             </button>
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--color-gold)' }}>
-                <GraduationCap className="w-4.5 h-4.5" style={{ color: 'var(--color-gold-fg)' }} />
-              </div>
+              <LogoMark url={logoUrl} size={36} />
               <div className="hidden sm:block">
                 <div className="text-[13px] font-heading font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Adamawa MEB</div>
                 <div className="text-[8px] tracking-[2.4px] uppercase" style={{ color: 'var(--color-text-muted)' }}>Mass Education Board</div>
@@ -311,9 +331,7 @@ function DetailShell({ backLabel, isDark, toggleTheme, onBack, onGoToLogin, chil
         <div className="max-w-[1000px] mx-auto">
           <div className="flex flex-wrap items-center justify-between gap-4 mb-7">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-gold)' }}>
-                <GraduationCap size={18} style={{ color: 'var(--color-gold-fg)' }} />
-              </div>
+              <LogoMark url={logoUrl} size={36} />
               <div className="text-sm font-heading font-bold text-white">Adamawa State<br />Mass Education Board</div>
             </div>
             <button onClick={onBack} className="text-[13px] font-semibold transition-colors hover:text-gold"
@@ -333,11 +351,12 @@ function DetailShell({ backLabel, isDark, toggleTheme, onBack, onGoToLogin, chil
 // ═══════════════════════════════════════════════════════════════════════════
 // PROGRAM DETAIL PAGE (opened by "Learn more")
 // ═══════════════════════════════════════════════════════════════════════════
-function ProgramDetailPage({ program, programs, isDark, toggleTheme, onBack, onGoToLogin, onEnroll, onOpenProgram }: {
+function ProgramDetailPage({ program, programs, isDark, toggleTheme, onBack, onGoToLogin, onEnroll, onOpenProgram, logoUrl }: {
   program: CmsProgram;
   programs: CmsProgram[];
   isDark: boolean;
   toggleTheme: () => void;
+  logoUrl?: string | null;
   onBack: () => void;
   onGoToLogin: () => void;
   onEnroll: () => void;
@@ -347,7 +366,7 @@ function ProgramDetailPage({ program, programs, isDark, toggleTheme, onBack, onG
   const accent = ['bg-primary', 'bg-gold', 'bg-terracotta', 'bg-success'][programs.findIndex(p => p.id === program.id) % 4] || 'bg-primary';
 
   return (
-    <DetailShell backLabel="Back to Programs" isDark={isDark} toggleTheme={toggleTheme} onBack={onBack} onGoToLogin={onGoToLogin}>
+    <DetailShell backLabel="Back to Programs" isDark={isDark} toggleTheme={toggleTheme} onBack={onBack} onGoToLogin={onGoToLogin} logoUrl={logoUrl}>
       {/* Hero band */}
       <section className="relative px-6 md:px-7 pt-14 pb-12" style={{ background: isDark ? 'var(--color-bg)' : 'var(--color-primary-dark)' }}>
         <div className="absolute inset-0 opacity-[0.03]" style={{
@@ -449,11 +468,12 @@ function ProgramDetailPage({ program, programs, isDark, toggleTheme, onBack, onG
 // ═══════════════════════════════════════════════════════════════════════════
 // NEWS ARTICLE PAGE (opened by "Read more")
 // ═══════════════════════════════════════════════════════════════════════════
-function NewsArticlePage({ article, articles, isDark, toggleTheme, onBack, onGoToLogin, onOpenArticle }: {
+function NewsArticlePage({ article, articles, isDark, toggleTheme, onBack, onGoToLogin, onOpenArticle, logoUrl }: {
   article: CmsNews;
   articles: CmsNews[];
   isDark: boolean;
   toggleTheme: () => void;
+  logoUrl?: string | null;
   onBack: () => void;
   onGoToLogin: () => void;
   onOpenArticle: (id: string) => void;
@@ -462,7 +482,7 @@ function NewsArticlePage({ article, articles, isDark, toggleTheme, onBack, onGoT
   const accent = ['bg-primary', 'bg-gold', 'bg-terracotta', 'bg-success'][articles.findIndex(a => a.id === article.id) % 4] || 'bg-primary';
 
   return (
-    <DetailShell backLabel="Back to News" isDark={isDark} toggleTheme={toggleTheme} onBack={onBack} onGoToLogin={onGoToLogin}>
+    <DetailShell backLabel="Back to News" isDark={isDark} toggleTheme={toggleTheme} onBack={onBack} onGoToLogin={onGoToLogin} logoUrl={logoUrl}>
       {/* Article hero */}
       <section className="relative px-6 md:px-7 pt-14 pb-12" style={{ background: isDark ? 'var(--color-bg)' : 'var(--color-primary-dark)' }}>
         <div className="absolute inset-0 opacity-[0.03]" style={{
@@ -550,6 +570,9 @@ export function Landing({ onGoToLogin }: LandingProps) {
   const { site_content, programs, news, team, gallery, loading } = useCmsData();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
+  // The board's logo (from CMS) — used in the header/footer and as the favicon.
+  const logoUrl = site_content?.logo_url;
+  useEffect(() => { syncFaviconFromLogo(logoUrl); }, [logoUrl]);
   const [selectedProgram, setSelectedProgram] = useState<CmsProgram | null>(null);
   const [selectedNews, setSelectedNews] = useState<CmsNews | null>(null);
 
@@ -698,6 +721,7 @@ export function Landing({ onGoToLogin }: LandingProps) {
         onGoToLogin={onGoToLogin}
         onEnroll={handleGlobalEnroll}
         onOpenProgram={selectProgramById}
+        logoUrl={logoUrl}
       />
     );
   }
@@ -713,6 +737,7 @@ export function Landing({ onGoToLogin }: LandingProps) {
         onBack={() => { setSelectedNews(null); setTimeout(() => scrollTo('news'), 50); }}
         onGoToLogin={onGoToLogin}
         onOpenArticle={selectNewsById}
+        logoUrl={logoUrl}
       />
     );
   }
@@ -745,9 +770,7 @@ export function Landing({ onGoToLogin }: LandingProps) {
         <div className="max-w-[1200px] mx-auto flex items-center justify-between h-[76px] px-4 md:px-7">
           {/* Logo */}
           <motion.div onClick={() => handleScroll('home')} className="flex items-center gap-3 cursor-pointer" whileHover={{ opacity: 0.85 }}>
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'var(--color-gold)' }}>
-              <GraduationCap className="w-5 h-5" style={{ color: 'var(--color-gold-fg)' }} />
-            </div>
+            <LogoMark url={logoUrl} size={40} />
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[15px] font-heading font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Adamawa MEB</span>
@@ -1178,9 +1201,7 @@ export function Landing({ onGoToLogin }: LandingProps) {
             {/* Brand */}
             <div>
               <div className="flex items-center gap-2.5 mb-3.5">
-                <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: 'var(--color-gold)' }}>
-                  <GraduationCap size={18} style={{ color: 'var(--color-gold-fg)' }} />
-                </div>
+                <LogoMark url={logoUrl} size={36} />
                 <div className="text-sm font-heading font-bold text-white">Adamawa State<br />Mass Education Board</div>
               </div>
               <p className="text-[13px] leading-relaxed max-w-[300px]" style={{ color: 'rgba(255,255,255,0.6)' }}>

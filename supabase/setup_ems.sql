@@ -23,6 +23,7 @@
 create table if not exists public.employees (
   id                uuid primary key,
   name              text not null default '',
+  gender            text,
   grade             text,
   cadre             text,
   date_first_appt   text,
@@ -37,6 +38,10 @@ create table if not exists public.employees (
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
 );
+
+-- Add the gender column to databases created before this field existed
+-- (Safe to run multiple times — mirrors the cadres.grade migration pattern).
+alter table public.employees add column if not exists gender text;
 
 -- Guarantee the unique PSN constraint even if an `employees` table already
 -- exists without it (CREATE TABLE IF NOT EXISTS won't retrofit constraints).

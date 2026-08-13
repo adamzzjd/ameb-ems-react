@@ -5,6 +5,7 @@ import { Modal } from '../components/ui/Modal';
 import type { Employee } from '../types';
 import { Pencil, Trash2, X, Printer } from 'lucide-react';
 import { printEmployeeProfile } from '../utils/print';
+import { getRetirementInfo } from '../lib/retirement';
 
 interface EmployeeProfileProps {
   employee: Employee | null;
@@ -32,6 +33,11 @@ function calcAge(dob: string | null | undefined): string {
   let a = n.getFullYear() - b.getFullYear();
   if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--;
   return `${a} yrs`;
+}
+
+function fmtDateObj(d: Date | null): string {
+  if (!d) return '—';
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function initials(name: string): string {
@@ -112,7 +118,16 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, can
       {/* Fields grid */}
       <div className="grid grid-cols-2">
         {[
+          { label: 'Gender', value: employee.gender || '—' },
           { label: 'Date of First Appointment', value: fmtDate(employee.date_first_appt) },
+          ...(() => {
+            const r = getRetirementInfo(employee);
+            return [
+              { label: 'Years of Service', value: r.yearsOfService !== null ? `${r.yearsOfService} yrs` : '—' },
+              { label: 'Retirement Date', value: fmtDateObj(r.retirementDate) + (r.retired ? ' (retired)' : '') },
+            ];
+          })(),
+          { label: 'Date of Present Appointment', value: fmtDate(employee.date_present_appt) },
           { label: 'Date of Present Appointment', value: fmtDate(employee.date_present_appt) },
           { label: 'Date of Birth', value: fmtDate(employee.dob) + (employee.dob ? ` (${calcAge(employee.dob)})` : '') },
           { label: 'Phone Number', value: employee.phone || '—' },
