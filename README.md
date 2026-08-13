@@ -35,7 +35,7 @@ All scripts are idempotent (safe to re-run).
 All images are uploaded to and served from **Cloudinary** (CDN with automatic format/quality optimization) — there is **no Supabase Storage fallback** and no image data in the database. The database stores only the resulting **public Cloudinary URL** in a `text` column.
 
 - Files are resized/compressed **in the browser before upload** (max ~1600px by default, 8 MB per file) to keep uploads small, then uploaded to Cloudinary via an unsigned preset (`f_auto,q_auto` optimization embedded in the URL).
-- Image fields: `site_content.logo_url` (header/footer/login logo), `site_content.hero_image` (hero background), `site_content.about_image` (About section photo), `cms_team.photo` (leadership photo), `cms_news.image` (news thumbnail), `cms_gallery.image` (gallery photos), `employees.photo` (passport photo).
+- Image fields: `site_content.logo_url` (header/footer/login logo), `site_content.hero_image` (hero background), `site_content.about_image` (About section photo), `cms_programs.image` (program cover photo), `cms_team.photo` (leadership photo), `cms_news.image` (news thumbnail), `cms_gallery.image` (gallery photos), `employees.photo` (passport photo).
 - `scripts/diag-count.mjs` (`npm run diag:images`) reports how many rows still hold base64 / Supabase Storage / Cloudinary URLs — run it to confirm the database is Cloudinary-only.
 
 #### ☁️ Cloudinary setup (required)

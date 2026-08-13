@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 13, 2026 (Phase 12 — Logo/favicon, gender reporting, filtered export, My Account, retirement tracking)
+> **Last updated:** August 13, 2026 (Phase 13 — animated gallery slideshow + schema drift fix)
 
 ---
 
@@ -183,6 +183,16 @@
 | 12.6 Retirement & tenure | ✅ Done | `src/lib/retirement.ts` (pure, tested): age 60 / 35 years of service, whichever first. New **Retirement & Tenure** page (summary cards, search, status chips, sortable list) + Years of Service / Retirement Date on the employee profile |
 | 12.7 Tests | ✅ Done | 10 new retirement tests (78 total) — age, service years, earlier-of rule, retired/due-soon flags; timezone-safe date parsing |
 | 12.8 Docs | ✅ Done | README employees schema row updated (gender, retirement source fields) |
+
+## 🚀 Phase 13: Animated Gallery Slideshow + Schema Drift Fix (Complete)
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 13.1 Schema drift fix | ✅ Done | Live DB was missing `cms_programs.image` (the Programs cover-photo feature predates it; `CREATE TABLE IF NOT EXISTS` never retrofits columns). Added the idempotent ALTER to `setup_storage.sql` (now 8 image columns) + README field list. Verified live: all 8 image columns present across 6 tables |
+| 13.2 Animated slideshow | ✅ Done | `GallerySlideshow` rebuilt in `Landing.tsx`: direction-aware slide+fade transitions (variants + custom direction), Ken Burns slow zoom on the active image, gold autoplay progress bar synced to the 5s timer, animated caption over a gradient scrim, frosted-glass arrows with hover/press feedback, direction-aware dot navigation |
+| 13.3 Accessibility | ✅ Done | All motion respects `prefers-reduced-motion`; pauses on hover; aria-labels kept on arrows/dots; counter retained |
+| 13.4 Verification | ✅ Done | Typecheck + lint (0 errors) + build pass; headless-Chrome render confirmed gallery loads, autoplay advances (counter 1→2), arrows render, no errors |
+| 13.5 Custom favicon | ✅ Done | `public/favicon.svg` replaced with the board's own flame-of-knowledge mark (ADSMEB) — the tab icon now matches the brand |
 
 ---
 

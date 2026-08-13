@@ -33,6 +33,9 @@ alter table public.site_content add column if not exists logo_url text;
 alter table public.site_content add column if not exists hero_image text;
 alter table public.site_content add column if not exists about_image text;
 
+-- cms_programs: optional cover photo (replaces the icon on the public site)
+alter table public.cms_programs add column if not exists image text;
+
 -- cms_news: optional thumbnail image (replaces the icon banner when set)
 alter table public.cms_news add column if not exists image text;
 
@@ -45,13 +48,13 @@ alter table public.cms_gallery add column if not exists image text;
 -- employees: passport photo
 alter table public.employees add column if not exists photo text;
 
--- ── 2. Verify all seven columns now exist ───────────────────────────────────
+-- ── 2. Verify all eight columns now exist ───────────────────────────────────
 -- select table_name, column_name
 --   from information_schema.columns
 --   where table_schema = 'public'
 --     and (table_name, column_name) in (
 --       ('site_content', 'logo_url'),  ('site_content', 'hero_image'), ('site_content', 'about_image'),
---       ('cms_news', 'image'),          ('cms_team', 'photo'),
+--       ('cms_programs', 'image'),      ('cms_news', 'image'),          ('cms_team', 'photo'),
 --       ('cms_gallery', 'image'),       ('employees', 'photo')
 --     )
 --   order by table_name, column_name;

@@ -155,20 +155,31 @@ function SectionHeading({ tag, title, sub, onDark = false }: { tag: string; titl
 }
 
 // ── Gallery Slideshow ──────────────────────────────────────────────────────
+// Direction-aware slide + fade transitions with a slow Ken Burns zoom on the
+// active image, an autoplay progress bar, and an animated caption.
+const SLIDE_DURATION = 5000; // ms per slide (keep in sync with the progress bar)
+const SLIDE_ANIM: Variants = {
+  enter: (dir: number) => ({ x: dir >= 0 ? 70 : -70, opacity: 0, scale: 1.04 }),
+  center: { x: 0, opacity: 1, scale: 1, transition: { duration: 0.55, ease: easeOut } },
+  exit: (dir: number) => ({ x: dir >= 0 ? -70 : 70, opacity: 0, scale: 0.98, transition: { duration: 0.4, ease: 'easeIn' as const } }),
+};
+
 function GallerySlideshow({ items }: { items: { image?: string; label: string }[] }) {
   const reduced = useReducedMotion();
   const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
   const [paused, setPaused] = useState(false);
   const count = items.length;
   const go = useCallback((dir: 1 | -1) => {
     if (count <= 1) return;
+    setDirection(dir);
     setIndex(i => (i + dir + count) % count);
   }, [count]);
   useEffect(() => {
     if (count <= 1 || reduced || paused) return;
-    const t = setInterval(() => setIndex(i => (i + 1) % count), 5000);
+    const t = setInterval(() => go(1), SLIDE_DURATION);
     return () => clearInterval(t);
-  }, [count, reduced, paused]);
+  }, [count, reduced, paused, go]);
   useEffect(() => { if (count > 0 && index >= count) setIndex(0); }, [count, index]);
   if (count === 0) return null;
   const current = index >= count ? 0 : index;
@@ -178,10 +189,26 @@ function GallerySlideshow({ items }: { items: { image?: string; label: string }[
   return (
     <div onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)} className="max-w-[920px] mx-auto">
       <div className="relative rounded-2xl overflow-hidden border border-border bg-surface-warm aspect-video max-h-[540px]">
-        <AnimatePresence>
-          <motion.div key={current} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="absolute inset-0">
+        <AnimatePresence initial={false} custom={direction}>
+          <motion.div
+            key={current}
+            custom={direction}
+            variants={SLIDE_ANIM}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            className="absolute inset-0"
+          >
             {item.image ? (
-              <img src={item.image} alt={item.label} className="w-full h-full object-cover" />
+              // Ken Burns: slow zoom-out on the active image for a cinematic feel.
+              <motion.img
+                src={item.image}
+                alt={item.label}
+                className="w-full h-full object-cover"
+                initial={{ scale: 1.08 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: reduced ? 0 : 6.5, ease: 'linear' }}
+              />
             ) : (
               <div className={`w-full h-full flex items-center justify-center text-6xl ${accentColors[current % accentColors.length]} text-white`}>
                 📸
@@ -189,20 +216,45 @@ function GallerySlideshow({ items }: { items: { image?: string; label: string }[
             )}
           </motion.div>
         </AnimatePresence>
-        <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/50 text-white text-xs font-bold">{current + 1} / {count}</div>
-        {caption && <div className="absolute bottom-0 left-0 right-0 px-5 py-3 bg-black/60 text-white text-sm font-semibold">{caption}</div>}
+
+        {/* Autoplay progress bar */}
+        {count > 1 && !paused && !reduced && (
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/20">
+            <motion.div
+              key={current}
+              className="h-full origin-left"
+              style={{ background: 'var(--color-gold)' }}
+              initial={{ scaleX: 0 }}
+              animate={{ scaleX: 1 }}
+              transition={{ duration: SLIDE_DURATION / 1000, ease: 'linear' }}
+            />
+          </div>
+        )}
+
+        <div className="absolute top-3 right-3 px-3 py-1 rounded-full bg-black/50 text-white text-xs font-bold backdrop-blur-sm">{current + 1} / {count}</div>
+        {caption && (
+          <motion.div
+            key={`cap-${current}`}
+            initial={{ y: 14, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.45, delay: 0.18, ease: easeOut }}
+            className="absolute bottom-0 left-0 right-0 px-5 py-3 bg-gradient-to-t from-black/80 via-black/60 to-transparent text-white text-sm font-semibold"
+          >
+            {caption}
+          </motion.div>
+        )}
         {count > 1 && (
           <>
-            <button onClick={() => go(-1)} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/35 border border-white/30 text-white flex items-center justify-center hover:bg-black/50 transition-colors" aria-label="Previous"><ChevronLeft size={18} /></button>
-            <button onClick={() => go(1)} className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/35 border border-white/30 text-white flex items-center justify-center hover:bg-black/50 transition-colors" aria-label="Next"><ChevronRight size={18} /></button>
+            <button onClick={() => go(-1)} className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/35 border border-white/30 text-white flex items-center justify-center hover:bg-black/50 hover:scale-105 active:scale-95 transition-all backdrop-blur-sm" aria-label="Previous"><ChevronLeft size={18} /></button>
+            <button onClick={() => go(1)} className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/35 border border-white/30 text-white flex items-center justify-center hover:bg-black/50 hover:scale-105 active:scale-95 transition-all backdrop-blur-sm" aria-label="Next"><ChevronRight size={18} /></button>
           </>
         )}
       </div>
       {count > 1 && (
         <div className="flex justify-center gap-2 mt-4">
           {items.map((_, i) => (
-            <button key={i} onClick={() => setIndex(i)} aria-label={`Slide ${i + 1}`}
-              className={`h-2.5 rounded-full transition-all duration-300 ${i === current ? 'w-7 bg-primary' : 'w-2.5 bg-border'}`} />
+            <button key={i} onClick={() => { setDirection(i > current ? 1 : -1); setIndex(i); }} aria-label={`Slide ${i + 1}`}
+              className={`h-2.5 rounded-full transition-all duration-300 hover:scale-110 ${i === current ? 'w-7 bg-primary' : 'w-2.5 bg-border hover:bg-primary/40'}`} />
           ))}
         </div>
       )}
