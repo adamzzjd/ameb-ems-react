@@ -89,8 +89,14 @@ create policy "registrations_delete" on public.employee_registrations
   for delete using (public.auth_role() in ('admin', 'super_admin'));
 
 -- ── 3. Anonymous self-service functions ──────────────────────────────────────
+-- NOTE: each function is DROPPED before being recreated. The first deployed
+-- versions had a different return type/signature, and PostgreSQL refuses to
+-- `create or replace` a function whose return type changed (42P13) — dropping
+-- first makes re-runs of this script always succeed.
+
 -- One officer by exact PSN, full editable profile (everything except PSN and
 -- the lockout timestamp, which surfaces as `already_submitted`).
+drop function if exists public.self_service_lookup(text);
 create or replace function public.self_service_lookup(psn text)
 returns table (
   id                 uuid,
@@ -137,6 +143,7 @@ grant execute on function public.self_service_lookup(text) to authenticated;
 -- editable fields (everything except id, psn and the lockout/timestamps).
 -- Clears a field when its value is null/empty; stamps the lockout and writes
 -- an audit row. Returns { ok, error? }.
+drop function if exists public.submit_self_service_update(uuid, jsonb);
 create or replace function public.submit_self_service_update(employee_id uuid, changes jsonb)
 returns jsonb
 language plpgsql
@@ -216,6 +223,7 @@ grant execute on function public.submit_self_service_update(uuid, jsonb) to anon
 grant execute on function public.submit_self_service_update(uuid, jsonb) to authenticated;
 
 -- Status of an earlier new-officer submission (for the "not found" flow).
+drop function if exists public.check_employee_registration(text);
 create or replace function public.check_employee_registration(psn text)
 returns table (
   status       text,
@@ -242,6 +250,7 @@ grant execute on function public.check_employee_registration(text) to authentica
 -- already in the register and not already submitted, and that `changes` only
 -- contains editable fields with string/null (or numeric) values. Returns
 -- { ok, request_id?, error? }.
+drop function if exists public.submit_employee_registration(text, jsonb);
 create or replace function public.submit_employee_registration(psn text, changes jsonb)
 returns jsonb
 language plpgsql

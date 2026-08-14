@@ -229,7 +229,7 @@
 
 ## 🚀 Phase 16: Employee Self-Service Portal (Code Complete)
 
-> **One-time go-live:** run `supabase/setup_selfservice.sql` in the Supabase SQL Editor (adds `employees.address` + `employees.self_service_submitted_at`, creates `employee_registrations` + the four security-definer functions), then re-run `supabase/setup_rls.sql` (idempotent).
+> **One-time go-live:** run `supabase/setup_selfservice.sql` in the Supabase SQL Editor (adds `employees.address` + `employees.self_service_submitted_at`, creates `employee_registrations` + the four security-definer functions), then re-run `supabase/setup_rls.sql` (idempotent). **Re-run safe:** the script now DROPs each function before recreating it, so re-running it after a code update never hits PostgreSQL error 42P13 ("cannot change return type") — the first deployed `self_service_lookup` had a smaller return type and `create or replace` alone would refuse to upgrade it. This is also how the "Field dob cannot be updated" error was resolved: the live function was the pre-rework version that only allowed phone/LGA/address/photo, and re-running the updated script replaced it (live DB was one release behind).
 
 **Model (per the board, August 13):** existing officers update ALL their fields (everything except PSN) — changes apply **DIRECTLY**, one-shot. New officers (PSN not in the register) self-register their full details → **PENDING** → admin approves (creates the record). The earlier `employee_update_requests` design is superseded (dropped by the script).
 
