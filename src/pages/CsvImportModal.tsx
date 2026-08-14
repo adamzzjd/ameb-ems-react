@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Papa from 'papaparse';
 import { Modal } from '../components/ui/Modal';
 import type { Employee } from '../types';
-import { buildColumnMapping, buildImportRecords } from '../lib/csv';
+import { buildColumnMapping, buildImportPlan, type ImportPlan } from '../lib/csv';
 
 interface CsvImportModalProps {
   open: boolean;
@@ -17,6 +17,13 @@ function esc(s: string): string {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
+const chip: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  background: 'var(--color-surface)', border: '1px solid var(--color-border)',
+  borderRadius: 6, padding: '3px 8px', fontSize: 11,
+  color: 'var(--color-text-secondary)',
+};
+
 export function CsvImportModal({ open, onClose, onImport, existingEmployees }: CsvImportModalProps) {
   const [step, setStep] = useState<'upload' | 'preview' | 'importing'>('upload');
   const [headers, setHeaders] = useState<string[]>([]);
@@ -25,6 +32,7 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
   const [progress, setProgress] = useState(0);
   const [imported, setImported] = useState(0);
   const [totalToImport, setTotalToImport] = useState(0);
+  const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [error, setError] = useState('');
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -65,6 +73,12 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
             setError('CSV must have a Name column (e.g. "Full Name", "Name", "Staff Name").');
             return;
           }
+
+          // Build the import plan up-front so the preview shows exactly what
+          // will be imported and what will be skipped (existing PSNs untouched).
+          const existingNames = new Set(existingEmployees.map(e => e.name.toLowerCase().trim()));
+          const existingPsns = new Set(existingEmployees.map(e => (e.psn || '').trim().toUpperCase()));
+          setPlan(buildImportPlan(data, m, existingNames, existingPsns));
           setStep('preview');
         },
         error: (err: { message: string }) => setError('Failed to parse CSV: ' + err.message),
@@ -80,27 +94,30 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
     setStep('importing');
     setProgress(0);
 
+    // Re-plan at import time using the latest register state, so a PSN that
+    // was added between preview and import is still skipped untouched.
     const existingNames = new Set(existingEmployees.map(e => e.name.toLowerCase().trim()));
+    const existingPsns = new Set(existingEmployees.map(e => (e.psn || '').trim().toUpperCase()));
+    const p = buildImportPlan(rows, mapping, existingNames, existingPsns);
 
-    // Build records to insert (duplicate-safe — existing names are skipped)
-    const toInsert = buildImportRecords(rows, mapping, existingNames);
-
-    if (toInsert.length === 0) {
+    if (p.records.length === 0) {
       setStep('preview');
-      setError('All records already exist in the database — nothing to import.');
+      setPlan(p);
+      setError('Nothing new to import — every row was skipped (already in the register, empty name, or PSN already on file).');
       return;
     }
 
-    setTotalToImport(toInsert.length);
+    setPlan(p);
+    setTotalToImport(p.records.length);
     const batchSize = 50;
     let count = 0;
 
-    for (let i = 0; i < toInsert.length; i += batchSize) {
-      const batch = toInsert.slice(i, i + batchSize);
+    for (let i = 0; i < p.records.length; i += batchSize) {
+      const batch = p.records.slice(i, i + batchSize);
       const imported = await onImport(batch);
       count += imported;
       setImported(count);
-      setProgress(Math.round(((i + batch.length) / toInsert.length) * 100));
+      setProgress(Math.round(((i + batch.length) / p.records.length) * 100));
     }
 
     // Done — close modal
@@ -137,7 +154,7 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
                 background: 'var(--color-primary)', color: '#fff',
               }}
             >
-              📥 Import All {rows.length} Records
+              📥 Import {plan?.records.length ?? 0} New Records
             </button>
           </>
         ) : (
@@ -179,7 +196,8 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
             Choose a CSV file
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-            Accepted columns: Name, Grade, Cadre, Phone, Station, LGA, PSN, DOB, Appointment Dates, Remarks
+            Accepted columns: Name, PSN, Grade Level, Cadre, Phone, Station, LGA, DOB, Appointment Dates, Salary, Remarks<br />
+            Existing PSNs are skipped untouched · grades auto-formatted to GL xx · cadres matched to the register
           </div>
           <label style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -278,12 +296,52 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
             </table>
           </div>
 
+          {/* Import plan summary */}
+          {plan && (() => {
+            const s = plan.skipped;
+            const totalSkipped = s.noName + s.nameDup + s.psnDup + s.psnDupInFile;
+            return (
+              <div style={{
+                background: 'var(--color-surface-warm)', border: '1px solid var(--color-border)',
+                borderRadius: 8, padding: 12, marginTop: 10, fontSize: 12,
+              }}>
+                <div style={{ fontWeight: 700, color: 'var(--color-text-primary)', marginBottom: 6 }}>
+                  📥 {plan.records.length} to import · {totalSkipped} skipped
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {s.nameDup > 0 && (
+                    <span style={chip}>Name already in register: <strong>{s.nameDup}</strong></span>
+                  )}
+                  {s.psnDup > 0 && (
+                    <span style={{ ...chip, background: '#e8f5e9', borderColor: '#86efac', color: '#166534' }}>
+                      PSN already on file — <strong>{s.psnDup}</strong> skipped untouched
+                    </span>
+                  )}
+                  {s.psnDupInFile > 0 && (
+                    <span style={chip}>Duplicate PSN inside sheet: <strong>{s.psnDupInFile}</strong></span>
+                  )}
+                  {s.noName > 0 && (
+                    <span style={chip}>Empty name: <strong>{s.noName}</strong></span>
+                  )}
+                </div>
+                {plan.unmatchedCadres.length > 0 && (
+                  <div style={{ marginTop: 8, color: 'var(--color-text-muted)' }}>
+                    Cadre values not found in the register (kept as typed):{' '}
+                    {plan.unmatchedCadres.slice(0, 5).join(', ')}
+                    {plan.unmatchedCadres.length > 5 ? ` +${plan.unmatchedCadres.length - 5} more` : ''}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Dedup notice */}
           <div style={{
             background: '#e8f5e9', border: '1px solid #86efac', borderRadius: 8,
             padding: 10, marginTop: 10, fontSize: 12, color: '#166534',
           }}>
-            <strong>✓ Duplicate-safe:</strong> Employees whose name already exists in the database will be skipped automatically.
+            <strong>✓ Safe import:</strong> Rows whose name <em>or PSN</em> already exists in the database are skipped —
+            existing records are <strong>never overwritten</strong>.
           </div>
         </div>
       )}

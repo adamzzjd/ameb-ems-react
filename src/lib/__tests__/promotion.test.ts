@@ -50,10 +50,12 @@ describe('nextGrade', () => {
 
 describe('nextPromotionDate', () => {
   it('is the present appointment date plus the interval', () => {
-    // Appointed 12 months ago → due 24 months from today.
-    const next = nextPromotionDate(monthsAgo(12));
-    const expected = new Date();
-    expected.setFullYear(expected.getFullYear() + PROMOTION_INTERVAL_YEARS - 1);
+    // The due date is derived from the appointment date, not "today", so the
+    // expectation is computed from the same input — deterministic on any day.
+    const appointed = monthsAgo(12);
+    const next = nextPromotionDate(appointed);
+    const expected = new Date(appointed + 'T00:00:00');
+    expected.setFullYear(expected.getFullYear() + PROMOTION_INTERVAL_YEARS);
     expect(next?.getFullYear()).toBe(expected.getFullYear());
     expect(next?.getMonth()).toBe(expected.getMonth());
     expect(next?.getDate()).toBe(expected.getDate());

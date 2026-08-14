@@ -1,5 +1,6 @@
 // ── CSV import/export helpers (pure — unit tested) ──────────────────────────
 import type { Employee } from '../types';
+import { GRADES, CADRE_NAMES } from '../data/constants';
 
 // Column name mapping — CSV column headers (normalized) → system field names.
 export const CSV_COLUMN_MAP: Record<string, string> = {
@@ -37,24 +38,63 @@ export function buildColumnMapping(headers: string[]): Record<string, string | n
   return m;
 }
 
+/** Normalize a grade value to the system's "GL xx" format ("07" → "GL 07"). */
+export function normalizeGrade(raw: string): string {
+  const v = raw.trim();
+  if (!v) return '';
+  const upper = v.toUpperCase().replace(/\s+/g, ' ').trim();
+  if ((GRADES as readonly string[]).includes(upper)) return upper;
+  // Extract a level like 7, 07, 7/1 or 15/9 from anything ("Grade 7", "Level 08/2"…)
+  const m = upper.match(/(\d{1,2})(?:\/(\d+))?/);
+  if (!m) return v;
+  return `GL ${m[1].padStart(2, '0')}${m[2] ? '/' + m[2] : ''}`;
+}
+
+/**
+ * Match a sheet cadre value to the system's cadre list. Returns the canonical
+ * system name when the match is unambiguous, otherwise null (unmatched).
+ */
+export function findCadreMatch(raw: string): string | null {
+  const v = raw.trim();
+  if (!v) return null;
+  const norm = v.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  const exact = CADRE_NAMES.find(c => c.toLowerCase() === norm);
+  if (exact) return exact;
+  const matches = CADRE_NAMES.filter(c => {
+    const cn = c.toLowerCase();
+    return cn.includes(norm) || norm.includes(cn);
+  });
+  return matches.length === 1 ? matches[0] : null;
+}
+
+/**
+ * Match a sheet cadre value to the system's cadre list. Returns the canonical
+ * system name when the match is unambiguous; otherwise the trimmed original.
+ */
+export function matchCadre(raw: string): string {
+  return findCadreMatch(raw) ?? raw.trim();
+}
+
 /**
  * Turn a parsed CSV row into an employee record using the column mapping.
- * Empty values become null (except remarks, which defaults to '').
+ * Empty values become null (except remarks, which defaults to ''). Grade and
+ * cadre are normalized to match the system's lists; PSN is trimmed + uppercased.
  */
 export function mapRowToEmployee(
   row: Record<string, string>,
   sysToCSV: Record<string, string>
 ): Partial<Employee> {
   const pick = (field: string): string => (row[sysToCSV[field]] || '').trim();
+  const psn = pick('psn');
   return {
     name: pick('name'),
     gender: pick('gender') || null,
-    grade: pick('grade') || null,
-    cadre: pick('cadre') || null,
+    grade: normalizeGrade(pick('grade')) || null,
+    cadre: matchCadre(pick('cadre')) || null,
     phone: pick('phone') || null,
     station: pick('station') || null,
     lga: pick('lga') || null,
-    psn: pick('psn') || null,
+    psn: psn ? psn.toUpperCase() : null,
     date_first_appt: pick('date_first_appt') || null,
     date_present_appt: pick('date_present_appt') || null,
     dob: pick('dob') || null,
@@ -66,29 +106,82 @@ export function mapRowToEmployee(
   };
 }
 
+export interface ImportPlan {
+  records: Partial<Employee>[];
+  skipped: {
+    noName: number;
+    nameDup: number;      // name already in the register
+    psnDup: number;       // PSN already in the register — untouched
+    psnDupInFile: number; // same PSN appears twice in the sheet
+  };
+  unmatchedCadres: string[];
+}
+
 /**
- * Build the records to insert: skip rows without a name and rows whose name
- * already exists in the database (duplicate-safe import).
+ * Plan an import: dedupe against the register by NAME and by PSN (existing PSNs
+ * are skipped untouched — never updated), skip in-file duplicate PSNs, normalize
+ * grades/cadres, and report what was skipped and which cadres didn't match.
  */
-export function buildImportRecords(
+export function buildImportPlan(
   rows: Record<string, string>[],
   mapping: Record<string, string | null>,
-  existingNames: Set<string>
-): Partial<Employee>[] {
+  existingNames: Set<string>,
+  existingPsns: Set<string>
+): ImportPlan {
   const nameCol = Object.keys(mapping).find(h => mapping[h] === 'name');
-  if (!nameCol) return [];
+  if (!nameCol) {
+    return { records: [], skipped: { noName: 0, nameDup: 0, psnDup: 0, psnDupInFile: 0 }, unmatchedCadres: [] };
+  }
 
   const sysToCSV: Record<string, string> = {};
   Object.entries(mapping).forEach(([csv, sys]) => {
     if (sys) sysToCSV[sys] = csv;
   });
 
-  return rows
-    .filter(r => {
-      const name = (r[nameCol] || '').trim();
-      return name && !existingNames.has(name.toLowerCase());
-    })
-    .map(r => mapRowToEmployee(r, sysToCSV));
+  const psnCol = Object.keys(mapping).find(h => mapping[h] === 'psn');
+  const cadreCol = Object.keys(mapping).find(h => mapping[h] === 'cadre');
+
+  const skipped = { noName: 0, nameDup: 0, psnDup: 0, psnDupInFile: 0 };
+  const unmatchedCadres = new Set<string>();
+  const seenPsns = new Set<string>();
+  const records: Partial<Employee>[] = [];
+
+  for (const r of rows) {
+    const name = (r[nameCol] || '').trim();
+    if (!name) { skipped.noName++; continue; }
+    if (existingNames.has(name.toLowerCase())) { skipped.nameDup++; continue; }
+
+    const psnRaw = psnCol ? (r[psnCol] || '').trim() : '';
+    const psnKey = psnRaw.toUpperCase();
+    if (psnRaw) {
+      if (existingPsns.has(psnKey)) { skipped.psnDup++; continue; }
+      if (seenPsns.has(psnKey)) { skipped.psnDupInFile++; continue; }
+      seenPsns.add(psnKey);
+    }
+
+    const emp = mapRowToEmployee(r, sysToCSV);
+    if (cadreCol) {
+      const cadreRaw = (r[cadreCol] || '').trim();
+      if (cadreRaw && findCadreMatch(cadreRaw) === null) unmatchedCadres.add(cadreRaw);
+    }
+    records.push(emp);
+  }
+
+  return { records, skipped, unmatchedCadres: [...unmatchedCadres] };
+}
+
+/**
+ * Build the records to insert (records only). Dedupes by name and by PSN — a
+ * PSN already in the register is skipped untouched. See buildImportPlan for
+ * skip/unmatched reporting.
+ */
+export function buildImportRecords(
+  rows: Record<string, string>[],
+  mapping: Record<string, string | null>,
+  existingNames: Set<string>,
+  existingPsns: Set<string> = new Set()
+): Partial<Employee>[] {
+  return buildImportPlan(rows, mapping, existingNames, existingPsns).records;
 }
 
 // ── CSV Export ────────────────────────────────────────────────────────────────

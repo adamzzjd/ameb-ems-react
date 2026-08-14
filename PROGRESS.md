@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 13, 2026 (Phase 16 — Employee self-service portal, address field, update-request review queue)
+> **Last updated:** August 14, 2026 (Phase 16 — self-service portal + PSN-safe CSV import)
 
 ---
 
@@ -221,6 +221,7 @@
 | 15.7 Contact-form email alerts | ✅ Done | `supabase/functions/notify-contact/index.ts` — edge function emails super_admin + admin users via Resend when the public contact form is submitted; `src/lib/notifyContact.ts` fire-and-forget caller; no-op (inbox still works) without `RESEND_API_KEY` |
 | 15.8 Dashboard promotion alert | ✅ Done | Dashboard shows an overdue/due-soon promotion banner (count + Review button → Promotions page) using `getPromotionInfo` |
 | 15.9 Tests | ✅ Done | 41 new tests (127 total): `leave.test.ts` (working days, accrual, validation, calendar, CSV), `payroll.test.ts` (rows, naira formatting, IPPS CSV), `promotion.test.ts` (interval, next grade, due flags) |
+| 15.9a Promotion test determinism | ✅ Done | `nextPromotionDate` test derived its expected date from "today" while the input used a fixed day-of-month — failed whenever today ≠ the 13th. Now computes the expectation from the appointment date itself (deterministic every day) |
 | 15.10 Docs | ✅ Done | `.env.example` documents the `notify-contact` secrets (set on Supabase, not Vite) |
 | 15.11 Stations in enrollment form | ✅ Done | Added **Women Development Centre Malamre** + **Technical College Yola** to the `STATIONS` constant so they appear in the employee enrollment form's station dropdown (ADSMEB HQ already present as "Yola (HQ)"). Note: the form dropdown is driven by the code list, while "Manage Stations" manages the separate `stations` DB table — add the same two names there via **+ Add Station** to keep the two lists in sync |
 
@@ -241,10 +242,11 @@
 | 16.5 New-officer registration | ✅ Done | `public.check_employee_registration(psn)` (pending/rejected status) + `public.submit_employee_registration(psn, changes)` (validated PENDING insert, unique per PSN, audited). Portal shows: registration form → review → "submitted for approval"; re-entry shows "under review" or allows retry after rejection |
 | 16.6 Admin approval queue | ✅ Done | `src/pages/Registrations.tsx` + `src/supabase/registrations.ts` — pending/approved/rejected tabs, submitted-details display, **Approve & Register** (creates the employee record) or **Reject** with a note; every decision audited. `selfservice.review` permission (super_admin + admin), route guard, sidebar entry + live pending badge (`usePendingRegistrations`) |
 | 16.7 Entry point | ✅ Done | "Update your details with your PSN →" link on the Login page (no password needed) |
-| 16.8 Tests | ✅ Done | 1 new CSV-address mapping test + `selfservice.review` assertions in the role matrix (128 total) |
+| 16.8 Tests | ✅ Done | 1 new CSV-address mapping test + `selfservice.review` assertions in the role matrix (128 total); 16.12 adds 7 more CSV tests (135 total) |
 | 16.9 Docs | ✅ Done | `setup_selfservice.sql` setup instructions; README schema note |
 | 16.10 Register by PSN (admin) | ✅ Done | New admin page **Register by PSN** (`src/pages/PsnCheck.tsx`) — paste a list of staff numbers, see which are already in the register vs new, enter names and register the new ones as minimal employee records (audited create). Sidebar under Overview, `employees.import` permission + route guard |
 | 16.11 Header PSN entry | ✅ Done | The public site header now has a visible **Staff PSN** input (desktop nav + mobile menu) — typing a PSN jumps straight into the self-service portal with it prefilled |
+| 16.12 PSN-safe CSV import | ✅ Done | **Import from Register** now skips rows whose **PSN is already on file — untouched, never overwritten** (in addition to name-dedup), dedupes repeated PSNs inside the sheet, normalizes grades to the system's `GL xx` format (`07` → `GL 07`), matches cadres to the register list (unambiguous only; unmatched kept as typed + reported), and shows an up-front plan: N to import · skipped counts (existing name / existing PSN / dup-in-sheet / empty name) + unmatched cadre values. `normalizeGrade`/`findCadreMatch`/`buildImportPlan` in `src/lib/csv.ts` (pure, tested) |
 
 ### PSN not in the database
 Two paths: the officer can **self-register** through the portal (16.5) and be approved by an admin, or the admin can register them directly via **Register by PSN** (16.10).
@@ -321,12 +323,12 @@ Two paths: the officer can **self-register** through the portal (16.5) and be ap
 - `src/hooks/useTheme.tsx` ✅ — Dark/light theme toggle
 - `src/hooks/useToast.tsx` ✅ — Toast notifications (via sonner)
 
-### Unit tests (15 files, 127 tests)
+### Unit tests (15 files, 135 tests)
 - `src/lib/__tests__/utils.test.ts` — cn() utility tests
 - `src/lib/__tests__/roles.test.ts` — Role/permission matrix tests
 - `src/lib/__tests__/retirement.test.ts` — Retirement & tenure math (age 60 / 35 years of service)
 - `src/lib/__tests__/dataQuality.test.ts` — Completeness stats, missing fields, duplicate names
-- `src/pages/__tests__/CsvImport.test.ts` — CSV import helpers (mapping, dedup)
+- `src/pages/__tests__/CsvImport.test.ts` — CSV import helpers (mapping, PSN-safe dedup, grade normalization, cadre matching)
 - `src/pages/cms/__tests__/SiteContent.test.tsx` — CMS editor keeps focus while typing
 - `src/components/__tests__/Button.test.tsx` — Button component tests
 - `src/components/__tests__/Card.test.tsx` — Card component tests
