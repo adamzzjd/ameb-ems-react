@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 14, 2026 (Phase 16 — self-service portal + PSN-safe CSV import)
+> **Last updated:** August 17, 2026 (Phase 16 — self-service portal + PSN-safe CSV import)
 
 ---
 
@@ -242,14 +242,15 @@
 | 16.5 New-officer registration | ✅ Done | `public.check_employee_registration(psn)` (pending/rejected status) + `public.submit_employee_registration(psn, changes)` (validated PENDING insert, unique per PSN, audited). Portal shows: registration form → review → "submitted for approval"; re-entry shows "under review" or allows retry after rejection |
 | 16.6 Admin approval queue | ✅ Done | `src/pages/Registrations.tsx` + `src/supabase/registrations.ts` — pending/approved/rejected tabs, submitted-details display, **Approve & Register** (creates the employee record) or **Reject** with a note; every decision audited. `selfservice.review` permission (super_admin + admin), route guard, sidebar entry + live pending badge (`usePendingRegistrations`) |
 | 16.7 Entry point | ✅ Done | "Update your details with your PSN →" link on the Login page (no password needed) |
-| 16.8 Tests | ✅ Done | 1 new CSV-address mapping test + `selfservice.review` assertions in the role matrix (128 total); 16.12 adds 7 more CSV tests (135 total) |
+| 16.8 Tests | ✅ Done | 1 new CSV-address mapping test + role-matrix assertions (128 total); 16.12 adds 7 more CSV tests (135 total) |
 | 16.9 Docs | ✅ Done | `setup_selfservice.sql` setup instructions; README schema note |
 | 16.10 Register by PSN (admin) | ✅ Done | New admin page **Register by PSN** (`src/pages/PsnCheck.tsx`) — paste a list of staff numbers, see which are already in the register vs new, enter names and register the new ones as minimal employee records (audited create). Sidebar under Overview, `employees.import` permission + route guard |
 | 16.11 Header PSN entry | ✅ Done | The public site header now has a visible **Staff PSN** input (desktop nav + mobile menu) — typing a PSN jumps straight into the self-service portal with it prefilled |
 | 16.12 PSN-safe CSV import | ✅ Done | **Import from Register** now skips rows whose **PSN is already on file — untouched, never overwritten** (in addition to name-dedup), dedupes repeated PSNs inside the sheet, normalizes grades to the system's `GL xx` format (`07` → `GL 07`), matches cadres to the register list (unambiguous only; unmatched kept as typed + reported), and shows an up-front plan: N to import · skipped counts (existing name / existing PSN / dup-in-sheet / empty name) + unmatched cadre values. `normalizeGrade`/`findCadreMatch`/`buildImportPlan` in `src/lib/csv.ts` (pure, tested) |
+| 16.13 Self-service rework | ✅ Done | (a) **Photo bug fixed** — the portal uploaded photos but never sent them on submit (`buildChanges` iterated `FIELDS`, which excludes `photo`); the photo URL is now in the payload + review diff (with thumbnails) + "already submitted" preview. (b) **Self-registration CLOSED** — a PSN not in the register now gets a friendly "contact the Board Office" message; the `employee_registrations` queue, its functions and the whole admin **New Officer Registrations** page/sidebar/badge were removed (new staff come in via CSV import or PSN Tools). (c) **Admin unlock tool** — new `reset_self_service_lock(psn)` SECURITY DEFINER function (admin+ only, audited) + an **Unlock Officer** card on the PSN Tools page (sidebar entry renamed **PSN Tools**) to clear the one-shot lockout for testing/corrections |
 
 ### PSN not in the database
-Two paths: the officer can **self-register** through the portal (16.5) and be approved by an admin, or the admin can register them directly via **Register by PSN** (16.10).
+Self-registration is **closed** — a lookup miss shows a "contact the Board Office" message. New staff are registered by the board office only: via **Import from Register** (CSV, 16.12) or the admin **PSN Tools** page (16.10).
 
 ---
 

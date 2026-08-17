@@ -12,7 +12,7 @@ import {
   GraduationCap, BookOpen, Building2, Settings, FileText,
   Download, Printer, Plus, LogOut, UserCog, UsersRound, Save,
   Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp, Wallet, CalendarDays,
-  ClipboardCheck, UserPlus,
+  UserPlus,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -26,7 +26,6 @@ interface SidebarProps {
   onLogout: () => void;
   employeeCount: number;
   unreadContactCount?: number;
-  pendingUpdateCount?: number;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -52,8 +51,7 @@ const navSections: NavSection[] = [
       { page: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
       { page: 'employees', icon: <Users size={18} />, label: 'All Employees', badge: true },
       { page: 'account', icon: <UserCog size={18} />, label: 'My Account' },
-      { page: 'registrations', icon: <ClipboardCheck size={18} />, label: 'New Officer Registrations', permission: 'selfservice.review' },
-      { page: 'psn-check', icon: <UserPlus size={18} />, label: 'Register by PSN', permission: 'employees.import' },
+      { page: 'psn-check', icon: <UserPlus size={18} />, label: 'PSN Tools', permission: 'employees.import' },
     ],
   },
   {
@@ -110,7 +108,7 @@ const actions: { icon: React.ReactNode; label: string; key: string; permission: 
 
 export function Sidebar({
   currentPage, onNavigate, onAddEmployee, onImportCsv, onExportCsv,
-  onPrint, onBackup, onLogout, employeeCount, unreadContactCount = 0, pendingUpdateCount = 0,
+  onPrint, onBackup, onLogout, employeeCount, unreadContactCount = 0,
   mobileOpen, onMobileClose,
 }: SidebarProps) {
   const { user, role, can } = useAuth();
@@ -205,15 +203,6 @@ export function Sidebar({
                       title={`${unreadContactCount} unread message${unreadContactCount !== 1 ? 's' : ''}`}
                     >
                       {unreadContactCount > 99 ? '99+' : unreadContactCount}
-                    </span>
-                  )}
-                  {item.page === 'registrations' && pendingUpdateCount > 0 && (
-                    <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center text-white"
-                      style={{ background: 'var(--color-warning)' }}
-                      title={`${pendingUpdateCount} pending registration${pendingUpdateCount !== 1 ? 's' : ''}`}
-                    >
-                      {pendingUpdateCount > 99 ? '99+' : pendingUpdateCount}
                     </span>
                   )}
                   {item.badge && (

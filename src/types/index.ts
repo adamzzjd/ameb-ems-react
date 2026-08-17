@@ -243,22 +243,6 @@ export const DOCUMENT_CATEGORIES = [
   'Other',
 ] as const;
 
-// ── New-Officer Self-Service Registrations ───────────────────────────────────
-// Full-detail submissions from officers whose PSN is NOT yet in the register;
-// they are stored PENDING and an admin approves (creating the employee record)
-// or rejects. Existing officers update directly (no approval) — see
-// supabase/setup_selfservice.sql.
-export interface EmployeeRegistration {
-  id: string;
-  psn: string;
-  full_name: string;
-  requested_data: Record<string, string | number | null>;
-  status: 'pending' | 'approved' | 'rejected';
-  submitted_at: string;
-  decided_by: string | null;
-  decided_at: string | null;
-  decided_note: string | null;
-}
 
 // ── Leave Requests ───────────────────────────────────────────────────────────
 export interface LeaveRecord {
@@ -375,6 +359,5 @@ export type AppPage =
   | 'promotions'
   | 'leaves'
   | 'payroll'
-  | 'registrations'
   | 'psn-check'
   | 'data-quality';

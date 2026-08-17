@@ -2,7 +2,7 @@
 -- AMEB EMS — Employee self-service (PSN update portal)
 -- ----------------------------------------------------------------------------
 -- Lets an officer manage their own register details using only their staff
--- number (PSN) — no password. Two paths, per the board's model:
+-- number (PSN) — no password. One path, per the board's model:
 --
 --   EXISTING OFFICER (PSN already in the register)
 --     1. self_service_lookup(psn) returns their FULL profile (all editable
@@ -14,24 +14,23 @@
 --        audit row. The officer can never submit again.
 --
 --   NEW OFFICER (PSN not in the register)
---     1. check_employee_registration(psn) reports any earlier submission.
---     2. They fill in their full details (PSN + all fields).
---     3. submit_employee_registration() stores them as a PENDING
---        employee_registrations row.
---     4. An admin approves → the employee record is created; or rejects.
---        After approval the officer is in the register and gets their own
---        one-shot direct update like everyone else.
+--     Self-registration is CLOSED — a lookup miss shows a "contact the board
+--     office" message. New staff are registered by the board office (CSV
+--     import or the PSN Tools admin page).
+--
+--   ADMIN ESCAPE HATCH
+--     reset_self_service_lock(psn) clears the one-shot lockout for one officer
+--     (admin+ only, audited) — used for testing and corrections.
 --
 -- SECURITY MODEL
 --   Anonymous self-service NEVER touches the employees table through RLS —
 --   it goes through SECURITY DEFINER functions owned by the table owner that
 --   expose a tightly-scoped interface:
---     * self_service_lookup(psn)                — one officer, full editable profile
---     * submit_self_service_update(id, jsonb)   — validated one-shot DIRECT update
---     * check_employee_registration(psn)        — status of an earlier submission
---     * submit_employee_registration(psn, jsonb)— validated PENDING registration
---   employee_registrations itself is only readable/writable by admin+ through
---   normal RLS policies (no insert policy — the function creates rows).
+--     * self_service_lookup(psn)              — one officer, full editable profile
+--     * submit_self_service_update(id, jsonb) — validated one-shot DIRECT update
+--     * reset_self_service_lock(psn)          — admin+ only escape hatch (audited)
+--   No anonymous write path exists: updates go through the validated function
+--   and self-registration is closed.
 --
 -- HOW TO RUN:
 --   1. Open Supabase dashboard → SQL Editor → New query
@@ -44,51 +43,18 @@
 alter table public.employees add column if not exists address text;
 alter table public.employees add column if not exists self_service_submitted_at timestamptz;
 
--- ── 1.5. Supersede the earlier change-request design ───────────────────────
--- The original draft kept pending changes for existing officers in
--- employee_update_requests. The board simplified the model (existing officers
--- update directly; only NEW officers need approval), so that table is replaced
--- by employee_registrations below. Pre-production cleanup — drop if present.
+-- ── 1.5. Superseded designs (pre-production cleanup) ───────────────────────
+-- (a) The first draft kept pending changes for existing officers in
+--     employee_update_requests — replaced by direct updates.
+-- (b) employee_registrations + its functions powered the new-officer
+--     self-registration queue. The board later closed self-registration
+--     entirely (only existing PSNs use the portal), so both are dropped.
 drop table if exists public.employee_update_requests;
+drop table if exists public.employee_registrations;
+drop function if exists public.check_employee_registration(text);
+drop function if exists public.submit_employee_registration(text, jsonb);
 
--- ── 2. New-officer registrations (pending → admin approval) ────────────────
-create table if not exists public.employee_registrations (
-  id              uuid primary key,
-  psn             text not null,
-  full_name       text not null,
-  requested_data  jsonb not null,       -- all submitted fields except psn
-  status          text not null default 'pending'
-                  check (status in ('pending', 'approved', 'rejected')),
-  submitted_at    timestamptz not null default now(),
-  decided_by      uuid,
-  decided_at      timestamptz,
-  decided_note    text
-);
-
--- One pending/approved registration per PSN (case-insensitive).
-create unique index if not exists employee_registrations_psn_unique
-  on public.employee_registrations (lower(psn)) where status in ('pending', 'approved');
-
-create index if not exists employee_registrations_status_idx
-  on public.employee_registrations (status, submitted_at desc);
-
-alter table public.employee_registrations enable row level security;
-
--- admin+ only: the review queue reads, approvals and rejections.
-drop policy if exists "registrations_select" on public.employee_registrations;
-create policy "registrations_select" on public.employee_registrations
-  for select using (public.auth_role() in ('admin', 'super_admin'));
-
-drop policy if exists "registrations_update" on public.employee_registrations;
-create policy "registrations_update" on public.employee_registrations
-  for update using (public.auth_role() in ('admin', 'super_admin'))
-  with check (public.auth_role() in ('admin', 'super_admin'));
-
-drop policy if exists "registrations_delete" on public.employee_registrations;
-create policy "registrations_delete" on public.employee_registrations
-  for delete using (public.auth_role() in ('admin', 'super_admin'));
-
--- ── 3. Anonymous self-service functions ──────────────────────────────────────
+-- ── 2. Anonymous self-service functions ──────────────────────────────────────
 -- NOTE: each function is DROPPED before being recreated. The first deployed
 -- versions had a different return type/signature, and PostgreSQL refuses to
 -- `create or replace` a function whose return type changed (42P13) — dropping
@@ -222,98 +188,41 @@ revoke all on function public.submit_self_service_update(uuid, jsonb) from publi
 grant execute on function public.submit_self_service_update(uuid, jsonb) to anon;
 grant execute on function public.submit_self_service_update(uuid, jsonb) to authenticated;
 
--- Status of an earlier new-officer submission (for the "not found" flow).
-drop function if exists public.check_employee_registration(text);
-create or replace function public.check_employee_registration(psn text)
-returns table (
-  status       text,
-  full_name    text,
-  submitted_at timestamptz
-)
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select r.status, r.full_name, r.submitted_at
-  from public.employee_registrations r
-  where lower(r.psn) = lower(check_employee_registration.psn)
-  order by r.submitted_at desc
-  limit 1;
-$$;
-
-revoke all on function public.check_employee_registration(text) from public;
-grant execute on function public.check_employee_registration(text) to anon;
-grant execute on function public.check_employee_registration(text) to authenticated;
-
--- Submit a new officer's registration for approval. Validates the PSN is not
--- already in the register and not already submitted, and that `changes` only
--- contains editable fields with string/null (or numeric) values. Returns
--- { ok, request_id?, error? }.
-drop function if exists public.submit_employee_registration(text, jsonb);
-create or replace function public.submit_employee_registration(psn text, changes jsonb)
+-- Admin-only escape hatch: clears the one-shot lockout for one officer so
+-- they can update again (used for testing / corrections). Audited.
+drop function if exists public.reset_self_service_lock(text);
+create or replace function public.reset_self_service_lock(psn text)
 returns jsonb
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_allowed    text[] := array[
-    'name', 'gender', 'grade', 'cadre',
-    'date_first_appt', 'date_present_appt', 'dob',
-    'phone', 'lga', 'station', 'address', 'photo',
-    'basic_salary', 'step', 'remarks'
-  ];
-  v_key        text;
-  v_psn        text := btrim(psn);
-  v_request_id uuid;
+  v_emp public.employees%rowtype;
 begin
-  if v_psn = '' then
-    return jsonb_build_object('ok', false, 'error', 'PSN is required.');
+  if public.auth_role() not in ('admin', 'super_admin') then
+    return jsonb_build_object('ok', false, 'error', 'Only administrators can unlock an officer.');
   end if;
 
-  if exists (select 1 from public.employees e where lower(e.psn) = lower(v_psn)) then
-    return jsonb_build_object('ok', false, 'error', 'This PSN is already in the register — use the update form instead.');
+  select * into v_emp from public.employees e where lower(e.psn) = lower(reset_self_service_lock.psn) limit 1;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'No employee found with that PSN.');
   end if;
 
-  if exists (select 1 from public.employee_registrations r
-             where lower(r.psn) = lower(v_psn) and r.status in ('pending', 'approved')) then
-    return jsonb_build_object('ok', false, 'error', 'A registration for this PSN has already been submitted.');
+  if v_emp.self_service_submitted_at is null then
+    return jsonb_build_object('ok', false, 'error', 'This officer has not submitted yet — nothing to unlock.');
   end if;
 
-  if jsonb_typeof(changes) <> 'object' then
-    return jsonb_build_object('ok', false, 'error', 'Invalid registration payload.');
-  end if;
-
-  for v_key in select jsonb_object_keys(changes) loop
-    if not (v_key = any (v_allowed)) then
-      return jsonb_build_object('ok', false, 'error', 'Field "' || v_key || '" is not allowed.');
-    end if;
-    if v_key = 'basic_salary' then
-      if jsonb_typeof(changes -> v_key) not in ('number', 'string', 'null') then
-        return jsonb_build_object('ok', false, 'error', 'Invalid value for "basic_salary".');
-      end if;
-    elsif jsonb_typeof(changes -> v_key) not in ('string', 'null') then
-      return jsonb_build_object('ok', false, 'error', 'Invalid value for "' || v_key || '".');
-    end if;
-  end loop;
-
-  if nullif(changes ->> 'name', '') is null then
-    return jsonb_build_object('ok', false, 'error', 'Name is required.');
-  end if;
-
-  v_request_id := gen_random_uuid();
-  insert into public.employee_registrations (id, psn, full_name, requested_data, status, submitted_at)
-  values (v_request_id, v_psn, btrim(changes ->> 'name'), changes, 'pending', now());
+  update public.employees set self_service_submitted_at = null where id = v_emp.id;
 
   insert into public.audit_log (id, user_id, user_email, user_role, action, table_name, row_id, details)
-  values (gen_random_uuid(), null, null, null, 'create', 'employee_registrations', v_request_id,
-          jsonb_build_object('psn', v_psn, 'name', btrim(changes ->> 'name')));
+  values (gen_random_uuid(), auth.uid(), nullif(auth.jwt() ->> 'email', ''), public.auth_role(),
+          'update', 'employees', v_emp.id,
+          jsonb_build_object('action', 'reset_self_service_lock', 'psn', v_emp.psn));
 
-  return jsonb_build_object('ok', true, 'request_id', v_request_id);
+  return jsonb_build_object('ok', true, 'psn', v_emp.psn);
 end;
 $$;
 
-revoke all on function public.submit_employee_registration(text, jsonb) from public;
-grant execute on function public.submit_employee_registration(text, jsonb) to anon;
-grant execute on function public.submit_employee_registration(text, jsonb) to authenticated;
+revoke all on function public.reset_self_service_lock(text) from public;
+grant execute on function public.reset_self_service_lock(text) to authenticated;

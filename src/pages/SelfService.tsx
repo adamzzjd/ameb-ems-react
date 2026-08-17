@@ -69,12 +69,7 @@ type Step =
   | { kind: 'review'; emp: LookupResult; changed: ChangedField[] }
   | { kind: 'done' }
   | { kind: 'already'; emp: LookupResult }
-  | { kind: 'notfound'; psn: string }
-  | { kind: 'underReview'; psn: string }
-  | { kind: 'regRejected'; psn: string }
-  | { kind: 'register'; psn: string }
-  | { kind: 'regReview'; psn: string; changed: ChangedField[] }
-  | { kind: 'regSubmitted' };
+  | { kind: 'notfound'; psn: string };
 
 interface ChangedField {
   field: string;
@@ -152,13 +147,8 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
       return;
     }
 
-    // Not in the register — check for an earlier registration.
-    const { data: reg, error: regError } = await supabase.rpc('check_employee_registration', { psn: v });
-    setError(regError ? regError.message : '');
-    const row = Array.isArray(reg) ? reg[0] : reg;
-    if (row?.status === 'pending') { setStep({ kind: 'underReview', psn: v }); return; }
-    if (row?.status === 'rejected') { setStep({ kind: 'regRejected', psn: v }); return; }
-    setStep({ kind: 'register', psn: v });
+    // Not in the register — self-registration is closed; direct them to the board office.
+    setStep({ kind: 'notfound', psn: v });
   };
 
   const handleLookup = (e: React.FormEvent) => {
@@ -193,21 +183,15 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
         changed.push({ field: f.key, label: f.label, before: before || '—', after: after || '—' });
       }
     }
+    // Photo is edited outside the FIELDS grid — diff it explicitly.
+    const beforePhoto = norm(emp.photo);
+    const afterPhoto = norm(form.photo);
+    if (afterPhoto !== beforePhoto) {
+      changed.push({ field: 'photo', label: 'Photo', before: beforePhoto || '—', after: afterPhoto || '—' });
+    }
     if (changed.length === 0) { setError('No changes made — update a field first.'); return; }
     setError('');
     setStep({ kind: 'review', emp, changed });
-  };
-
-  /** Review screen for a new-officer registration (shows everything filled in). */
-  const goToRegReview = () => {
-    if (step.kind !== 'register') return;
-    const changed: ChangedField[] = FIELDS
-      .filter(f => norm(form[f.key]) !== '')
-      .map(f => ({ field: f.key, label: f.label, before: '—', after: norm(form[f.key]) }));
-    if (changed.length === 0) { setError('Fill in at least your name before submitting.'); return; }
-    if (!norm(form.name)) { setError('Full name is required.'); return; }
-    setError('');
-    setStep({ kind: 'regReview', psn: step.psn, changed });
   };
 
   const buildChanges = (): Record<string, string | number | null> => {
@@ -219,6 +203,9 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
         out[f.key] = form[f.key] ?? null;
       }
     }
+    // `photo` has its own uploader (not a FIELDS entry) — send it explicitly so
+    // an uploaded photo actually reaches the register.
+    out.photo = form.photo || null;
     return out;
   };
 
@@ -233,19 +220,6 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
     const res = data as { ok?: boolean; error?: string } | null;
     if (res && res.ok === false) { setError(res.error || 'Submission failed.'); return; }
     if (res && res.ok) setStep({ kind: 'done' });
-    else setError('Submission failed. Please try again.');
-  };
-
-  const handleRegSubmit = async () => {
-    if (step.kind !== 'regReview') return;
-    setSubmitting(true);
-    const { data, error: rpcError } = await supabase
-      .rpc('submit_employee_registration', { psn: step.psn, changes: buildChanges() });
-    setSubmitting(false);
-    if (rpcError) { setError(rpcError.message || 'Submission failed. Please try again.'); return; }
-    const res = data as { ok?: boolean; error?: string } | null;
-    if (res && res.ok === false) { setError(res.error || 'Submission failed.'); return; }
-    if (res && res.ok) setStep({ kind: 'regSubmitted' });
     else setError('Submission failed. Please try again.');
   };
 
@@ -312,9 +286,21 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
           </div>
           {c.field === 'photo' ? (
             <div className="flex items-center gap-3">
-              <span className="flex-1 text-[12.5px]" style={{ color: 'var(--color-text-muted)' }}>{c.before === '—' ? '—' : 'photo'}</span>
+              <span className="flex-1">
+                {c.before && c.before !== '—' ? (
+                  <img src={c.before} alt="" className="w-10 h-10 rounded object-cover border" style={{ borderColor: 'var(--color-border)' }} />
+                ) : (
+                  <span className="text-[12.5px]" style={{ color: 'var(--color-text-muted)' }}>—</span>
+                )}
+              </span>
               <ArrowLeft size={12} style={{ color: 'var(--color-text-muted)' }} />
-              <span className="flex-1 text-[12.5px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>{c.after === '—' ? '—' : 'photo'}</span>
+              <span className="flex-1">
+                {c.after && c.after !== '—' ? (
+                  <img src={c.after} alt="" className="w-10 h-10 rounded object-cover border" style={{ borderColor: 'var(--color-border)' }} />
+                ) : (
+                  <span className="text-[12.5px]" style={{ color: 'var(--color-text-muted)' }}>—</span>
+                )}
+              </span>
             </div>
           ) : (
             <div className="flex items-start gap-3">
@@ -372,9 +358,9 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
         {step.kind === 'enter' && (
           <form onSubmit={handleLookup}>
             <div className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-              Enter your staff number (PSN) to view and update your details. Existing
-              officers' changes apply <strong>directly</strong> (one-time); new staff
-              submit their details for board-office approval.
+              Enter your staff number (PSN) to view and update your details. Changes
+              apply <strong>directly</strong> — you can update once, so please make sure
+              everything is correct before submitting.
             </div>
             <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
               Staff Number (PSN)
@@ -496,11 +482,21 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
                   <div className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>PSN: {step.emp.psn}</div>
                 </div>
               </div>
+              <div className="px-4 py-2.5 border-b" style={{ borderColor: 'var(--color-border)' }}>
+                <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>Photo</div>
+                <div className="mt-0.5">
+                  {step.emp.photo ? (
+                    <img src={step.emp.photo} alt="" className="w-10 h-10 rounded object-cover border" style={{ borderColor: 'var(--color-border)' }} />
+                  ) : (
+                    <span className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>—</span>
+                  )}
+                </div>
+              </div>
               {FIELDS.filter(f => f.key !== 'remarks').map(f => (
                 <div key={f.key} className="px-4 py-2.5 border-b last:border-b-0" style={{ borderColor: 'var(--color-border)' }}>
                   <div className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>{f.label}</div>
                   <div className="text-[13px] font-semibold mt-0.5" style={{ color: 'var(--color-text-primary)' }}>
-                    {f.key === 'photo' ? (step.emp.photo ? '✓ photo' : '—') : norm((step.emp as unknown as Record<string, string | number | null>)[f.key]) || '—'}
+                    {norm((step.emp as unknown as Record<string, string | number | null>)[f.key]) || '—'}
                   </div>
                 </div>
               ))}
@@ -514,93 +510,26 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
           </div>
         )}
 
-        {/* ── New officer: register form ── */}
-        {(step.kind === 'register' || step.kind === 'regRejected') && (
-          <div>
-            {step.kind === 'regRejected' && (
-              <div className="mb-4 px-3.5 py-2.5 rounded-lg text-[12.5px]"
-                style={{ background: 'rgba(198,138,0,0.08)', border: '1px solid rgba(198,138,0,0.25)', color: 'var(--color-warning)' }}>
-                Your earlier registration was not approved — you can try again below.
-              </div>
-            )}
-            <div className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-              Your PSN <strong>{step.psn}</strong> isn't in the register yet. Fill in your
-              details — they'll be submitted for <strong>board-office approval</strong> before
-              you're added.
+        {/* ── Not in the register — self-registration is closed ── */}
+        {step.kind === 'notfound' && (
+          <div className="text-center py-4">
+            <div className="text-4xl mb-3">🔍</div>
+            <div className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
+              No record found for {step.psn}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {FIELDS.map(f => f.key === 'photo' ? null : <div key={f.key}>{renderField(f)}</div>)}
-            </div>
-            <div className="mt-3.5">{renderPhotoField()}</div>
-            <div className="flex gap-2 mt-6">
+            <p className="text-[13.5px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Your staff number isn't in the register yet. Self-registration is currently
+              closed — please contact the <strong>Board Office / HR unit</strong> so your
+              record can be added, then you'll be able to update your details here.
+            </p>
+            <div className="flex flex-col gap-2 mt-6">
               <button type="button" onClick={() => setStep({ kind: 'enter' })}
-                className="h-11 px-4 rounded-lg text-[13px] font-semibold border cursor-pointer"
-                style={{ background: 'transparent', borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                Back
-              </button>
-              <button type="button" onClick={goToRegReview}
-                className="flex-1 h-11 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90"
-                style={{ background: 'var(--color-primary)' }}>
-                Review & Submit
-              </button>
+                className="h-11 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90 border-none cursor-pointer"
+                style={{ background: 'var(--color-primary)' }}>Try a different PSN</button>
+              <button type="button" onClick={onBack}
+                className="h-11 rounded-lg text-[13px] font-semibold border cursor-pointer"
+                style={{ background: 'transparent', borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>Back to Website</button>
             </div>
-          </div>
-        )}
-
-        {/* ── New officer: review + submit for approval ── */}
-        {step.kind === 'regReview' && (
-          <div>
-            <div className="text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Review your registration</div>
-            <div className="text-[12px] mb-3" style={{ color: 'var(--color-text-muted)' }}>
-              These details will be submitted for board-office approval.
-            </div>
-            {renderReviewList(step.changed)}
-            <div className="flex gap-2 mt-5">
-              <button type="button" disabled={submitting} onClick={() => setStep({ kind: 'register', psn: step.psn })}
-                className="h-11 px-4 rounded-lg text-[13px] font-semibold border cursor-pointer"
-                style={{ background: 'transparent', borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-                Back
-              </button>
-              <button type="button" disabled={submitting} onClick={handleRegSubmit}
-                className="flex-1 h-11 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{ background: 'var(--color-primary)' }}>
-                {submitting ? 'Submitting…' : 'Submit for Approval'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── New officer: registration submitted ── */}
-        {step.kind === 'regSubmitted' && (
-          <div className="text-center py-4">
-            <div className="text-5xl mb-4"><CheckCircle2 size={52} style={{ color: '#16a34a' }} /></div>
-            <div className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-              Registration submitted for approval
-            </div>
-            <p className="text-[13.5px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Thank you! The board office will review your details and add you to the
-              register. Once approved, you'll be able to update your details here.
-            </p>
-            <button onClick={onBack}
-              className="mt-6 h-11 px-6 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90"
-              style={{ background: 'var(--color-primary)' }}>Back to Website</button>
-          </div>
-        )}
-
-        {/* ── New officer: registration under review ── */}
-        {step.kind === 'underReview' && (
-          <div className="text-center py-4">
-            <div className="text-4xl mb-3">⏳</div>
-            <div className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>
-              Registration under review
-            </div>
-            <p className="text-[13.5px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              A registration for PSN <strong>{step.psn}</strong> has already been submitted
-              and is awaiting board-office approval. Please check back later.
-            </p>
-            <button onClick={onBack}
-              className="mt-6 h-11 px-6 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90"
-              style={{ background: 'var(--color-primary)' }}>Back to Website</button>
           </div>
         )}
 

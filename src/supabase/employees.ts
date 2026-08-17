@@ -71,3 +71,16 @@ export async function dbBulkInsert(records: Partial<Employee>[]): Promise<{ data
   if (!error && data) await logAudit({ action: 'import', table: 'employees', details: { count: data.length } });
   return { data: data as Employee[] | null, error };
 }
+
+/**
+ * Admin escape hatch: clear the one-shot self-service lockout for one officer
+ * (by PSN) so they can update again. Runs the SECURITY DEFINER function which
+ * checks the caller's role and audits the action.
+ */
+export async function dbResetSelfServiceLock(psn: string): Promise<{ ok: boolean; error: Error | null }> {
+  const { data, error } = await supabase.rpc('reset_self_service_lock', { psn });
+  if (error) return { ok: false, error };
+  const res = data as { ok?: boolean; error?: string } | null;
+  if (res && res.ok === false) return { ok: false, error: new Error(res.error || 'Failed to unlock.') };
+  return { ok: true, error: null };
+}

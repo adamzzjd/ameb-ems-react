@@ -4,9 +4,9 @@
    can be completed later through the standard employee form. */
 
 import { useState } from 'react';
-import { dbLoadAll, dbSave } from '../supabase/employees';
+import { dbLoadAll, dbSave, dbResetSelfServiceLock } from '../supabase/employees';
 import { useToast } from '../hooks/useToast';
-import { Search, UserPlus, CheckCircle2, ClipboardPaste } from 'lucide-react';
+import { Search, UserPlus, CheckCircle2, ClipboardPaste, Unlock } from 'lucide-react';
 
 interface CheckRow {
   psn: string;
@@ -21,6 +21,8 @@ export function PsnCheckPage() {
   const [rows, setRows] = useState<CheckRow[] | null>(null);
   const [checking, setChecking] = useState(false);
   const [busyPsn, setBusyPsn] = useState<string | null>(null);
+  const [unlockPsn, setUnlockPsn] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
 
   const handleCheck = async () => {
     const lines = input
@@ -89,6 +91,17 @@ export function PsnCheckPage() {
     }
   };
 
+  const handleUnlock = async () => {
+    const v = unlockPsn.trim();
+    if (!v) { toast('Enter a PSN to unlock.', true); return; }
+    setUnlocking(true);
+    const { ok, error } = await dbResetSelfServiceLock(v);
+    setUnlocking(false);
+    if (!ok) { toast(error?.message || 'Failed to unlock.', true); return; }
+    setUnlockPsn('');
+    toast(`✓ ${v.toUpperCase()} unlocked — they can update again.`);
+  };
+
   const counts = rows ? {
     found: rows.filter(r => r.status === 'found').length,
     new: rows.filter(r => r.status === 'new').length,
@@ -110,9 +123,9 @@ export function PsnCheckPage() {
   return (
     <div>
       <div className="text-[13px] mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-        Paste the staff numbers you want to check — the page finds which are already in
-        the register and lets you register the new ones so they can use the self-service
-        portal. You can fill in full details later via <strong>All Employees → Edit</strong>.
+        PSN admin tools: paste staff numbers to find which are already in the register
+        and register the new ones so they can use the self-service portal, or unlock an
+        officer whose one-time update has already been used.
       </div>
 
       {/* Paste box */}
@@ -212,6 +225,32 @@ export function PsnCheckPage() {
           </table>
         </div>
       )}
+
+      {/* Unlock officer's one-time update */}
+      <div className="rounded-xl border p-4 mt-4" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(198,138,0,0.12)' }}>
+            <Unlock size={14} style={{ color: 'var(--color-warning)' }} />
+          </div>
+          <div className="text-[13px] font-bold" style={{ color: 'var(--color-text-primary)' }}>Unlock officer's one-time update</div>
+        </div>
+        <div className="text-[12px] mb-3" style={{ color: 'var(--color-text-muted)' }}>
+          For testing or corrections: an officer who has already submitted cannot update
+          again. Enter their PSN to clear that lock so they can submit once more (the lock
+          re-applies on their next submit).
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <input value={unlockPsn} onChange={e => setUnlockPsn(e.target.value)}
+            placeholder="e.g. PS/AM/0123"
+            className="h-10 px-3 rounded-lg border text-[13px] outline-none flex-1 min-w-[200px]"
+            style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
+          <button onClick={handleUnlock} disabled={unlocking}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white border-none cursor-pointer disabled:opacity-60"
+            style={{ background: 'var(--color-warning)' }}>
+            <Unlock size={14} /> {unlocking ? 'Unlocking…' : 'Unlock Officer'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
