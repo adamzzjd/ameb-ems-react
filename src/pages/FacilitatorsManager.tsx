@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Printer } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
 import { LGAs } from '../data/constants';
 import type { Facilitator, Centre, CentreFacilitator } from '../types';
@@ -7,6 +8,7 @@ import {
   dbLoadCentreFacilitators,
 } from '../supabase/facilitators';
 import { dbLoadCentres } from '../supabase/centres';
+import { printFacilitators, printFacilitatorProfile } from '../utils/print';
 import { useToast } from '../hooks/useToast';
 
 interface FacilitatorsManagerProps {
@@ -176,19 +178,34 @@ export function FacilitatorsManager({ onNavigate, canManage }: FacilitatorsManag
           </span>{' '}
           page — a facilitator can serve multiple centres.
         </div>
-        {canManage && (
-          <button
-            onClick={openAdd}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              border: 'none', cursor: 'pointer',
-              background: 'var(--color-primary)', color: '#fff', whiteSpace: 'nowrap',
-            }}
-          >
-            + Add Facilitator
-          </button>
-        )}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {filtered.length > 0 && (
+            <button
+              onClick={() => printFacilitators(filtered, centres, links, 'Filtered Facilitators', `${filtered.length} of ${facilitators.length} facilitators`)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                border: '1px solid var(--color-border)', cursor: 'pointer',
+                background: 'transparent', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap',
+              }}
+            >
+              <Printer size={14} /> Print
+            </button>
+          )}
+          {canManage && (
+            <button
+              onClick={openAdd}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
+                border: 'none', cursor: 'pointer',
+                background: 'var(--color-primary)', color: '#fff', whiteSpace: 'nowrap',
+              }}
+            >
+              + Add Facilitator
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -351,9 +368,12 @@ export function FacilitatorsManager({ onNavigate, canManage }: FacilitatorsManag
         onClose={() => { setShowView(false); setViewFacilitator(null); }}
         maxWidth="520px"
         footer={
-          <div style={{ display: 'flex', gap: 6, width: '100%' }}>
+          <div style={{ display: 'flex', gap: 6, width: '100%', alignItems: 'center' }}>
             {viewFacilitator && (
               <>
+                <button onClick={() => printFacilitatorProfile(viewFacilitator, centresByFacilitator.get(viewFacilitator.id) || [])} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'transparent', color: 'var(--color-text-secondary)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Printer size={12} /> Print
+                </button>
                 {canManage && (
                   <button onClick={() => { setShowView(false); openEdit(viewFacilitator); }} style={{ padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: '1px solid var(--color-border)', cursor: 'pointer', background: 'var(--color-primary)', color: '#fff' }}>
                     ✏️ Edit

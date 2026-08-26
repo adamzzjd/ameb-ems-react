@@ -24,6 +24,14 @@ test-results
 textCopy*
 ~$*
 
+# Generated documentation PDFs
+scripts/convert-docs-to-pdf.mjs
+node_modules/.cache/puppeteer
+docs/pdf/
+
+# Documentation package (too large for git)
+docs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
