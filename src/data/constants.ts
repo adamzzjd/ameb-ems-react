@@ -94,6 +94,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
   facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },
+  'lga-officers':{ title: 'LGA Area Officers',       subtitle: 'One area officer per local government — assigned from staff' },
   centres:       { title: 'Learning Centres Register', subtitle: 'All AMEB learning centres across 21 LGAs' },
   'cms-dashboard': { title: '📝 Content Manager',      subtitle: 'Manage all website content' },
   'cms-content':  { title: '⚙️ Site Content',          subtitle: 'Hero, About, Mission, Vision, Contact' },

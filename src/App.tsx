@@ -32,6 +32,7 @@ const Appointment = lazy(() => import('./pages/Appointment').then(m => ({ defaul
 const StationsManager = lazy(() => import('./pages/StationsManager').then(m => ({ default: m.StationsManager })));
 const CadresManager = lazy(() => import('./pages/CadresManager').then(m => ({ default: m.CadresManager })));
 const FacilitatorsManager = lazy(() => import('./pages/FacilitatorsManager').then(m => ({ default: m.FacilitatorsManager })));
+const LgaOfficersManager = lazy(() => import('./pages/LgaOfficersManager').then(m => ({ default: m.LgaOfficersManager })));
 const CentresManager = lazy(() => import('./pages/CentresManager').then(m => ({ default: m.CentresManager })));
 const CmsDashboard = lazy(() => import('./pages/cms/CmsDashboard').then(m => ({ default: m.CmsDashboard })));
 const SiteContent = lazy(() => import('./pages/cms/SiteContent').then(m => ({ default: m.SiteContent })));
@@ -205,7 +206,7 @@ export default function App() {
   if (view === 'app' && currentPage.startsWith('cms-') && !can('cms.edit')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
-  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres' || currentPage === 'facilitators') && !can('settings.manage')) {
+  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres' || currentPage === 'facilitators' || currentPage === 'lga-officers') && !can('settings.manage')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
   if (view === 'app' && currentPage === 'users' && !can('users.manage')) {
@@ -269,6 +270,8 @@ export default function App() {
         return <CadresManager onNavigate={handleNavigate} />;
       case 'facilitators':
         return <FacilitatorsManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
+      case 'lga-officers':
+        return <LgaOfficersManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'centres':
         return <CentresManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'cms-dashboard':

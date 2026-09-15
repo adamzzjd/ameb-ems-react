@@ -9,6 +9,7 @@ import { Pencil, Trash2, X, Printer, Upload, FileText, Link2 } from 'lucide-reac
 import { printEmployeeProfile } from '../utils/print';
 import { getRetirementInfo } from '../lib/retirement';
 import { dbListDocuments, dbAddDocument, dbDeleteDocument } from '../supabase/documents';
+import { dbLoadLgaAreaOfficers } from '../supabase/lgaOfficers';
 import { uploadDocumentToStorage } from '../supabase/storage';
 import { useToast } from '../hooks/useToast';
 
@@ -58,6 +59,8 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, can
   const [docFile, setDocFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  // LGAs this officer is assigned to as an LGA Area Officer (usually just one).
+  const [officerLgas, setOfficerLgas] = useState<string[]>([]);
 
   useEffect(() => {
     if (!open || !employee) return;
@@ -67,6 +70,18 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, can
       if (cancelled) return;
       setDocs(data ?? []);
       setLoadingDocs(false);
+    });
+    return () => { cancelled = true; };
+  }, [open, employee]);
+
+  // Load any LGA area officer assignment for this staff member. Degrades
+  // quietly if the lga_area_officers table hasn't been set up yet.
+  useEffect(() => {
+    if (!open || !employee) return;
+    let cancelled = false;
+    dbLoadLgaAreaOfficers().then(({ data, error }) => {
+      if (cancelled || error) return;
+      setOfficerLgas((data ?? []).filter(o => o.employee_id === employee.id).map(o => o.lga));
     });
     return () => { cancelled = true; };
   }, [open, employee]);
@@ -111,7 +126,7 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, can
     <Modal open={open} onClose={onClose} maxWidth="640px"
       footer={
         <div className="flex items-center gap-2 flex-wrap">
-          <button onClick={() => printEmployeeProfile(employee)}
+          <button onClick={() => printEmployeeProfile(employee, officerLgas)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-[13px] font-semibold text-white"
             style={{ background: 'var(--color-primary)' }}>
             <Printer size={14} /> Print
@@ -171,6 +186,12 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, can
             <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-white/10 text-white/65">
               📍 {esc(employee.station || '—')}
             </span>
+            {officerLgas.length > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold"
+                style={{ background: 'var(--color-gold)', color: '#1A1A1A' }}>
+                🗺 {esc(officerLgas.join(', '))} Area Officer
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -193,6 +214,9 @@ export function EmployeeProfile({ employee, open, onClose, onEdit, onDelete, can
           { label: 'LGA of Origin', value: employee.lga || '—' },
           { label: 'Present Station', value: employee.station || '—' },
           { label: 'Residential Address', value: employee.address || '—' },
+          ...(officerLgas.length > 0
+            ? [{ label: 'LGA Area Officer', value: officerLgas.join(', ') }]
+            : []),
         ].map(field => (
           <div key={field.label} className="px-4 py-2.5 border-b"
             style={{ borderColor: 'var(--color-border)' }}>

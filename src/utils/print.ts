@@ -6,6 +6,7 @@
 import type { Employee } from '../types';
 import type { Facilitator } from '../types';
 import type { Centre, CentreFacilitator } from '../types';
+import type { LgaAreaOfficer } from '../types';
 import type { PayrollRow } from '../lib/payroll';
 import { fmtNaira } from '../lib/payroll';
 
@@ -144,7 +145,7 @@ export function printEmployees(employees: Employee[], title?: string, subtitle?:
   openAndPrint(html);
 }
 
-export function printEmployeeProfile(employee: Employee) {
+export function printEmployeeProfile(employee: Employee, officerLgas: string[] = []) {
   const photoHtml = employee.photo
     ? `<img src="${employee.photo}" style="width:90px;height:104px;object-fit:cover;border-radius:8px;border:3px solid ${GREEN}" alt="${employee.name}"/>`
     : `<div style="width:90px;height:104px;border-radius:8px;background:${GREEN};border:3px solid ${GREEN};display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff">${initials(employee.name)}</div>`;
@@ -163,6 +164,7 @@ export function printEmployeeProfile(employee: Employee) {
             <span class="sheet-badge" style="background:${GREEN};color:#fff">${esc(employee.psn || 'No PSN')}</span>
             <span class="sheet-badge" style="background:rgba(255,255,255,.15);color:#fff">${esc(employee.grade || '—')}</span>
             <span class="sheet-badge" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.75)">📍 ${esc(employee.station || '—')}</span>
+            ${officerLgas.length > 0 ? `<span class="sheet-badge" style="background:${GOLD};color:${INK}">🗺 ${esc(officerLgas.join(', '))} Area Officer</span>` : ''}
           </div>
         </div>
       </div>
@@ -175,6 +177,7 @@ export function printEmployeeProfile(employee: Employee) {
           ['LGA of Origin', employee.lga || '—'],
           ['Present Station', employee.station || '—'],
           ['Residential Address', employee.address || '—'],
+          ...(officerLgas.length > 0 ? [['LGA Area Officer', officerLgas.join(', ')]] : []),
         ].map(([l, v]) => `<div class="sheet-field"><div class="sheet-fl">${l}</div><div class="sheet-fv">${v}</div></div>`).join('')}
       </div>
       ${employee.remarks ? `<div style="padding:10px 16px;background:#fffbeb;border-top:1px solid #fde68a;font-size:12px;color:#78350f;"><strong>Remarks:</strong> ${esc(employee.remarks)}</div>` : ''}
@@ -288,6 +291,68 @@ export function printFacilitatorProfile(
         <span>AMEB — Facilitator Registry</span>
         <span>Printed: ${today()}</span>
       </div>
+    </div>
+  </body></html>`;
+
+  openAndPrint(html);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  LGA AREA OFFICERS PRINT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/** One row per LGA — the assigned officer (if any) with their staff details. */
+export interface LgaOfficerRow {
+  lga: string;
+  officer: LgaAreaOfficer | null;
+  employee: Employee | null;
+}
+
+export function printLgaAreaOfficers(
+  rows: LgaOfficerRow[],
+  title?: string,
+  subtitle?: string
+) {
+  const covered = rows.filter(r => r.officer).length;
+
+  const body = rows.map((r, i) => {
+    const e = r.employee;
+    const status = e
+      ? '<span style="color:#16a34a;font-weight:700">Assigned</span>'
+      : (r.officer ? '<span style="color:#d97706;font-weight:700">No staff record</span>'
+                   : '<span style="color:#94a3b8">Unassigned</span>');
+    return `
+    <tr>
+      <td style="text-align:center;color:${SLATE};font-size:10px">${i + 1}</td>
+      <td style="font-weight:700">${esc(r.lga)}</td>
+      <td style="font-weight:600">${e ? esc(e.name) : '—'}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${GREEN};font-weight:600">${esc(e?.psn || '—')}</td>
+      <td>${esc(e?.cadre || '—')}</td>
+      <td>${esc(e?.phone || '—')}</td>
+      <td>${esc(e?.station || '—')}</td>
+      <td style="font-size:10px">${status}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><title>AMEB LGA Area Officers</title>
+  <style>${BASE_CSS}
+    th:first-child{width:30px;text-align:center;}
+    td:first-child{text-align:center;}
+  </style></head><body>
+    ${buildHeader(`Local Government Area Officers — ${covered} of ${rows.length} LGAs covered`)}
+    ${title ? `<h2>${esc(title)}</h2>` : ''}
+    <div class="meta">${esc(subtitle || `${covered} of ${rows.length} LGAs covered`)} · Printed ${today()}</div>
+    <table>
+      <thead><tr>
+        <th style="width:30px;text-align:center">#</th>
+        <th>Local Government Area</th><th>Area Officer</th><th>PSN</th>
+        <th>Cadre</th><th>Phone</th><th>Station</th><th>Status</th>
+      </tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+    <div class="foot">
+      <span>© Adamawa State Mass Education Board</span>
+      <span>Federal Republic of Nigeria</span>
     </div>
   </body></html>`;
 

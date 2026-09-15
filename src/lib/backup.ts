@@ -11,6 +11,7 @@ const BACKUP_TABLES = [
   'centres',
   'facilitators',
   'centre_facilitators',
+  'lga_area_officers',
   'enrolment_stats',
   'cms_programs',
   'cms_news',

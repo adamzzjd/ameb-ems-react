@@ -2,7 +2,8 @@
 -- AMEB EMS — Row Level Security (RLS) Setup
 -- ----------------------------------------------------------------------------
 -- Enforces the role system in the database. Run this AFTER setup.sql,
--- setup_ems.sql, setup_storage.sql and setup_facilitators.sql, in the Supabase
+-- setup_ems.sql, setup_storage.sql, setup_facilitators.sql and
+-- setup_lga_officers.sql, in the Supabase
 -- dashboard SQL Editor. Safe to run multiple times (drops and recreates policies).
 --
 -- Roles live on the Supabase auth user's `app_metadata.role`:
@@ -14,6 +15,8 @@
 --                      can insert/update; admin+ can delete.
 --   stations/cadres/centres: any signed-in user can read; admin+ can write.
 --   facilitators/centre_facilitators: any signed-in user can read; admin+ can write.
+--   lga_area_officers: any signed-in user can read; admin+ can write (one area
+--                      officer per LGA, drawn from the staff register).
 --   CMS content      : public read (anon — the Landing page needs it); admin+ write.
 --   cms_contacts     : public insert (contact form); admin+ read/update/delete.
 -- ============================================================================
@@ -150,7 +153,34 @@ drop policy if exists "centre_facilitators_delete" on public.centre_facilitators
 create policy "centre_facilitators_delete" on public.centre_facilitators
   for delete using (public.auth_role() in ('admin', 'super_admin'));
 
--- ── 4.6. Enrolment stats (public read — shown on the Landing page; admin+ write) ──
+-- ── 4.6. LGA Area Officers (read for all users, write for admin+) ──────────
+-- Guarded so this file stays safe to re-run before setup_lga_officers.sql.
+do $$
+begin
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'lga_area_officers') then
+    alter table public.lga_area_officers enable row level security;
+
+    drop policy if exists "lga_area_officers_select" on public.lga_area_officers;
+    create policy "lga_area_officers_select" on public.lga_area_officers
+      for select using (public.auth_role() is not null);
+
+    drop policy if exists "lga_area_officers_insert" on public.lga_area_officers;
+    create policy "lga_area_officers_insert" on public.lga_area_officers
+      for insert with check (public.auth_role() in ('admin', 'super_admin'));
+
+    drop policy if exists "lga_area_officers_update" on public.lga_area_officers;
+    create policy "lga_area_officers_update" on public.lga_area_officers
+      for update using (public.auth_role() in ('admin', 'super_admin'))
+      with check (public.auth_role() in ('admin', 'super_admin'));
+
+    drop policy if exists "lga_area_officers_delete" on public.lga_area_officers;
+    create policy "lga_area_officers_delete" on public.lga_area_officers
+      for delete using (public.auth_role() in ('admin', 'super_admin'));
+  end if;
+end $$;
+
+-- ── 4.7. Enrolment stats (public read — shown on the Landing page; admin+ write) ──
 -- Guarded: only applies if the enrolment_stats table exists (created by
 -- setup_enrolments.sql). Keeps setup_rls.sql safe to re-run in any order.
 do $$

@@ -1,10 +1,13 @@
 /* Restyled from scratch - Adamawa State Mass Education Board
    Official Government Website */
 
-import { useMemo } from 'react';
-import type { Employee } from '../types';
-import { Users, MapPin, Award, ChevronRight, TrendingUp } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import type { Employee, LgaAreaOfficer } from '../types';
+import { Users, MapPin, Award, ChevronRight, TrendingUp, MapPinned } from 'lucide-react';
 import { getPromotionInfo, DUE_SOON_MONTHS } from '../lib/promotion';
+import { LGAs } from '../data/constants';
+import { dbLoadLgaAreaOfficers } from '../supabase/lgaOfficers';
+import { useAuth } from '../hooks/useAuth';
 
 interface DashboardProps {
   employees: Employee[];
@@ -35,6 +38,40 @@ function gradeBg(g: string | null | undefined): string {
 const STAT_ICONS = [Users, MapPin, MapPin, Award];
 
 export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardProps) {
+  const { can } = useAuth();
+
+  // LGA area officers live in their own table. Load them here (the card simply
+  // stays hidden if the table hasn't been set up yet) so the dashboard can show
+  // which officer covers each local government.
+  const [officers, setOfficers] = useState<LgaAreaOfficer[]>([]);
+  const [officersAvailable, setOfficersAvailable] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    dbLoadLgaAreaOfficers().then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) return;
+      setOfficers(data ?? []);
+      setOfficersAvailable(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  // LGA → assigned area officer (and that officer's name from the register).
+  const coverage = useMemo(() => {
+    const byLga = new Map(officers.map(o => [o.lga, o]));
+    const employeeNames = new Map(employees.map(e => [e.id, e.name]));
+    const unassigned = LGAs.filter(l => {
+      const o = byLga.get(l);
+      return !o || !o.employee_id || !employeeNames.has(o.employee_id);
+    });
+    return {
+      byLga, employeeNames, unassigned,
+      covered: LGAs.length - unassigned.length,
+      pct: Math.round(((LGAs.length - unassigned.length) / LGAs.length) * 100),
+    };
+  }, [officers, employees]);
+
   const stats = useMemo(() => {
     const byGrade: Record<string, number> = {};
     const byLGA: Record<string, number> = {};
@@ -187,6 +224,62 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
           </div>
         </div>
       </div>
+
+      {/* LGA Area Officers — one officer per local government */}
+      {officersAvailable && (
+        <div className="rounded-xl border overflow-hidden mb-4" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+          <div className="flex items-center justify-between gap-3 px-4 py-3 border-b flex-wrap" style={{ borderColor: 'var(--color-border)' }}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(26,92,56,0.1)' }}>
+                <MapPinned size={16} style={{ color: 'var(--color-primary)' }} />
+              </div>
+              <span className="text-[13px] font-bold" style={{ color: 'var(--color-text-primary)' }}>LGA Area Officers</span>
+              <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                {coverage.covered} of {LGAs.length} LGAs covered
+              </span>
+            </div>
+            {can('settings.manage') && (
+              <button onClick={() => onNavigate('lga-officers')}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors border hover:bg-surface-warm"
+                style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                Manage <ChevronRight size={14} />
+              </button>
+            )}
+          </div>
+
+          <div className="px-4 pt-3">
+            <div className="h-[7px] rounded overflow-hidden" style={{ background: 'var(--color-surface-raised)' }}>
+              <div className="h-full rounded transition-all duration-500" style={{ background: 'var(--color-primary)', width: `${coverage.pct}%` }} />
+            </div>
+            <div className="text-[11px] mt-1.5" style={{ color: 'var(--color-text-muted)' }}>
+              {coverage.unassigned.length > 0
+                ? `${coverage.unassigned.length} LGA${coverage.unassigned.length !== 1 ? 's' : ''} still without an area officer — assign one from the staff register.`
+                : 'Every LGA has an area officer assigned from the staff register.'}
+            </div>
+          </div>
+
+          <div className="p-4 max-h-[320px] overflow-y-auto">
+            {LGAs.map(l => {
+              const o = coverage.byLga.get(l);
+              const officerName = o?.employee_id ? coverage.employeeNames.get(o.employee_id) : null;
+              return (
+                <div key={l} className="flex items-center gap-2.5 py-1.5 border-b last:border-b-0" style={{ borderColor: 'var(--color-border)' }}>
+                  <div className="text-xs w-[150px] shrink-0 truncate" style={{ color: 'var(--color-text-secondary)' }}>{l}</div>
+                  {officerName ? (
+                    <button onClick={() => o?.employee_id && onViewEmployee(o.employee_id)}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-0.5 rounded-full border-none cursor-pointer"
+                      style={{ background: 'rgba(26,92,56,0.1)', color: 'var(--color-primary)' }}>
+                      {esc(officerName)}
+                    </button>
+                  ) : (
+                    <span className="text-xs" style={{ color: 'var(--color-text-muted)' }}>— Unassigned —</span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Recent Employees */}
       <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>

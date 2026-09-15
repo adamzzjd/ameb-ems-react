@@ -204,6 +204,18 @@ export interface CentreFacilitator {
   created_at?: string;
 }
 
+// Local Government Area Officer — one officer per LGA, always drawn from the
+// staff register (`employee_id`). Rows are keyed by LGA so every LGA can have
+// at most one area officer; the officer's details are read live from employees.
+export interface LgaAreaOfficer {
+  id: string;
+  lga: string;
+  employee_id: string | null;
+  remarks: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Public projection of a centre (the `public_centres` view) — safe fields +
 // facilitator names only, never internal remarks.
 export interface PublicCentre {
@@ -342,6 +354,7 @@ export type AppPage =
   | 'stations'
   | 'cadres'
   | 'facilitators'
+  | 'lga-officers'
   | 'centres'
   | 'cms-dashboard'
   | 'cms-content'

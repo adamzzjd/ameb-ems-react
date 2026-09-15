@@ -42,6 +42,7 @@ vi.mock('../client', () => {
     chain.single = () => Promise.resolve(state.result);
     chain.eq = (col: unknown, val: unknown) => record('eq', { col, val });
     chain.insert = (payload: unknown) => record('insert', { payload });
+    chain.upsert = (payload: unknown, opts: unknown) => record('upsert', { payload, opts });
     chain.update = (payload: unknown) => record('update', { payload });
     chain.delete = () => record('delete');
     chain.not = () => chain;
@@ -66,6 +67,7 @@ vi.mock('../audit', () => ({ logAudit, dbLoadAuditLog: vi.fn() }));
 import { dbSaveCentre, dbDeleteCentre } from '../centres';
 import { dbAddFacilitator, dbUpdateFacilitator, dbDeleteFacilitator, dbSetCentreFacilitators } from '../facilitators';
 import { dbLoadEnrolmentStats, dbSaveEnrolmentStat, dbDeleteEnrolmentStat } from '../enrolments';
+import { dbLoadLgaAreaOfficers, dbSetLgaAreaOfficer, dbRemoveLgaAreaOfficer } from '../lgaOfficers';
 
 const opsOf = (table: string, op?: string) =>
   state.ops.filter(o => o.table === table && (!op || o.op === op));
@@ -187,6 +189,51 @@ describe('facilitators service', () => {
     const { error } = await dbSetCentreFacilitators('c-1', ['f-1']);
     expect(error).toBeTruthy();
     expect(opsOf('centre_facilitators', 'insert')).toHaveLength(0);
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+});
+
+describe('lga area officers service', () => {
+  it('dbLoadLgaAreaOfficers reads the register ordered by LGA', async () => {
+    resolve([{ id: 'o-1', lga: 'Yola North', employee_id: 'e-1' }]);
+    const { data } = await dbLoadLgaAreaOfficers();
+    expect(data).toHaveLength(1);
+    expect(opsOf('lga_area_officers', 'order')[0]).toMatchObject({ col: 'lga' });
+  });
+
+  it('dbSetLgaAreaOfficer upserts one officer per LGA and audits the assignment', async () => {
+    resolve({ id: 'o-1', lga: 'Yola North', employee_id: 'e-1' });
+    const { data, error } = await dbSetLgaAreaOfficer('Yola North', 'e-1', 'Zonal lead');
+
+    expect(error).toBeNull();
+    expect(data?.lga).toBe('Yola North');
+    const upsert = opsOf('lga_area_officers', 'upsert')[0];
+    const payload = upsert.payload as Record<string, unknown>;
+    expect(payload.id).toBeTruthy();
+    expect(payload.lga).toBe('Yola North');
+    expect(payload.employee_id).toBe('e-1');
+    expect(payload.remarks).toBe('Zonal lead');
+    // Conflict target keeps it to a single officer per LGA
+    expect(upsert.opts).toMatchObject({ onConflict: 'lga' });
+    expect(logAudit).toHaveBeenCalledWith({
+      action: 'assign', table: 'lga_area_officers', rowId: 'o-1',
+      details: { lga: 'Yola North', employee_id: 'e-1' },
+    });
+  });
+
+  it('dbRemoveLgaAreaOfficer deletes and audits', async () => {
+    resolve(null);
+    const { error } = await dbRemoveLgaAreaOfficer('o-1');
+    expect(error).toBeNull();
+    expect(opsOf('lga_area_officers', 'delete')).toHaveLength(1);
+    expect(opsOf('lga_area_officers', 'eq')[0]).toMatchObject({ col: 'id', val: 'o-1' });
+    expect(logAudit).toHaveBeenCalledWith({ action: 'delete', table: 'lga_area_officers', rowId: 'o-1' });
+  });
+
+  it('does not audit when the upsert fails', async () => {
+    resolve(null, new Error('RLS denied'));
+    const { error } = await dbSetLgaAreaOfficer('Demsa', 'e-2');
+    expect(error?.message).toBe('RLS denied');
     expect(logAudit).not.toHaveBeenCalled();
   });
 });

@@ -12,6 +12,7 @@ import {
   GraduationCap, BookOpen, Building2, Settings, FileText,
   Download, Printer, Plus, LogOut, UserCog, UsersRound, Save,
   Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp, Wallet, CalendarDays,
+  MapPinned,
   UserPlus,
 } from 'lucide-react';
 
@@ -66,6 +67,7 @@ const navSections: NavSection[] = [
       { page: 'leaves', icon: <CalendarDays size={18} />, label: 'Leave Management' },
       { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
       { page: 'centres', icon: <GraduationCap size={18} />, label: 'Learning Centres' },
+      { page: 'lga-officers', icon: <MapPinned size={18} />, label: 'LGA Area Officers', permission: 'settings.manage' },
     ],
   },
   {
