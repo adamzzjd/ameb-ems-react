@@ -8,20 +8,25 @@ to the Board, and then to production. Work through the checklist top to bottom.
 ## 1. What the system includes (for the demo)
 
 - **Staff Portal** — employee register (search/filter/group/sort), CSV import/export,
-  print views, stations, cadres, learning centres, facilitator registry.
+  print views, stations, cadres, learning centres, facilitator registry, LGA area
+  officers (one per LGA, assigned from staff). Staff pay/payroll is deliberately
+  **out of scope** — no salary data is stored or produced.
 - **Retirement & Tenure** — age 60 / 35-years-of-service projections with a dedicated view.
 - **Data Quality** — officers missing key fields + duplicate-name detection (with edit/export).
 - **CMS + Public Website** — site content editor, programs, news, team, gallery (animated
   slideshow), downloads, contact inbox, enrolment stats — all live on the public site.
-- **Security & Governance** — role-based access (4 roles, RLS in the database), append-only
-  **audit log** (who did what, super-admin view), Sentry error tracking.
-- **Engineering** — 86 unit tests, browser E2E smoke tests, CI on every push, JSON backup.
+- **Security & Governance** — role-based access (11 roles incl. partner tenants, RLS in the
+  database), append-only **audit log** (who did what, super-admin view), Sentry error tracking.
+- **Partner Organisations** — register NGOs/LGAs/CSOs, give them scoped portal logins
+  (`manage-users` edge function), record centre ownership, and approve partner-created
+  centres before they appear publicly.
+- **Engineering** — 139 unit tests, browser E2E smoke tests, CI on every push, JSON backup.
 
 ## 2. Pre-deployment checklist (one-time)
 
 | # | Task | Where |
 |---|------|-------|
-| 1 | Supabase SQL scripts in order: `setup.sql`, `setup_ems.sql`, `setup_storage.sql`, `setup_facilitators.sql`, `setup_enrolments.sql`, `setup_audit.sql`, **then** `setup_rls.sql` last | Supabase → SQL Editor |
+| 1 | Supabase SQL scripts in order: `setup.sql`, `setup_ems.sql`, `setup_storage.sql`, `setup_facilitators.sql`, `setup_lga_officers.sql`, `setup_enrolments.sql`, `setup_audit.sql`, `setup_partners.sql`, **then** `setup_rls.sql` last | Supabase → SQL Editor |
 | 2 | Promote your account: uncomment the super-admin line in `setup_rls.sql` (or run the UPDATE) | Supabase → SQL Editor |
 | 3 | Create an E2E test account (admin+) if you want portal tests | Supabase → Authentication → Users |
 | 4 | Verify image columns: `npm run diag:images` should show 0 base64 / 0 storage URLs | Local terminal |
@@ -48,7 +53,7 @@ E2E_USER_EMAIL / E2E_USER_PASSWORD               optional — E2E portal tests
 ## 4. Deploy to Vercel
 
 1. Push `main` — Vercel auto-deploys (SPA rewrites are already in `vercel.json`).
-2. **CI runs on every push** (`.github/workflows/ci.yml`): lint → 86 tests → build,
+2. **CI runs on every push** (`.github/workflows/ci.yml`): lint → 139 tests → build,
    plus E2E smoke tests (public site always; portal tests if the E2E secrets are set).
 3. Verify the live site: public landing page, login, one employee add/edit/delete.
 
@@ -68,7 +73,8 @@ E2E_USER_EMAIL / E2E_USER_PASSWORD               optional — E2E portal tests
 
 - **Plausible analytics** — register the domain, set `VITE_PLAUSIBLE_DOMAIN`, redeploy.
 - **Register backup** — Portal → sidebar → **Backup Register** downloads a full JSON
-  backup of every table (employees, stations, cadres, centres, facilitators, CMS, …).
+  backup of every table (employees, stations, cadres, centres, facilitators, LGA area
+  officers, partner organisations, organisation members, CMS, …).
   Do this before any major change, and keep copies off-site.
 
 ## 7. Suggested demo flow (to the Board)

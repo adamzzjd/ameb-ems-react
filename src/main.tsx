@@ -1,10 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router';
 import App from './App';
 import { AuthProvider } from './hooks/useAuth';
 import { ToastProvider } from './hooks/useToast';
 import { ThemeProvider } from './hooks/useTheme';
 import { Toaster } from '@/components/ui/sonner';
+import { ScrollManager } from './lib/scrollManager';
 import { initSentry } from './lib/sentry';
 import './index.css';
 
@@ -24,13 +26,16 @@ if (PLAUSIBLE_DOMAIN) {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <AuthProvider>
-        <ToastProvider>
-          <App />
-          <Toaster position="bottom-right" richColors />
-        </ToastProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <BrowserRouter>
+      <ThemeProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <ScrollManager />
+            <App />
+            <Toaster position="bottom-right" richColors />
+          </ToastProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </BrowserRouter>
   </React.StrictMode>,
 );

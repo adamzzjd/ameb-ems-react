@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Employee, LgaAreaOfficer } from '../types';
 import { Users, MapPin, Award, ChevronRight, TrendingUp, MapPinned } from 'lucide-react';
 import { getPromotionInfo, DUE_SOON_MONTHS } from '../lib/promotion';
-import { LGAs } from '../data/constants';
+import { mergeLgas } from '../data/constants';
 import { dbLoadLgaAreaOfficers } from '../supabase/lgaOfficers';
 import { useAuth } from '../hooks/useAuth';
 
@@ -59,16 +59,19 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
 
   // LGA → assigned area officer (and that officer's name from the register).
   const coverage = useMemo(() => {
+    // The same LGA set the register uses (statutory 21 + anything stored in the
+    // table), so the panel and the register can never disagree.
+    const allLgas = mergeLgas(officers.map(o => o.lga));
     const byLga = new Map(officers.map(o => [o.lga, o]));
     const employeeNames = new Map(employees.map(e => [e.id, e.name]));
-    const unassigned = LGAs.filter(l => {
+    const unassigned = allLgas.filter(l => {
       const o = byLga.get(l);
       return !o || !o.employee_id || !employeeNames.has(o.employee_id);
     });
+    const covered = allLgas.length - unassigned.length;
     return {
-      byLga, employeeNames, unassigned,
-      covered: LGAs.length - unassigned.length,
-      pct: Math.round(((LGAs.length - unassigned.length) / LGAs.length) * 100),
+      allLgas, byLga, employeeNames, unassigned, covered,
+      pct: allLgas.length ? Math.round((covered / allLgas.length) * 100) : 0,
     };
   }, [officers, employees]);
 
@@ -235,7 +238,7 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
               </div>
               <span className="text-[13px] font-bold" style={{ color: 'var(--color-text-primary)' }}>LGA Area Officers</span>
               <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
-                {coverage.covered} of {LGAs.length} LGAs covered
+                {coverage.covered} of {coverage.allLgas.length} LGAs covered
               </span>
             </div>
             {can('settings.manage') && (
@@ -259,7 +262,7 @@ export function Dashboard({ employees, onViewEmployee, onNavigate }: DashboardPr
           </div>
 
           <div className="p-4 max-h-[320px] overflow-y-auto">
-            {LGAs.map(l => {
+            {coverage.allLgas.map(l => {
               const o = coverage.byLga.get(l);
               const officerName = o?.employee_id ? coverage.employeeNames.get(o.employee_id) : null;
               return (

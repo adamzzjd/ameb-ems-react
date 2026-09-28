@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Printer } from 'lucide-react';
 import { Modal } from '../components/ui/Modal';
-import { LGAs } from '../data/constants';
+import { mergeLgas } from '../data/constants';
 import type { Employee, LgaAreaOfficer } from '../types';
 import {
   dbLoadLgaAreaOfficers, dbSetLgaAreaOfficer, dbRemoveLgaAreaOfficer,
@@ -23,11 +23,15 @@ function esc(s: string | null | undefined): string {
 
 // ── Searchable single-select picker over the staff register ──────────────────
 function StaffPicker({
-  employees, selected, onChange,
+  employees, selected, onChange, lgasByEmployee, currentLga,
 }: {
   employees: Employee[];
   selected: string;
   onChange: (id: string) => void;
+  /** employee_id → the LGA(s) that staff member already covers. */
+  lgasByEmployee: Map<string, string[]>;
+  /** The LGA being assigned — excluded from the "already covers" block. */
+  currentLga?: string;
 }) {
   const [query, setQuery] = useState('');
   const [showList, setShowList] = useState(false);
@@ -46,6 +50,11 @@ function StaffPicker({
 
   const chosen = employees.find(e => e.id === selected);
 
+  // LGAs this staff member already covers, other than the one being assigned.
+  // Anyone in here is blocked: one officer covers one LGA.
+  const otherLgas = (id: string) =>
+    (lgasByEmployee.get(id) || []).filter(l => l !== currentLga);
+
   return (
     <div onBlur={() => setTimeout(() => setShowList(false), 150)}>
       {chosen ? (
@@ -55,6 +64,11 @@ function StaffPicker({
             <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
               {chosen.psn ? `PSN ${esc(chosen.psn)} · ` : ''}{esc(chosen.cadre || '—')} · {esc(chosen.station || '—')}
             </div>
+            {otherLgas(chosen.id).length > 0 && (
+              <div style={{ fontSize: 11, fontWeight: 600, color: '#d97706', marginTop: 2 }}>
+                🚫 Area officer for {otherLgas(chosen.id).map(esc).join(', ')} — unassign there first
+              </div>
+            )}
           </div>
           <span onClick={() => onChange('')} title="Clear" style={{ cursor: 'pointer', fontWeight: 800, fontSize: 15, lineHeight: 1, color: 'var(--color-text-muted)' }}>×</span>
         </div>
@@ -77,16 +91,21 @@ function StaffPicker({
             </div>
           ) : filtered.slice(0, 60).map(e => {
             const checked = e.id === selected;
+            const held = otherLgas(e.id);
+            const blocked = held.length > 0;
             return (
               <button
                 key={e.id}
                 type="button"
+                disabled={blocked}
                 onClick={() => { onChange(e.id); setShowList(false); }}
+                title={blocked ? `Already the area officer for ${held.join(', ')} — one LGA per officer` : undefined}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8, width: '100%', textAlign: 'left',
-                  padding: '8px 12px', cursor: 'pointer', fontSize: 13, border: 'none',
+                  padding: '8px 12px', cursor: blocked ? 'not-allowed' : 'pointer', fontSize: 13, border: 'none',
                   borderBottom: '1px solid var(--color-border)',
                   background: checked ? 'rgba(22,163,74,.08)' : '#fff',
+                  opacity: blocked ? 0.55 : 1,
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -94,6 +113,11 @@ function StaffPicker({
                   <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
                     {e.psn ? `PSN ${esc(e.psn)} · ` : ''}{esc(e.cadre || '—')} · {esc(e.station || '—')}
                   </div>
+                  {blocked && (
+                    <div style={{ fontSize: 11, color: '#d97706' }}>
+                      🚫 Area officer for {held.map(esc).join(', ')} — one LGA per officer
+                    </div>
+                  )}
                 </div>
                 {checked && <span style={{ color: '#16a34a', fontWeight: 800 }}>✓</span>}
               </button>
@@ -156,17 +180,31 @@ export function LgaOfficersManager({ onNavigate, canManage }: LgaOfficersManager
     return map;
   }, [employees]);
 
-  // Every LGA, with its (optional) officer — the register always lists all 21.
+  // employee_id → the LGA(s) that staff member already covers. Used to block a
+  // second LGA: `lga` and `employee_id` are both unique in the database, so one
+  // officer covers exactly one LGA.
+  const lgasByEmployee = useMemo(() => {
+    const map = new Map<string, string[]>();
+    officers.forEach(o => {
+      if (!o.employee_id) return;
+      map.set(o.employee_id, [...(map.get(o.employee_id) || []), o.lga]);
+    });
+    return map;
+  }, [officers]);
+
+  // Every LGA, with its (optional) officer — the statutory 21 plus any LGA
+  // stored in the table (e.g. a legacy or renamed value), so a stored assignment
+  // can never be hidden, and can always be changed or removed.
   const rows = useMemo(() => {
-    return LGAs.map(lga => ({
-      lga,
-      officer: officerByLga.get(lga) || null,
-      employee: (() => {
-        const o = officerByLga.get(lga);
-        return o?.employee_id ? employeeById.get(o.employee_id) || null : null;
-      })(),
-    }));
-  }, [officerByLga, employeeById]);
+    return mergeLgas(officers.map(o => o.lga)).map(lga => {
+      const officer = officerByLga.get(lga) || null;
+      return {
+        lga,
+        officer,
+        employee: officer?.employee_id ? employeeById.get(officer.employee_id) || null : null,
+      };
+    });
+  }, [officers, officerByLga, employeeById]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -186,6 +224,13 @@ export function LgaOfficersManager({ onNavigate, canManage }: LgaOfficersManager
 
   const assignedCount = rows.filter(r => r.officer).length;
 
+  // LGAs the selected staff member already covers, other than the one being
+  // assigned. Non-empty = the assignment is blocked: one officer covers one LGA.
+  const conflict = formEmployeeId
+    ? (lgasByEmployee.get(formEmployeeId) || []).filter(l => l !== assignLga)
+    : [];
+  const saveBlocked = saving || conflict.length > 0;
+
   const openAssign = (lga: string) => {
     const existing = officerByLga.get(lga);
     setAssignLga(lga);
@@ -199,9 +244,29 @@ export function LgaOfficersManager({ onNavigate, canManage }: LgaOfficersManager
     if (!assignLga) return;
     if (!formEmployeeId) { setFormError('Select a staff member from the register to assign.'); return; }
 
+    // Hard block: a staff member can only be area officer for one LGA. Enforced
+    // in the picker (unselectable) and again here, so an assignment can never be
+    // saved around the UI — the database backs it with a unique index as well.
+    const alreadyCovers = (lgasByEmployee.get(formEmployeeId) || []).filter(l => l !== assignLga);
+    if (alreadyCovers.length > 0) {
+      const who = employeeById.get(formEmployeeId)?.name || 'That officer';
+      setFormError(`${who} is already the area officer for ${alreadyCovers.join(', ')}. Unassign them there first — one officer covers one LGA.`);
+      return;
+    }
+
     setSaving(true);
     const { data, error } = await dbSetLgaAreaOfficer(assignLga, formEmployeeId, formRemarks.trim());
-    if (error) { toast('Assignment failed: ' + error.message, true); setSaving(false); return; }
+    if (error) {
+      // The unique index on `employee_id` can still reject this if the register
+      // changed while the modal was open — surface it as the same plain-English
+      // block rather than a raw Postgres constraint message.
+      const friendly = /duplicate key|unique/i.test(error.message)
+        ? 'That staff member is already the area officer for another LGA. Unassign them there first — one officer covers one LGA.'
+        : 'Assignment failed: ' + error.message;
+      toast(friendly, true);
+      setSaving(false);
+      return;
+    }
     if (data) setOfficers(prev => [...prev.filter(o => o.lga !== data.lga), data]);
     toast(`✓ ${employeeById.get(formEmployeeId)?.name || 'Officer'} assigned to ${assignLga}.`);
     setSaving(false);
@@ -410,7 +475,7 @@ export function LgaOfficersManager({ onNavigate, canManage }: LgaOfficersManager
         footer={
           <>
             <button onClick={() => setAssignLga(null)} style={cancelBtnStyle}>Cancel</button>
-            <button onClick={handleSave} disabled={saving} style={{ ...primaryBtnStyle, opacity: saving ? 0.6 : 1, cursor: saving ? 'not-allowed' : 'pointer' }}>
+            <button onClick={handleSave} disabled={saveBlocked} style={{ ...primaryBtnStyle, opacity: saveBlocked ? 0.5 : 1, cursor: saveBlocked ? 'not-allowed' : 'pointer' }}>
               {saving ? 'Saving…' : '💾 Save Assignment'}
             </button>
           </>
@@ -427,7 +492,19 @@ export function LgaOfficersManager({ onNavigate, canManage }: LgaOfficersManager
               Area Officer <span style={{ color: 'var(--color-error)' }}>*</span>{' '}
               <span style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>(from the staff register)</span>
             </label>
-            <StaffPicker employees={employees} selected={formEmployeeId} onChange={id => { setFormEmployeeId(id); setFormError(''); }} />
+            <StaffPicker
+              employees={employees}
+              selected={formEmployeeId}
+              onChange={id => { setFormEmployeeId(id); setFormError(''); }}
+              lgasByEmployee={lgasByEmployee}
+              currentLga={assignLga || undefined}
+            />
+            {conflict.length > 0 && (
+              <div style={{ background: 'rgba(192,57,43,.08)', border: '1px solid rgba(192,57,43,.2)', color: 'var(--color-error)', padding: '8px 12px', borderRadius: 8, fontSize: 12 }}>
+                🚫 {employeeById.get(formEmployeeId)?.name || 'This officer'} is already the area officer for{' '}
+                {conflict.join(', ')}. Unassign them there first — one officer covers one LGA.
+              </div>
+            )}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={labelStyle}>Remarks</label>

@@ -14,13 +14,17 @@ export type AuditAction =
   | 'promotion'
   | 'document'
   | 'leave'
-  | 'payroll';
+  | 'approve'
+  | 'reject'
+  | 'invite';
 
 interface LogAuditInput {
   action: AuditAction;
   table: string;
   rowId?: string | null;
   details?: Record<string, unknown>;
+  /** Partner organisation the action belongs to, when applicable. */
+  organisationId?: string | null;
 }
 
 /**
@@ -44,6 +48,7 @@ export async function logAudit(input: LogAuditInput): Promise<void> {
       table_name: input.table,
       row_id: input.rowId ?? null,
       details: input.details ?? {},
+      organisation_id: input.organisationId ?? null,
     });
   } catch {
     // Never propagate — audit logging must not break the write it follows.

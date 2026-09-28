@@ -13,11 +13,13 @@ import { useCmsData } from '@/hooks/useCmsData';
 import { notifyAdminsOfContact } from '@/lib/notifyContact';
 import { useTheme } from '@/hooks/useTheme';
 import { syncFaviconFromLogo } from '@/lib/favicon';
-import { LGAs } from '@/data/constants';
+import { mergeLgas } from '@/data/constants';
+import { Link } from 'react-router';
+import { paths, slugify } from '@/lib/slug';
 import { Modal } from '@/components/ui/Modal';
 import { supabase } from '@/supabase/client';
 import { dbLoadEnrolmentStats, dbLoadPublicCentres } from '@/supabase/enrolments';
-import type { CmsNews, CmsProgram, EnrolmentStat, PublicCentre } from '@/types';
+import type { EnrolmentStat, PublicCentre } from '@/types';
 import {
   GraduationCap, BookOpen, Users, Star, Heart, Wrench,
   MapPin, ClipboardList, Rocket, ChevronRight, ChevronLeft,
@@ -267,36 +269,6 @@ function GallerySlideshow({ items }: { items: { image?: string; label: string }[
 // ═══════════════════════════════════════════════════════════════════════════
 // MAIN LANDING COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
-// ── Render rich text from CMS details (paragraphs + bullet lists) ───────────
-function renderDetails(details: string | undefined | null): ReactNode[] {
-  if (!details) return [];
-  return details
-    .split(/\n\s*\n/)
-    .map(block => block.trim())
-    .filter(Boolean)
-    .map((block, i) => {
-      const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-      const isList = lines.length > 0 && lines.every(l => l.startsWith('- '));
-      if (isList) {
-        return (
-          <ul key={i} className="space-y-2.5 my-5">
-            {lines.map((l, j) => (
-              <li key={j} className="flex gap-3 text-[15px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                <span className="text-primary mt-0.5 font-bold">✓</span>
-                <span>{l.replace(/^-\s*/, '')}</span>
-              </li>
-            ))}
-          </ul>
-        );
-      }
-      return (
-        <p key={i} className="text-[15px] leading-relaxed mb-5" style={{ color: 'var(--color-text-secondary)' }}>
-          {lines.join(' ')}
-        </p>
-      );
-    });
-}
-
 // ═══════════════════════════════════════════════════════════════════════════
 // SHARED DETAIL-PAGE SHELL (govt bar + sticky header + footer)
 // Used by the Program detail and News article pages.
@@ -321,302 +293,6 @@ function LogoMark({ url, size = 36 }: { url?: string | null; size?: number }) {
   );
 }
 
-function DetailShell({ backLabel, isDark, toggleTheme, onBack, onGoToLogin, logoUrl, children }: {
-  backLabel: string;
-  isDark: boolean;
-  toggleTheme: () => void;
-  onBack: () => void;
-  onGoToLogin: () => void;
-  logoUrl?: string | null;
-  children: ReactNode;
-}) {
-  return (
-    <div className="min-h-screen font-body" style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}>
-      {/* Govt top bar */}
-      <div className="sticky top-0 z-[60] w-full text-[11px] font-medium tracking-wide py-1.5 px-4 flex items-center justify-between border-b"
-        style={{ background: 'var(--color-primary-dark)', color: 'var(--color-text-inverse)', borderColor: 'rgba(255,255,255,0.1)' }}>
-        <div className="flex items-center gap-2">
-          <Shield size={12} className="opacity-60" />
-          <span className="hidden sm:inline">Federal Republic of Nigeria</span>
-          <span className="hidden sm:inline opacity-40">|</span>
-          <span>Adamawa State Government</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="hidden md:inline opacity-70">{new Date().toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'Africa/Lagos' })}</span>
-        </div>
-      </div>
-
-      {/* Detail header */}
-      <header className="sticky top-[36px] z-50 border-b backdrop-blur-xl"
-        style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-        <div className="max-w-[1000px] mx-auto flex items-center justify-between h-[64px] px-4 md:px-7">
-          <div className="flex items-center gap-3">
-            <button onClick={onBack} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[13px] font-semibold border transition-colors hover:border-primary"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
-              <ChevronLeft size={16} /> {backLabel}
-            </button>
-            <div className="flex items-center gap-2.5">
-              <LogoMark url={logoUrl} size={36} />
-              <div className="hidden sm:block">
-                <div className="text-[13px] font-heading font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Adamawa MEB</div>
-                <div className="text-[8px] tracking-[2.4px] uppercase" style={{ color: 'var(--color-text-muted)' }}>Mass Education Board</div>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={toggleTheme} className="w-9 h-9 rounded-lg flex items-center justify-center transition-colors border"
-              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
-              aria-label={isDark ? 'Light mode' : 'Dark mode'}>
-              {isDark ? <Sun size={16} className="text-gold" /> : <Moon size={16} />}
-            </button>
-            <button onClick={onGoToLogin} className="px-4 py-2 rounded-lg text-[12px] font-semibold text-white transition-all hover:opacity-90"
-              style={{ background: 'var(--color-primary)' }}>
-              🔒 Staff Portal
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {children}
-
-      {/* Footer */}
-      <footer className="pt-14 md:pt-16 pb-6 px-6 relative" style={{ background: isDark ? 'var(--color-bg)' : 'var(--color-primary-dark)' }}>
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gold" />
-        <div className="max-w-[1000px] mx-auto">
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-7">
-            <div className="flex items-center gap-2.5">
-              <LogoMark url={logoUrl} size={36} />
-              <div className="text-sm font-heading font-bold text-white">Adamawa State<br />Mass Education Board</div>
-            </div>
-            <button onClick={onBack} className="text-[13px] font-semibold transition-colors hover:text-gold"
-              style={{ color: 'rgba(255,255,255,0.65)' }}>← Back to Website</button>
-          </div>
-          <div className="pt-4 flex flex-wrap justify-between gap-2 text-xs"
-            style={{ borderTop: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}>
-            <span>© {new Date().getFullYear()} Adamawa State Mass Education Board. All Rights Reserved.</span>
-            <span className="flex items-center gap-1.5"><Shield size={12} className="text-success" /> SSL Secured</span>
-          </div>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// PROGRAM DETAIL PAGE (opened by "Learn more")
-// ═══════════════════════════════════════════════════════════════════════════
-function ProgramDetailPage({ program, programs, isDark, toggleTheme, onBack, onGoToLogin, onEnroll, onOpenProgram, logoUrl }: {
-  program: CmsProgram;
-  programs: CmsProgram[];
-  isDark: boolean;
-  toggleTheme: () => void;
-  logoUrl?: string | null;
-  onBack: () => void;
-  onGoToLogin: () => void;
-  onEnroll: () => void;
-  onOpenProgram: (id: string) => void;
-}) {
-  const others = programs.filter(p => p.id !== program.id).slice(0, 3);
-  const accent = ['bg-primary', 'bg-gold', 'bg-terracotta', 'bg-success'][programs.findIndex(p => p.id === program.id) % 4] || 'bg-primary';
-
-  return (
-    <DetailShell backLabel="Back to Programs" isDark={isDark} toggleTheme={toggleTheme} onBack={onBack} onGoToLogin={onGoToLogin} logoUrl={logoUrl}>
-      {/* Hero band */}
-      <section className="relative px-6 md:px-7 pt-14 pb-12" style={{ background: isDark ? 'var(--color-bg)' : 'var(--color-primary-dark)' }}>
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }} />
-        <div className="max-w-[1000px] mx-auto relative z-10">
-          <div className="flex items-center gap-4 mb-5">
-            {program.image ? (
-              <div className="w-16 h-16 rounded-2xl overflow-hidden shrink-0 border" style={{ borderColor: 'rgba(255,255,255,0.25)' }}>
-                <img src={program.image} alt={program.title} className="w-full h-full object-cover" />
-              </div>
-            ) : (
-              <div className={`w-16 h-16 rounded-2xl ${accent} text-white flex items-center justify-center text-3xl shrink-0`}>
-                {program.icon || <GraduationCap size={28} />}
-              </div>
-            )}
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold uppercase tracking-[2px] mb-1" style={{ color: 'var(--color-gold)' }}>
-                AMEB Programme
-              </div>
-              <h1 className="font-heading text-[28px] sm:text-[36px] font-bold text-white leading-tight">{program.title}</h1>
-            </div>
-          </div>
-          <p className="text-[16px] leading-relaxed max-w-[720px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            {program.description}
-          </p>
-        </div>
-      </section>
-
-      {/* Full details */}
-      <section className="px-6 md:px-7 py-12" style={{ background: 'var(--color-bg)' }}>
-        <div className="max-w-[1000px] mx-auto">
-          <div className="rounded-2xl border p-7 md:p-10" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-            {(() => {
-              const detailNodes = renderDetails(program.details);
-              return detailNodes.length > 0 ? (
-                <>{detailNodes}</>
-              ) : (
-                <p className="text-[15px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                  {program.description}
-                </p>
-              );
-            })()}
-            <div className="mt-8 pt-6 border-t flex flex-wrap gap-3" style={{ borderColor: 'var(--color-border)' }}>
-              <button onClick={onBack} className="px-6 py-3 rounded-lg text-sm font-semibold text-white transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-primary)' }}>
-                ← All Programs
-              </button>
-              <button onClick={onEnroll} className="px-6 py-3 rounded-lg text-sm font-semibold transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-gold)', color: 'var(--color-gold-fg)' }}>
-                🏫 Find a Learning Center
-              </button>
-            </div>
-          </div>
-
-          {/* Other programs */}
-          {others.length > 0 && (
-            <div className="mt-12">
-              <h3 className="font-heading text-lg font-bold mb-5" style={{ color: 'var(--color-text-primary)' }}>Other Programmes</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {others.map(p => (
-                  <a key={p.id} onClick={() => onOpenProgram(p.id)}
-                    className="rounded-xl overflow-hidden border cursor-pointer transition-all card-hover block"
-                    style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                    {p.image ? (
-                      <img src={p.image} alt={p.title} className="w-full h-28 object-cover" />
-                    ) : (
-                      <div className="text-2xl mb-2 px-5 pt-5">{p.icon}</div>
-                    )}
-                    <div className="p-5">
-                      <div className="font-heading text-[14px] font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>{p.title}</div>
-                      <p className="text-[12px] leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>{p.description}</p>
-                      <span className="inline-block mt-2.5 text-[11px] font-bold uppercase tracking-[1px] text-primary">Learn more →</span>
-                    </div>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* CTA band */}
-      <section className="px-6 md:px-7 py-14" style={{ background: isDark ? 'var(--color-surface-raised)' : 'var(--color-primary)' }}>
-        <div className="max-w-[1000px] mx-auto flex flex-wrap items-center justify-between gap-6">
-          <div>
-            <h3 className="font-heading text-xl font-bold text-white">Ready to begin your learning journey?</h3>
-            <p className="text-sm mt-1.5" style={{ color: isDark ? 'rgba(255,255,255,0.65)' : 'rgba(255,255,255,0.7)' }}>Visit any AMEB learning centre across the 21 LGAs of Adamawa State.</p>
-          </div>
-          <button onClick={onBack} className="px-7 py-3 rounded-lg text-sm font-bold transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-gold)', color: 'var(--color-gold-fg)' }}>
-            View All Programs
-          </button>
-        </div>
-      </section>
-
-    </DetailShell>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
-// NEWS ARTICLE PAGE (opened by "Read more")
-// ═══════════════════════════════════════════════════════════════════════════
-function NewsArticlePage({ article, articles, isDark, toggleTheme, onBack, onGoToLogin, onOpenArticle, logoUrl }: {
-  article: CmsNews;
-  articles: CmsNews[];
-  isDark: boolean;
-  toggleTheme: () => void;
-  logoUrl?: string | null;
-  onBack: () => void;
-  onGoToLogin: () => void;
-  onOpenArticle: (id: string) => void;
-}) {
-  const others = articles.filter(a => a.id !== article.id).slice(0, 3);
-  const accent = ['bg-primary', 'bg-gold', 'bg-terracotta', 'bg-success'][articles.findIndex(a => a.id === article.id) % 4] || 'bg-primary';
-
-  return (
-    <DetailShell backLabel="Back to News" isDark={isDark} toggleTheme={toggleTheme} onBack={onBack} onGoToLogin={onGoToLogin} logoUrl={logoUrl}>
-      {/* Article hero */}
-      <section className="relative px-6 md:px-7 pt-14 pb-12" style={{ background: isDark ? 'var(--color-bg)' : 'var(--color-primary-dark)' }}>
-        <div className="absolute inset-0 opacity-[0.03]" style={{
-          backgroundImage: 'linear-gradient(rgba(255,255,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.5) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }} />
-        <div className="max-w-[1000px] mx-auto relative z-10">
-          <div className="flex items-center gap-3 mb-4">
-            <span className={`w-11 h-11 rounded-xl ${accent} text-white flex items-center justify-center text-xl shrink-0`}>
-              {article.icon || '📰'}
-            </span>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[1px]"
-              style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'var(--color-gold-light)' }}>
-              Announcement
-            </span>
-            <span className="text-[12px] font-semibold" style={{ color: 'rgba(255,255,255,0.65)' }}>{article.date}</span>
-          </div>
-          <h1 className="font-heading text-[26px] sm:text-[34px] font-bold text-white leading-tight max-w-[820px]">{article.title}</h1>
-          <p className="text-[16px] leading-relaxed mt-4 max-w-[760px]" style={{ color: 'rgba(255,255,255,0.8)' }}>
-            {article.excerpt}
-          </p>
-        </div>
-      </section>
-
-      {/* Article body */}
-      <section className="px-6 md:px-7 py-12" style={{ background: 'var(--color-bg)' }}>
-        <div className="max-w-[1000px] mx-auto">
-          <article className="rounded-2xl border p-7 md:p-10" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-            {article.image && (
-              <div className="rounded-xl overflow-hidden mb-7 border" style={{ borderColor: 'var(--color-border)' }}>
-                <img src={article.image} alt={article.title} className="w-full max-h-[360px] object-cover" />
-              </div>
-            )}
-            {(() => {
-              const bodyNodes = renderDetails(article.body);
-              return bodyNodes.length > 0 ? (
-                <>{bodyNodes}</>
-              ) : (
-                <p className="text-[15px] leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                  {article.excerpt}
-                </p>
-              );
-            })()}
-            <div className="mt-8 pt-6 border-t flex flex-wrap items-center justify-between gap-3" style={{ borderColor: 'var(--color-border)' }}>
-              <button onClick={onBack} className="px-6 py-3 rounded-lg text-sm font-semibold text-white transition-all hover:-translate-y-0.5" style={{ background: 'var(--color-primary)' }}>
-                ← All News
-              </button>
-              <span className="text-[12px]" style={{ color: 'var(--color-text-muted)' }}>AMEB — News &amp; Announcements</span>
-            </div>
-          </article>
-
-          {/* Other articles */}
-          {others.length > 0 && (
-            <div className="mt-12">
-              <h3 className="font-heading text-lg font-bold mb-5" style={{ color: 'var(--color-text-primary)' }}>More Announcements</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {others.map(a => (
-                  <a key={a.id} onClick={() => onOpenArticle(a.id)}
-                    className="rounded-xl border p-5 cursor-pointer transition-all card-hover block"
-                    style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="text-2xl">{a.icon}</span>
-                      <span className="text-[11px] font-semibold" style={{ color: 'var(--color-text-muted)' }}>{a.date}</span>
-                    </div>
-                    <div className="font-heading text-[14px] font-bold mb-1 leading-snug" style={{ color: 'var(--color-text-primary)' }}>{a.title}</div>
-                    <p className="text-[12px] leading-relaxed line-clamp-2" style={{ color: 'var(--color-text-secondary)' }}>{a.excerpt}</p>
-                    <span className="inline-block mt-2.5 text-[11px] font-bold uppercase tracking-[1px] text-primary">Read more →</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-    </DetailShell>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════
 // MAIN LANDING COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════
 export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
@@ -637,23 +313,7 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
   // The board's logo (from CMS) — used in the header/footer and as the favicon.
   const logoUrl = site_content?.logo_url;
   useEffect(() => { syncFaviconFromLogo(logoUrl); }, [logoUrl]);
-  const [selectedProgram, setSelectedProgram] = useState<CmsProgram | null>(null);
-  const [selectedNews, setSelectedNews] = useState<CmsNews | null>(null);
-
-  const selectProgramById = useCallback((id: string) => {
-    const p = programs.find(x => x.id === id);
-    if (p) { setSelectedProgram(p); window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); }
-  }, [programs]);
-
-  const selectNewsById = useCallback((id: string) => {
-    const a = news.find(x => x.id === id);
-    if (a) { setSelectedNews(a); window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); }
-  }, [news]);
-
-  const handleGlobalEnroll = useCallback(() => {
-    setSelectedProgram(null);
-    setTimeout(() => scrollTo('enroll'), 50);
-  }, []);
+  // Detail views moved to real routes (/programs/<slug>, /news/<slug> — Phase 20).
 
   // Live data: enrolment stats + public centre directory
   const [enrolmentStats, setEnrolmentStats] = useState<EnrolmentStat[]>([]);
@@ -775,42 +435,10 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
   // LGA options for the enquiry form — live centre LGAs (once the register is
   // published) merged with the statutory 21 LGAs so the dropdown always works.
   const lgaOptions = useMemo(() => {
-    const set = new Set<string>([...LGAs, ...centreLgas]);
-    return [...set].sort((a, b) => a.localeCompare(b));
+    return mergeLgas(centreLgas).sort((a, b) => a.localeCompare(b));
   }, [centreLgas]);
 
-  // Program detail page (replaces the whole landing view while open)
-  if (selectedProgram) {
-    return (
-      <ProgramDetailPage
-        program={selectedProgram}
-        programs={sortedPrograms}
-        isDark={isDark}
-        toggleTheme={toggleTheme}
-        onBack={() => { setSelectedProgram(null); setTimeout(() => scrollTo('programs'), 50); }}
-        onGoToLogin={onGoToLogin}
-        onEnroll={handleGlobalEnroll}
-        onOpenProgram={selectProgramById}
-        logoUrl={logoUrl}
-      />
-    );
-  }
-
-  // News article page (replaces the whole landing view while open)
-  if (selectedNews) {
-    return (
-      <NewsArticlePage
-        article={selectedNews}
-        articles={sortedNews}
-        isDark={isDark}
-        toggleTheme={toggleTheme}
-        onBack={() => { setSelectedNews(null); setTimeout(() => scrollTo('news'), 50); }}
-        onGoToLogin={onGoToLogin}
-        onOpenArticle={selectNewsById}
-        logoUrl={logoUrl}
-      />
-    );
-  }
+  // Program detail lives at /programs/<slug> (real route, Phase 20).
 
   return (
     <div className="min-h-screen font-body" style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}>
@@ -1123,10 +751,10 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                     <div className="p-7">
                       <h3 className="font-heading text-base font-bold mb-2.5" style={{ color: 'var(--color-text-primary)' }}>{program.title}</h3>
                       <p className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>{program.description}</p>
-                      <button onClick={() => selectProgramById(program.id)}
+                      <Link to={paths.program(slugify(program.title))}
                         className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[1.1px] text-primary transition-all hover:gap-2">
                         Learn more <ChevronRight size={13} />
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </motion.div>
@@ -1199,18 +827,16 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                       style={{ borderColor: 'var(--color-border)' }}>{article.date}</span>
                   </div>
                   <div className="p-5 md:p-6">
-                    <h3 role="link" tabIndex={0} aria-label={`Read article: ${article.title}`}
-                      className="font-heading text-[15px] font-bold mb-2 leading-snug cursor-pointer transition-colors hover:text-primary focus:outline-none focus:underline"
-                      style={{ color: 'var(--color-text-primary)' }}
-                      onClick={() => selectNewsById(article.id)}
-                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectNewsById(article.id); } }}>
+                    <Link to={paths.newsArticle(slugify(article.title))}
+                      className="font-heading text-[15px] font-bold mb-2 leading-snug transition-colors hover:text-primary"
+                      style={{ color: 'var(--color-text-primary)' }}>
                       {article.title}
-                    </h3>
+                    </Link>
                     <p className="text-[13px] leading-relaxed mb-3" style={{ color: 'var(--color-text-secondary)' }}>{article.excerpt}</p>
-                    <button onClick={() => selectNewsById(article.id)}
+                    <Link to={paths.newsArticle(slugify(article.title))}
                       className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[1.1px] text-primary transition-all hover:gap-2">
                       Read more <ChevronRight size={13} />
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </motion.div>

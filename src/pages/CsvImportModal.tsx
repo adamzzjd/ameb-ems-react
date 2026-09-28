@@ -196,7 +196,7 @@ export function CsvImportModal({ open, onClose, onImport, existingEmployees }: C
             Choose a CSV file
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 12 }}>
-            Accepted columns: Name, PSN, Grade Level, Cadre, Phone, Station, LGA, DOB, Appointment Dates, Salary, Remarks<br />
+            Accepted columns: Name, PSN, Grade Level, Cadre, Phone, Station, LGA, DOB, Appointment Dates, Step, Remarks<br />
             Existing PSNs are skipped untouched · grades auto-formatted to GL xx · cadres matched to the register
           </div>
           <label style={{

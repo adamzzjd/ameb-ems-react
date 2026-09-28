@@ -64,15 +64,19 @@ describe('mapRowToEmployee', () => {
     expect(emp.photo).toBeNull();
   });
 
-  it('maps salary, step and address headers', () => {
-    const sysToCSV = buildColumnMapping(['Full Name', 'Basic Salary', 'Step', 'Residential Address']);
+  it('maps step and address headers', () => {
+    const sysToCSV = buildColumnMapping(['Full Name', 'Step', 'Residential Address']);
     const emp = mapRowToEmployee(
-      { 'Full Name': 'Aisha Bello', 'Basic Salary': '485200', Step: '3', 'Residential Address': '15 Ahmadu Bello Way, Yola' },
+      { 'Full Name': 'Aisha Bello', Step: '3', 'Residential Address': '15 Ahmadu Bello Way, Yola' },
       Object.fromEntries(Object.entries(sysToCSV).map(([k, v]) => [v!, k]))
     );
-    expect(emp.basic_salary).toBe(485200);
     expect(emp.step).toBe('3');
     expect(emp.address).toBe('15 Ahmadu Bello Way, Yola');
+  });
+
+  it('ignores a Salary column (salaries are not managed in this system)', () => {
+    const sysToCSV = buildColumnMapping(['Full Name', 'Basic Salary', 'Salary']);
+    expect(Object.values(sysToCSV)).not.toContain('basic_salary');
   });
 
   it('normalizes grade to GL xx format and uppercases PSN', () => {

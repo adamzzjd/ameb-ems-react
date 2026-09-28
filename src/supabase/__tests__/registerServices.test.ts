@@ -68,6 +68,10 @@ import { dbSaveCentre, dbDeleteCentre } from '../centres';
 import { dbAddFacilitator, dbUpdateFacilitator, dbDeleteFacilitator, dbSetCentreFacilitators } from '../facilitators';
 import { dbLoadEnrolmentStats, dbSaveEnrolmentStat, dbDeleteEnrolmentStat } from '../enrolments';
 import { dbLoadLgaAreaOfficers, dbSetLgaAreaOfficer, dbRemoveLgaAreaOfficer } from '../lgaOfficers';
+import {
+  dbLoadPartnerOrganisations, dbSavePartnerOrganisation, dbDeletePartnerOrganisation,
+  dbLoadOrganisationMembers, dbSetCentreApproval,
+} from '../partners';
 
 const opsOf = (table: string, op?: string) =>
   state.ops.filter(o => o.table === table && (!op || o.op === op));
@@ -280,5 +284,95 @@ describe('enrolment stats service', () => {
     expect(error).toBeNull();
     expect(opsOf('enrolment_stats', 'delete')).toHaveLength(1);
     expect(logAudit).toHaveBeenCalledWith({ action: 'delete', table: 'enrolment_stats', rowId: 'e-1' });
+  });
+});
+
+describe('partner organisations service', () => {
+  it('dbLoadPartnerOrganisations lists alphabetically', async () => {
+    resolve([{ id: 'p-1', name: 'Hope Initiative', type: 'NGO' }]);
+    const { data } = await dbLoadPartnerOrganisations();
+    expect(data).toHaveLength(1);
+    expect(opsOf('partner_organisations', 'order')[0]).toMatchObject({ col: 'name' });
+  });
+
+  it('dbSavePartnerOrganisation inserts a new org with sane defaults and audits a create', async () => {
+    resolve({ id: 'p-1', name: 'Hope Initiative' });
+    const { data, error } = await dbSavePartnerOrganisation({ name: 'Hope Initiative' });
+
+    expect(error).toBeNull();
+    expect(data?.id).toBe('p-1');
+    const insert = opsOf('partner_organisations', 'insert')[0].payload as Record<string, unknown>;
+    expect(insert.id).toBeTruthy();
+    expect(insert.name).toBe('Hope Initiative');
+    expect(insert.type).toBe('NGO');
+    expect(insert.status).toBe('active');
+    expect(insert.remarks).toBe('');
+    expect(logAudit).toHaveBeenCalledWith({
+      action: 'create', table: 'partner_organisations', rowId: 'p-1',
+      details: { name: 'Hope Initiative', type: 'NGO' },
+    });
+  });
+
+  it('dbSavePartnerOrganisation updates an existing org and audits an update', async () => {
+    resolve({ id: 'p-1', name: 'Hope Initiative (Renamed)' });
+    const { error } = await dbSavePartnerOrganisation({ id: 'p-1', name: 'Hope Initiative (Renamed)', type: 'LGA' });
+
+    expect(error).toBeNull();
+    expect(opsOf('partner_organisations', 'update')).toHaveLength(1);
+    expect(opsOf('partner_organisations', 'eq')[0]).toMatchObject({ col: 'id', val: 'p-1' });
+    expect(logAudit).toHaveBeenCalledWith({
+      action: 'update', table: 'partner_organisations', rowId: 'p-1',
+      details: { name: 'Hope Initiative (Renamed)', type: 'LGA' },
+    });
+  });
+
+  it('dbDeletePartnerOrganisation deletes and audits', async () => {
+    resolve(null);
+    const { error } = await dbDeletePartnerOrganisation('p-1');
+    expect(error).toBeNull();
+    expect(opsOf('partner_organisations', 'delete')).toHaveLength(1);
+    expect(opsOf('partner_organisations', 'eq')[0]).toMatchObject({ col: 'id', val: 'p-1' });
+    expect(logAudit).toHaveBeenCalledWith({ action: 'delete', table: 'partner_organisations', rowId: 'p-1' });
+  });
+
+  it('dbLoadOrganisationMembers reads the membership links', async () => {
+    resolve([{ id: 'm-1', organisation_id: 'p-1', user_id: 'u-2', org_role: 'org_admin' }]);
+    const { data } = await dbLoadOrganisationMembers();
+    expect(data).toHaveLength(1);
+  });
+
+  it('dbSetCentreApproval approves a centre and audits the decision', async () => {
+    resolve({ id: 'c-9', name: 'Partner Centre' });
+    const { error } = await dbSetCentreApproval('c-9', 'approved', { approverEmail: 'admin@ameb.gov.ng' });
+
+    expect(error).toBeNull();
+    const update = opsOf('centres', 'update')[0].payload as Record<string, unknown>;
+    expect(update.approval_status).toBe('approved');
+    expect(update.approved_by).toBe('admin@ameb.gov.ng');
+    expect(update.approved_at).toBeTruthy();
+    expect(logAudit).toHaveBeenCalledWith({
+      action: 'approve', table: 'centres', rowId: 'c-9', details: { status: 'approved' },
+    });
+  });
+
+  it('dbSetCentreApproval rejects a centre with a reason and audits it', async () => {
+    resolve({ id: 'c-9' });
+    const { error } = await dbSetCentreApproval('c-9', 'rejected', { note: 'No MOU on file' });
+
+    expect(error).toBeNull();
+    const update = opsOf('centres', 'update')[0].payload as Record<string, unknown>;
+    expect(update.approval_status).toBe('rejected');
+    expect(update.rejection_note).toBe('No MOU on file');
+    expect(logAudit).toHaveBeenCalledWith({
+      action: 'reject', table: 'centres', rowId: 'c-9',
+      details: { status: 'rejected', note: 'No MOU on file' },
+    });
+  });
+
+  it('does not audit when a partner write fails', async () => {
+    resolve(null, new Error('RLS denied'));
+    const { error } = await dbSavePartnerOrganisation({ name: 'Blocked Org' });
+    expect(error?.message).toBe('RLS denied');
+    expect(logAudit).not.toHaveBeenCalled();
   });
 });

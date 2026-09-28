@@ -79,7 +79,6 @@ returns table (
   station            text,
   address            text,
   photo              text,
-  basic_salary       numeric,
   step               text,
   remarks            text,
   already_submitted  boolean
@@ -93,7 +92,7 @@ as $$
     e.id, e.psn, e.name, e.gender, e.grade, e.cadre,
     e.date_first_appt, e.date_present_appt, e.dob,
     e.phone, e.lga, e.station, e.address, e.photo,
-    e.basic_salary, e.step, e.remarks,
+    e.step, e.remarks,
     e.self_service_submitted_at is not null
   from public.employees e
   where e.psn = self_service_lookup.psn
@@ -122,7 +121,7 @@ declare
     'name', 'gender', 'grade', 'cadre',
     'date_first_appt', 'date_present_appt', 'dob',
     'phone', 'lga', 'station', 'address', 'photo',
-    'basic_salary', 'step', 'remarks'
+    'step', 'remarks'
   ];
   v_key        text;
 begin
@@ -143,11 +142,7 @@ begin
     if not (v_key = any (v_allowed)) then
       return jsonb_build_object('ok', false, 'error', 'Field "' || v_key || '" cannot be updated through self-service.');
     end if;
-    if v_key = 'basic_salary' then
-      if jsonb_typeof(changes -> v_key) not in ('number', 'string', 'null') then
-        return jsonb_build_object('ok', false, 'error', 'Invalid value for "basic_salary".');
-      end if;
-    elsif jsonb_typeof(changes -> v_key) not in ('string', 'null') then
+    if jsonb_typeof(changes -> v_key) not in ('string', 'null') then
       return jsonb_build_object('ok', false, 'error', 'Invalid value for "' || v_key || '".');
     end if;
   end loop;
@@ -169,7 +164,6 @@ begin
     station            = case when changes ? 'station'            then nullif(changes ->> 'station', '')    else e.station end,
     address            = case when changes ? 'address'            then nullif(changes ->> 'address', '')    else e.address end,
     photo              = case when changes ? 'photo'              then nullif(changes ->> 'photo', '')      else e.photo end,
-    basic_salary       = case when changes ? 'basic_salary'       then nullif(changes ->> 'basic_salary', '')::numeric else e.basic_salary end,
     step               = case when changes ? 'step'               then nullif(changes ->> 'step', '')       else e.step end,
     remarks            = case when changes ? 'remarks'            then nullif(changes ->> 'remarks', '')    else e.remarks end,
     updated_at             = now(),

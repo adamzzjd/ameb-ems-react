@@ -27,7 +27,7 @@ const emp: Employee = {
   id: 'e1', name: 'Aisha Bello', gender: 'Female', grade: 'GL 09', cadre: 'Teacher',
   date_first_appt: yearsAgo(5), date_present_appt: null, dob: null, phone: null,
   lga: 'Yola North', psn: 'PS/AM/0001', station: 'Jimeta', photo: null,
-  basic_salary: null, step: null, address: null, remarks: '',
+  step: null, address: null, remarks: '',
 };
 
 describe('calcLeaveDays', () => {

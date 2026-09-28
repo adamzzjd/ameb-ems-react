@@ -11,9 +11,11 @@ import {
   LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
   GraduationCap, BookOpen, Building2, Settings, FileText,
   Download, Printer, Plus, LogOut, UserCog, UsersRound, Save,
-  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp, Wallet, CalendarDays,
+  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp, CalendarDays,
   MapPinned,
   UserPlus,
+  Handshake,
+  CalendarRange,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -56,6 +58,16 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    label: 'Programme Delivery',
+    items: [
+      { page: 'programmes', icon: <BookOpen size={18} />, label: 'Programmes', permission: 'reports.view' },
+      { page: 'cohorts', icon: <CalendarRange size={18} />, label: 'Cohorts', permission: 'reports.view' },
+      { page: 'learners', icon: <GraduationCap size={18} />, label: 'Learner Register', permission: 'reports.view' },
+      { page: 'centres', icon: <MapPin size={18} />, label: 'Learning Centres', permission: 'centres.manage' },
+      { page: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & M&E', permission: 'reports.view' },
+    ],
+  },
+  {
     label: 'Browse By',
     items: [
       { page: 'station', icon: <MapPin size={18} />, label: 'Present Station' },
@@ -66,7 +78,6 @@ const navSections: NavSection[] = [
       { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
       { page: 'leaves', icon: <CalendarDays size={18} />, label: 'Leave Management' },
       { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
-      { page: 'centres', icon: <GraduationCap size={18} />, label: 'Learning Centres' },
       { page: 'lga-officers', icon: <MapPinned size={18} />, label: 'LGA Area Officers', permission: 'settings.manage' },
     ],
   },
@@ -77,7 +88,7 @@ const navSections: NavSection[] = [
       { page: 'stations', icon: <Building2 size={18} />, label: 'Manage Stations' },
       { page: 'cadres', icon: <BookOpen size={18} />, label: 'Manage Cadres' },
       { page: 'facilitators', icon: <UsersRound size={18} />, label: 'Manage Facilitators' },
-      { page: 'payroll', icon: <Wallet size={18} />, label: 'Payroll & Salary', permission: 'payroll.manage' },
+      { page: 'partners', icon: <Handshake size={18} />, label: 'Partner Organisations', permission: 'partners.manage' },
       { page: 'users', icon: <UserCog size={18} />, label: 'User Management', permission: 'users.manage' },
       { page: 'audit-log', icon: <FileText size={18} />, label: 'Audit Log', permission: 'audit.view' },
     ],

@@ -1,14 +1,12 @@
 /* AMEB EMS — Print utilities
    Professional government document printouts with embedded logo.
-   Salary is intentionally excluded from employee prints (paid by the government).
-   Salary IS included in the payroll sheet print (its sole purpose). */
+   No money amounts are ever printed: staff pay is handled outside this system,
+   so no printout (employee, profile, or register) carries a figure. */
 
 import type { Employee } from '../types';
 import type { Facilitator } from '../types';
 import type { Centre, CentreFacilitator } from '../types';
 import type { LgaAreaOfficer } from '../types';
-import type { PayrollRow } from '../lib/payroll';
-import { fmtNaira } from '../lib/payroll';
 
 // ── Theme ────────────────────────────────────────────────────────────────────
 const GREEN = '#1A5C38';
@@ -102,7 +100,7 @@ function buildHeader(sub: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  EMPLOYEE PRINTS (no salary — salaries are paid by the government)
+//  EMPLOYEE PRINTS (no money amounts — staff pay is handled outside this system)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function printEmployees(employees: Employee[], title?: string, subtitle?: string) {
@@ -353,53 +351,6 @@ export function printLgaAreaOfficers(
     <div class="foot">
       <span>© Adamawa State Mass Education Board</span>
       <span>Federal Republic of Nigeria</span>
-    </div>
-  </body></html>`;
-
-  openAndPrint(html);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  PAYROLL PRINT (salary IS included here — this is the payroll sheet)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export function printPayrollSheet(rows: PayrollRow[], title: string) {
-  const body = rows.map(r => `
-    <tr>
-      <td style="font-weight:600">${esc(r.name)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${GREEN};font-weight:600">${esc(r.psn || '—')}</td>
-      <td>${esc(r.grade || '—')}</td>
-      <td>${esc(r.step || '—')}</td>
-      <td>${esc(r.station || '—')}</td>
-      <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(r.basicSalary)}</td>
-      <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(r.gross)}</td>
-    </tr>
-  `).join('');
-  const totalBasic = rows.reduce((s, r) => s + r.basicSalary, 0);
-  const totalGross = rows.reduce((s, r) => s + r.gross, 0);
-
-  const html = `<!DOCTYPE html><html><head><title>${esc(title)} — AMEB Payroll</title>
-  <style>${BASE_CSS}
-    td{text-align:right;}
-    td:nth-child(-n+5){text-align:left;}
-    tfoot td{font-weight:800;background:#eef2f0;border-top:2px solid ${GREEN};}
-  </style></head><body>
-    ${buildHeader(`${esc(title)} — ${rows.length} officers`)}
-    <table>
-      <thead><tr>
-        <th>Name</th><th>PSN</th><th>Grade</th><th>Step</th><th>Station</th>
-        <th style="text-align:right">Basic Salary</th><th style="text-align:right">Gross</th>
-      </tr></thead>
-      <tbody>${body}</tbody>
-      <tfoot><tr>
-        <td colspan="5" style="padding:7px 10px">TOTAL (${rows.length} officers)</td>
-        <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(totalBasic)}</td>
-        <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(totalGross)}</td>
-      </tr></tfoot>
-    </table>
-    <div class="foot">
-      <span>© Adamawa State Mass Education Board</span>
-      <span>Printed: ${today()}</span>
     </div>
   </body></html>`;
 

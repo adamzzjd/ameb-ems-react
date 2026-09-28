@@ -13,7 +13,6 @@ export interface Employee {
   psn: string | null;
   station: string | null;
   photo: string | null;
-  basic_salary: number | null;
   step: string | null;
   address: string | null;
   remarks: string;
@@ -36,7 +35,7 @@ export interface EmployeeFormData {
   psn: string;
   station: string;
   photo: string;
-  basic_salary: number | null;
+  /** Grade step — progression detail only; the Board pays salaries outside this system. */
   step: string | null;
   remarks: string;
 }
@@ -168,6 +167,12 @@ export interface Cadre {
   updated_at?: string;
 }
 
+/** Who owns / operates a learning centre. */
+export type CentreOwnerType = 'ADSMEB' | 'NGO' | 'LGA' | 'COMMUNITY' | 'PRIVATE';
+
+/** ADSMEB review state for centre records created outside the board. */
+export type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+
 export interface Centre {
   id: string;
   name: string;
@@ -180,8 +185,83 @@ export interface Centre {
   phone: string;
   ngo_partner: string;
   remarks: string;
+  /** Who owns/operates the centre — powers the public directory filter. */
+  owner_type?: CentreOwnerType;
+  /** Set when the centre belongs to a registered partner organisation. */
+  partner_org_id?: string | null;
+  /** Human-readable centre code, e.g. 'ADS-YOL-001'. */
+  centre_code?: string | null;
+  funding_source?: string | null;
+  agreement_start?: string | null;
+  agreement_end?: string | null;
+  /** Partner-created records start 'pending' until ADSMEB approves them. */
+  approval_status?: ApprovalStatus;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  rejection_note?: string | null;
   created_at?: string;
   updated_at?: string;
+}
+
+// ── Partner Organisations (multi-tenancy) ─────────────────────────────────────
+export type PartnerOrgType =
+  | 'NGO'
+  | 'INGO'
+  | 'LGA'
+  | 'CSO'
+  | 'FAITH'
+  | 'GOVT_AGENCY'
+  | 'PRIVATE';
+
+export type PartnerOrgStatus = 'active' | 'suspended' | 'archived';
+
+export type OrgRole = 'org_admin' | 'org_editor' | 'org_viewer';
+
+/**
+ * An external organisation (NGO, LGA, CSO…) that owns learning centres and
+ * whose users sign in to a partner-scoped view of the platform. Row access is
+ * scoped to the organisation by RLS — see supabase/setup_partners.sql.
+ */
+export interface PartnerOrganisation {
+  id: string;
+  name: string;
+  type: PartnerOrgType;
+  registration_no: string | null;
+  contact_person: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  lga: string | null;
+  mou_reference: string | null;
+  agreement_start: string | null;
+  agreement_end: string | null;
+  logo: string | null;
+  status: PartnerOrgStatus;
+  remarks: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/**
+ * Membership link between an authenticated user and a partner organisation.
+ * Written only by the manage-users edge function (service role) — never from
+ * the browser.
+ */
+export interface OrganisationMember {
+  id: string;
+  organisation_id: string;
+  user_id: string;
+  org_role: OrgRole;
+  status: 'active' | 'suspended';
+  remarks: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** A partner organisation together with its member count (list view). */
+export interface PartnerOrganisationSummary extends PartnerOrganisation {
+  centres?: number;
+  members?: number;
 }
 
 export interface Facilitator {
@@ -229,6 +309,10 @@ export interface PublicCentre {
   capacity: number | null;
   phone: string | null;
   ngo_partner: string | null;
+  /** Who owns/operates the centre — only approved centres are exposed. */
+  owner_type?: CentreOwnerType | null;
+  centre_code?: string | null;
+  partner_name?: string | null;
   facilitators: string[];
 }
 
@@ -299,6 +383,8 @@ export interface AuditLog {
   table_name: string;
   row_id: string | null;
   details: Record<string, unknown>;
+  /** Which partner organisation the action belongs to, when applicable. */
+  organisation_id?: string | null;
   created_at: string;
 }
 
@@ -316,6 +402,85 @@ export interface EnrolmentStat {
   created_at?: string;
   updated_at?: string;
 }
+
+// ── Programme delivery (programmes / cohorts / learners) ─────────────────────
+/** A course or programme the board or a partner organisation delivers. */
+export interface Programme {
+  id: string;
+  title: string;
+  description: string;
+  category: string | null;
+  duration_weeks: number | null;
+  status: 'active' | 'paused' | 'closed' | string;
+  /** null = board-owned; otherwise the partner organisation that delivers it. */
+  owner_org_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** A delivery of a programme at a centre over a period. */
+export interface Cohort {
+  id: string;
+  programme_id: string;
+  centre_id: string;
+  name: string;
+  start_date: string | null;
+  end_date: string | null;
+  status: 'planned' | 'running' | 'completed' | 'cancelled' | string;
+  capacity: number | null;
+  owner_org_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** One row of the `cohort_overview` view (cohort + programme + centre + count). */
+export interface CohortOverviewRow {
+  id: string;
+  name: string;
+  cohort_status: string;
+  start_date: string | null;
+  end_date: string | null;
+  capacity: number | null;
+  owner_org_id: string | null;
+  programme_id: string;
+  programme_title: string;
+  programme_category: string | null;
+  centre_id: string;
+  centre_name: string;
+  centre_lga: string;
+  learner_count: number;
+}
+
+/** A person enrolled in a cohort — the learner register (not staff). */
+export interface Learner {
+  id: string;
+  reference_no: string | null;
+  full_name: string;
+  gender: string | null;
+  age_group: string | null;
+  phone: string | null;
+  lga: string | null;
+  community: string | null;
+  cohort_id: string | null;
+  status: 'active' | 'completed' | 'dropped_out' | 'transferred' | string;
+  enrolled_on: string | null;
+  completed_on: string | null;
+  notes: string | null;
+  owner_org_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export const LEARNER_AGE_GROUPS = [
+  'Out-of-school child',
+  'Youth (15–24)',
+  'Adult (25+)',
+  'Not sure yet',
+] as const;
+
+export const LEARNER_STATUSES = ['active', 'completed', 'dropped_out', 'transferred'] as const;
+
+export const COHORT_STATUSES = ['planned', 'running', 'completed', 'cancelled'] as const;
 
 // ── Filter State ───────────────────────────────────────────────────────────────
 export interface FilterState {
@@ -355,6 +520,7 @@ export type AppPage =
   | 'cadres'
   | 'facilitators'
   | 'lga-officers'
+  | 'partners'
   | 'centres'
   | 'cms-dashboard'
   | 'cms-content'
@@ -371,6 +537,10 @@ export type AppPage =
   | 'retirement'
   | 'promotions'
   | 'leaves'
-  | 'payroll'
   | 'psn-check'
-  | 'data-quality';
+  | 'data-quality'
+  | 'programmes'
+  | 'cohorts'
+  | 'learners'
+  | 'reports'
+  | 'partner-home';

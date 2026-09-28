@@ -2,21 +2,30 @@
 -- AMEB EMS — Row Level Security (RLS) Setup
 -- ----------------------------------------------------------------------------
 -- Enforces the role system in the database. Run this AFTER setup.sql,
--- setup_ems.sql, setup_storage.sql, setup_facilitators.sql and
--- setup_lga_officers.sql, in the Supabase
--- dashboard SQL Editor. Safe to run multiple times (drops and recreates policies).
+-- setup_ems.sql, setup_storage.sql, setup_facilitators.sql,
+-- setup_lga_officers.sql and setup_partners.sql, in the Supabase dashboard SQL
+-- Editor. Safe to run multiple times (drops and recreates policies).
 --
 -- Roles live on the Supabase auth user's `app_metadata.role`:
---   super_admin | admin | data_collector | staff
+--   super_admin | admin | meb_officer | lga_officer | enumerator |
+--   data_collector | partner_admin | partner_editor | partner_viewer |
+--   mne_viewer | staff
 -- Policies read the role straight from the JWT via auth.jwt().
 --
 -- ACCESS MODEL
---   employees        : any signed-in user (any role) can read; data_collector+
---                      can insert/update; admin+ can delete.
---   stations/cadres/centres: any signed-in user can read; admin+ can write.
+--   employees        : ⚠ INTERNAL BOARD ROLES ONLY (can_view_staff_register) —
+--                      partner users and enumerators must never read the staff
+--                      register. data_collector+ can insert/update; admin+ delete.
+--   stations/cadres  : any signed-in internal user can read; admin+ can write.
+--   centres          : board staff read all; a partner reads only its own org's
+--                      centres. admin+ write anything; a partner may insert/
+--                      update its own centres (forced back to 'pending' review
+--                      by the enforce_centres_approval trigger).
 --   facilitators/centre_facilitators: any signed-in user can read; admin+ can write.
 --   lga_area_officers: any signed-in user can read; admin+ can write (one area
 --                      officer per LGA, drawn from the staff register).
+--   partner_organisations / organisation_members: board reads (super_admin
+--                      manages); a partner reads only its own organisation.
 --   CMS content      : public read (anon — the Landing page needs it); admin+ write.
 --   cms_contacts     : public insert (contact form); admin+ read/update/delete.
 -- ============================================================================
@@ -29,6 +38,36 @@ stable
 set search_path = public
 as $$
   select auth.jwt() -> 'app_metadata' ->> 'role';
+$$;
+
+-- Internal board staff (all roles that operate the register, including field
+-- enumerators). Partner-* roles are deliberately excluded.
+-- These two helpers have no table dependencies and are also defined in
+-- setup_partners.sql, so either script may be run first.
+create or replace function public.is_adsmeb_staff()
+returns boolean
+language sql
+stable
+set search_path = public
+as $$
+  select coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') in (
+    'super_admin', 'admin', 'meb_officer', 'lga_officer',
+    'data_collector', 'staff', 'mne_viewer', 'enumerator'
+  );
+$$;
+
+-- Roles allowed to read the employees register (personal staff data).
+-- Enumerators and partner users are excluded.
+create or replace function public.can_view_staff_register()
+returns boolean
+language sql
+stable
+set search_path = public
+as $$
+  select coalesce(auth.jwt() -> 'app_metadata' ->> 'role', '') in (
+    'super_admin', 'admin', 'meb_officer', 'lga_officer',
+    'data_collector', 'staff', 'mne_viewer'
+  );
 $$;
 
 -- ── 2. Enable RLS on all application tables ─────────────────────────────────
@@ -47,10 +86,13 @@ alter table public.cms_downloads  enable row level security;
 alter table public.cms_contacts   enable row level security;
 
 -- ── 3. Employees (staff register) ───────────────────────────────────────────
+-- ⚠️ INTERNAL BOARD ROLES ONLY. This used to allow any signed-in user; now
+-- that partner organisations have portal accounts, that would expose every
+-- officer's name, phone, DOB, PSN and address to external organisations.
 drop policy if exists "employees_select" on public.employees;
 create policy "employees_select" on public.employees
   for select
-  using (public.auth_role() is not null);
+  using (public.can_view_staff_register());
 
 drop policy if exists "employees_insert" on public.employees;
 create policy "employees_insert" on public.employees
@@ -105,7 +147,7 @@ create policy "cadres_delete" on public.cadres
 
 drop policy if exists "centres_select" on public.centres;
 create policy "centres_select" on public.centres
-  for select using (public.auth_role() is not null);
+  for select using (public.is_adsmeb_staff());
 
 drop policy if exists "centres_insert" on public.centres;
 create policy "centres_insert" on public.centres
@@ -205,6 +247,224 @@ begin
     drop policy if exists "enrolment_stats_delete" on public.enrolment_stats;
     create policy "enrolment_stats_delete" on public.enrolment_stats
       for delete using (public.auth_role() in ('admin', 'super_admin'));
+  end if;
+end $$;
+
+-- ── 4.8. Partner organisations & organisation membership ───────────────────
+-- Guarded: only applies once setup_partners.sql has created the tables.
+-- Board staff read everything (super_admin manages); a partner user reads only
+-- the organisation(s) they belong to. User provisioning happens exclusively
+-- through the manage-users edge function (service role), never from the
+-- browser — so members are readable but not writable here.
+do $$
+begin
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'partner_organisations')
+     and exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'organisation_members')
+  then
+    -- auth_org_ids()/has_org_access() are created by setup_partners.sql; make
+    -- sure they exist even if this script is re-run first.
+    create or replace function public.auth_org_ids()
+    returns setof uuid
+    language sql
+    stable
+    security definer
+    set search_path = public
+    as $fn$
+      select organisation_id
+      from public.organisation_members
+      where user_id = auth.uid()
+        and status = 'active';
+    $fn$;
+
+    create or replace function public.has_org_access(org uuid)
+    returns boolean
+    language sql
+    stable
+    security definer
+    set search_path = public
+    as $fn$
+      select org is not null and exists (
+        select 1
+        from public.organisation_members
+        where user_id = auth.uid()
+          and organisation_id = org
+          and status = 'active'
+      );
+    $fn$;
+
+    -- ── Partner organisations ──
+    drop policy if exists "partner_organisations_select" on public.partner_organisations;
+    create policy "partner_organisations_select" on public.partner_organisations
+      for select using (
+        public.can_view_staff_register()
+        or id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "partner_organisations_insert" on public.partner_organisations;
+    create policy "partner_organisations_insert" on public.partner_organisations
+      for insert with check (public.auth_role() = 'super_admin');
+
+    drop policy if exists "partner_organisations_update" on public.partner_organisations;
+    create policy "partner_organisations_update" on public.partner_organisations
+      for update using (public.auth_role() = 'super_admin')
+      with check (public.auth_role() = 'super_admin');
+
+    drop policy if exists "partner_organisations_delete" on public.partner_organisations;
+    create policy "partner_organisations_delete" on public.partner_organisations
+      for delete using (public.auth_role() = 'super_admin');
+
+    -- ── Organisation members (read-only from the app; written by the edge fn) ──
+    drop policy if exists "organisation_members_select" on public.organisation_members;
+    create policy "organisation_members_select" on public.organisation_members
+      for select using (
+        public.can_view_staff_register()
+        or organisation_id in (select public.auth_org_ids())
+      );
+
+    -- ── Centres: scope partners to their own organisation ──
+    drop policy if exists "centres_select" on public.centres;
+    create policy "centres_select" on public.centres
+      for select using (
+        public.is_adsmeb_staff()
+        or partner_org_id in (select public.auth_org_ids())
+      );
+
+    -- A partner may create centres for its own organisation only. The
+    -- enforce_centres_approval trigger forces approval_status back to
+    -- 'pending', so a partner can never self-approve.
+    drop policy if exists "centres_partner_insert" on public.centres;
+    create policy "centres_partner_insert" on public.centres
+      for insert with check (
+        partner_org_id is not null
+        and partner_org_id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "centres_partner_update" on public.centres;
+    create policy "centres_partner_update" on public.centres
+      for update using (partner_org_id in (select public.auth_org_ids()))
+      with check (partner_org_id in (select public.auth_org_ids()));
+  end if;
+end $$;
+
+-- ── 4.7. Programme delivery: programmes, cohorts, learners ─────────────────
+-- Guarded — the tables come from setup_delivery.sql, which may not have run
+-- yet. Same tenant model as centres: board staff see everything; partner
+-- users are scoped to their own organisation by owner_org_id.
+--   • programmes.manage  → board (admin+/meb_officer) and partners on their own rows
+--   • learners.manage    → board delivery roles, enumerators, partners on own rows
+--   • reports.view roles (mne_viewer, partner_viewer) get read-only
+-- The permission *checks* live in the app; here RLS is the real gate.
+do $$
+begin
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'programmes') then
+    -- ── Programmes ──
+    drop policy if exists "programmes_select" on public.programmes;
+    create policy "programmes_select" on public.programmes
+      for select using (
+        public.can_view_staff_register()
+        or owner_org_id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "programmes_insert" on public.programmes;
+    create policy "programmes_insert" on public.programmes
+      for insert with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "programmes_update" on public.programmes;
+    create policy "programmes_update" on public.programmes
+      for update using (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      )
+      with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "programmes_delete" on public.programmes;
+    create policy "programmes_delete" on public.programmes
+      for delete using (
+        public.auth_role() in ('super_admin', 'admin')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+  end if;
+
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'cohorts') then
+    -- ── Cohorts ── (readable by reports-viewers too)
+    drop policy if exists "cohorts_select" on public.cohorts;
+    create policy "cohorts_select" on public.cohorts
+      for select using (
+        public.can_view_staff_register()
+        or owner_org_id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "cohorts_insert" on public.cohorts;
+    create policy "cohorts_insert" on public.cohorts
+      for insert with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer', 'data_collector')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "cohorts_update" on public.cohorts;
+    create policy "cohorts_update" on public.cohorts
+      for update using (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer', 'data_collector')
+        or (owner_org_id in (select public.auth_org_ids()))
+      )
+      with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer', 'data_collector')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "cohorts_delete" on public.cohorts;
+    create policy "cohorts_delete" on public.cohorts
+      for delete using (
+        public.auth_role() in ('super_admin', 'admin')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+  end if;
+
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'learners') then
+    -- ── Learners ── (field capture roles + partners; viewers read-only)
+    drop policy if exists "learners_select" on public.learners;
+    create policy "learners_select" on public.learners
+      for select using (
+        public.can_view_staff_register()
+        or public.auth_role() = 'enumerator'
+        or owner_org_id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "learners_insert" on public.learners;
+    create policy "learners_insert" on public.learners
+      for insert with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer', 'data_collector', 'enumerator')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "learners_update" on public.learners;
+    create policy "learners_update" on public.learners
+      for update using (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer', 'data_collector', 'enumerator')
+        or (owner_org_id in (select public.auth_org_ids()))
+      )
+      with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer', 'data_collector', 'enumerator')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "learners_delete" on public.learners;
+    create policy "learners_delete" on public.learners
+      for delete using (
+        public.auth_role() in ('super_admin', 'admin')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
   end if;
 end $$;
 

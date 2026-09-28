@@ -1,4 +1,11 @@
-import type { AppPage, PageTitle } from '../types';
+import type {
+  AppPage,
+  PageTitle,
+  CentreOwnerType,
+  ApprovalStatus,
+  PartnerOrgType,
+  OrgRole,
+} from '../types';
 
 export const LGAs = [
   'Demsa', 'Fufore', 'Ganye', 'Girei', 'Gombi', 'Guyuk', 'Hong', 'Jada',
@@ -9,7 +16,7 @@ export const LGAs = [
 // ── Cadres ────────────────────────────────────────────────────────────────────
 // Actual AMEB (Adamawa State Mass Education Board) staff establishment, aligned
 // with the NMEC/state mass education board cadre structure. Each cadre carries
-// its typical salary grade level (GL) — the employee form auto-fills the grade
+// its typical grade level (GL) — the employee form auto-fills the grade
 // from the selected cadre.
 export interface CadreSeed {
   name: string;
@@ -70,6 +77,60 @@ export const GRADES = [
   'GL 16', 'GL 16/9', 'GL 17', 'GL 17/9',
 ] as const;
 
+// The statutory 21 LGAs merged with any LGA value coming from a register (a
+// renamed or legacy value, or a centre in a new area), so list views and
+// coverage figures never silently drop a row. Used by the Landing directory,
+// the Dashboard coverage panel and the LGA Area Officers register.
+export function mergeLgas(values: readonly (string | null | undefined)[]): string[] {
+  return Array.from(new Set<string>([...LGAs, ...values.filter((v): v is string => !!v)]));
+}
+
+// ── Centre ownership ──────────────────────────────────────────────────────────
+// Who owns/operates a learning centre. ADSMEB centres are the board's own;
+// NGO / LGA / community centres belong to an external partner organisation.
+export const OWNER_TYPES: readonly CentreOwnerType[] = [
+  'ADSMEB', 'NGO', 'LGA', 'COMMUNITY', 'PRIVATE',
+];
+
+export const OWNER_TYPE_LABELS: Record<CentreOwnerType, string> = {
+  ADSMEB: 'ADSMEB (Board)',
+  NGO: 'NGO / Partner',
+  LGA: 'Local Government',
+  COMMUNITY: 'Community',
+  PRIVATE: 'Private',
+};
+
+export const APPROVAL_STATUSES: readonly ApprovalStatus[] = ['pending', 'approved', 'rejected'];
+
+export const APPROVAL_STATUS_LABELS: Record<ApprovalStatus, string> = {
+  pending: 'Pending review',
+  approved: 'Approved',
+  rejected: 'Rejected',
+};
+
+// ── Partner organisations ─────────────────────────────────────────────────────
+export const PARTNER_ORG_TYPES: readonly PartnerOrgType[] = [
+  'NGO', 'INGO', 'LGA', 'CSO', 'FAITH', 'GOVT_AGENCY', 'PRIVATE',
+];
+
+export const PARTNER_ORG_TYPE_LABELS: Record<PartnerOrgType, string> = {
+  NGO: 'NGO (local)',
+  INGO: 'INGO (international)',
+  LGA: 'Local Government Area',
+  CSO: 'Civil Society Organisation',
+  FAITH: 'Faith-based Organisation',
+  GOVT_AGENCY: 'Government Agency',
+  PRIVATE: 'Private Provider',
+};
+
+export const ORG_ROLES: readonly OrgRole[] = ['org_admin', 'org_editor', 'org_viewer'];
+
+export const ORG_ROLE_LABELS: Record<OrgRole, string> = {
+  org_admin: 'Organisation Admin',
+  org_editor: 'Organisation Editor',
+  org_viewer: 'Organisation Viewer',
+};
+
 export const STATIONS = [
   'Yola (HQ)', 'Women Development Centre Malamre', 'Technical College Yola',
   'Mubi', 'Ganye', 'Numan', 'Hong', 'Michika', 'Gombi',
@@ -88,13 +149,13 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   retirement:    { title: '🎓 Retirement & Tenure',   subtitle: 'Age 60 / 35 years of service projections' },
   promotions:    { title: '📈 Promotions & Progression', subtitle: 'Due/overdue officers & promotion history' },
   leaves:        { title: '🗓 Leave Management',         subtitle: 'Requests, approvals & annual balances' },
-  payroll:       { title: '💰 Payroll & Salary',         subtitle: 'Monthly payroll sheet (IPPS-ready)' },
   'psn-check':    { title: '🗂 PSN Tools',               subtitle: 'Check PSNs, register new officers & unlock self-service updates' },
   'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
   facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },
   'lga-officers':{ title: 'LGA Area Officers',       subtitle: 'One area officer per local government — assigned from staff' },
+  partners:      { title: '🤝 Partner Organisations', subtitle: 'NGOs, LGAs and CSOs that own and run learning centres' },
   centres:       { title: 'Learning Centres Register', subtitle: 'All AMEB learning centres across 21 LGAs' },
   'cms-dashboard': { title: '📝 Content Manager',      subtitle: 'Manage all website content' },
   'cms-content':  { title: '⚙️ Site Content',          subtitle: 'Hero, About, Mission, Vision, Contact' },
@@ -108,4 +169,9 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   users:          { title: '👤 User Management',       subtitle: 'Create users and assign roles' },
   'audit-log':    { title: '🕵️ Audit Log',              subtitle: 'Who did what, when' },
   account:        { title: '👤 My Account',            subtitle: 'Profile & password' },
+  programmes:     { title: '📚 Programmes',            subtitle: 'Courses delivered at learning centres' },
+  cohorts:        { title: '🗓 Cohorts',                subtitle: 'Programme deliveries at centres' },
+  learners:       { title: '🎓 Learner Register',       subtitle: 'People enrolled in cohorts — not staff' },
+  reports:        { title: '📊 Reports & M&E',          subtitle: 'Delivery outcomes across programmes and LGAs' },
+  'partner-home': { title: '🤝 Partner Portal',         subtitle: 'Your organisation at a glance' },
 };

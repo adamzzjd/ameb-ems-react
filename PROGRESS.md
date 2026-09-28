@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** August 17, 2026 (Phase 16 — self-service portal + PSN-safe CSV import)
+> **Last updated:** September 28, 2026 (Phases 20–25 — public routes, partner portal, programmes & cohorts, learner register, M&E)
 
 ---
 
@@ -208,19 +208,21 @@
 
 ## 🚀 Phase 15: Promotions, Leave, Payroll, Documents Vault, Password Reset & Contact Alerts (Code Complete)
 
-> **One-time go-live:** run `supabase/setup_promotions.sql`, `setup_leaves.sql`, `setup_payroll.sql` and `setup_documents.sql` in the Supabase SQL Editor (creates the four tables idempotently), then re-run `supabase/setup_rls.sql` for their policies. Deploy the `notify-contact` edge function + secrets (`supabase secrets set RESEND_API_KEY=...`; optional `NOTIFY_CONTACT_SENDER`).
+> ⚠️ **Superseded in part by Phase 18** — the payroll module and the `employees.basic_salary` column were later removed (pay is outside this system). Rows 15.1 and 15.2 below are historical.
+
+> **One-time go-live:** run `supabase/setup_promotions.sql`, `setup_leaves.sql` and `setup_documents.sql` in the Supabase SQL Editor (creates the tables idempotently), then re-run `supabase/setup_rls.sql` for their policies. (`setup_payroll.sql` is gone — see Phase 18.) Deploy the `notify-contact` edge function + secrets (`supabase secrets set RESEND_API_KEY=...`; optional `NOTIFY_CONTACT_SENDER`).
 
 | Step | Status | Notes |
 |------|--------|-------|
-| 15.1 Salary + step fields | ✅ Done | `employees.basic_salary` (number) + `employees.step` columns (idempotent ALTER in `setup_payroll.sql`), employee form fields (with validation), profile display, CSV import (`basic salary`/`step` headers) + export |
-| 15.2 Payroll & Salary page | ✅ Done | `src/pages/Payroll.tsx` — month/year picker, per-officer sheet (PSN, name, grade, step, station, LGA, basic + gross), totals row, IPPS-ready CSV export (`buildIppsCsv` in `src/lib/payroll.ts`), admin-only via new `payroll.manage` permission |
+| 15.1 Salary + step fields | ✅ Done → ❌ **Removed in Phase 18** | `employees.basic_salary` (number) + `employees.step` columns (idempotent ALTER in the since-deleted `setup_payroll.sql`). The **salary** field was removed in Phase 18; `employees.step` is kept as a grade-progression detail |
+| 15.2 Payroll & Salary page | ✅ Done → ❌ **Removed in Phase 18** | `src/pages/Payroll.tsx` (month/year picker, per-officer sheet, totals, IPPS CSV via `src/lib/payroll.ts`, admin-only `payroll.manage`) — deleted along with the permission and the SQL schema |
 | 15.3 Promotions & Progression page | ✅ Done | `src/lib/promotion.ts` (pure, tested): 3-year interval from present appointment, next-grade helper (GL NN → next level), due-soon/overdue/on-track flags; `src/pages/Promotion.tsx` — due/overdue summary, searchable list, promotion-history records (`promotion_records` table) with add/edit/delete |
 | 15.4 Leave Management page | ✅ Done | `src/lib/leave.ts` (pure, tested): working-day math (weekends excluded), 12 days/year accrual capped at 36, per-type max-days validation, Monday-first month calendar, CSV exports (requests + balances); `src/pages/Leave.tsx` — request creation, approve/reject (new `leave.approve` permission), balances per officer |
 | 15.5 Documents vault | ✅ Done | `src/pages/EmployeeProfile.tsx` — attach/download/delete employee documents (letters, certificates…) via `src/supabase/documents.ts` + `uploadDocumentToStorage` (Cloudinary-first); `DOCUMENT_CATEGORIES` taxonomy |
 | 15.6 Password reset | ✅ Done | `src/pages/ResetPassword.tsx` — handles Supabase recovery links (`#/reset` hash): sets the session, collects the new password, updates via `updateUser`; App stays out of the app view until the reset finishes |
 | 15.7 Contact-form email alerts | ✅ Done | `supabase/functions/notify-contact/index.ts` — edge function emails super_admin + admin users via Resend when the public contact form is submitted; `src/lib/notifyContact.ts` fire-and-forget caller; no-op (inbox still works) without `RESEND_API_KEY` |
 | 15.8 Dashboard promotion alert | ✅ Done | Dashboard shows an overdue/due-soon promotion banner (count + Review button → Promotions page) using `getPromotionInfo` |
-| 15.9 Tests | ✅ Done | 41 new tests (127 total): `leave.test.ts` (working days, accrual, validation, calendar, CSV), `payroll.test.ts` (rows, naira formatting, IPPS CSV), `promotion.test.ts` (interval, next grade, due flags) |
+| 15.9 Tests | ✅ Done | 41 new tests (127 total at the time): `leave.test.ts` (working days, accrual, validation, calendar, CSV), `payroll.test.ts` (rows, naira formatting, IPPS CSV — suite **deleted in Phase 18**), `promotion.test.ts` (interval, next grade, due flags) |
 | 15.9a Promotion test determinism | ✅ Done | `nextPromotionDate` test derived its expected date from "today" while the input used a fixed day-of-month — failed whenever today ≠ the 13th. Now computes the expectation from the appointment date itself (deterministic every day) |
 | 15.10 Docs | ✅ Done | `.env.example` documents the `notify-contact` secrets (set on Supabase, not Vite) |
 | 15.11 Stations in enrollment form | ✅ Done | Added **Women Development Centre Malamre** + **Technical College Yola** to the `STATIONS` constant so they appear in the employee enrollment form's station dropdown (ADSMEB HQ already present as "Yola (HQ)"). Note: the form dropdown is driven by the code list, while "Manage Stations" manages the separate `stations` DB table — add the same two names there via **+ Add Station** to keep the two lists in sync |
@@ -238,7 +240,7 @@
 | 16.1 PSN lookup (anonymous) | ✅ Done | `public.self_service_lookup(psn)` SECURITY DEFINER — returns one officer's **full editable profile** (all fields except PSN) + `already_submitted` flag. No enumeration: anon can't read `employees` directly |
 | 16.2 One-shot DIRECT update | ✅ Done | `public.submit_self_service_update(employee_id, changes)` — validates keys against ALL editable fields, applies the changes **immediately** to the employee row, stamps `self_service_submitted_at` (one-shot), writes an audit row |
 | 16.3 Address field | ✅ Done | `employees.address` column (idempotent ALTER), employee form field, profile + print display, CSV import (`address`/`residential address` headers) + export |
-| 16.4 Self-service portal | ✅ Done | `src/pages/SelfService.tsx` — enter PSN → existing officers edit **every field** (name, gender, grade, cadre, dates, phone, LGA, station, address, photo, salary, step, remarks) → review before→after → **Submit — Apply Now** → applied directly. One-shot: "already updated" + full read-only preview afterwards |
+| 16.4 Self-service portal | ✅ Done | `src/pages/SelfService.tsx` — enter PSN → existing officers edit **every field** (name, gender, grade, cadre, dates, phone, LGA, station, address, photo, step, remarks — salary removed in Phase 18) → review before→after → **Submit — Apply Now** → applied directly. One-shot: "already updated" + full read-only preview afterwards |
 | 16.5 New-officer registration | ✅ Done | `public.check_employee_registration(psn)` (pending/rejected status) + `public.submit_employee_registration(psn, changes)` (validated PENDING insert, unique per PSN, audited). Portal shows: registration form → review → "submitted for approval"; re-entry shows "under review" or allows retry after rejection |
 | 16.6 Admin approval queue | ✅ Done | `src/pages/Registrations.tsx` + `src/supabase/registrations.ts` — pending/approved/rejected tabs, submitted-details display, **Approve & Register** (creates the employee record) or **Reject** with a note; every decision audited. `selfservice.review` permission (super_admin + admin), route guard, sidebar entry + live pending badge (`usePendingRegistrations`) |
 | 16.7 Entry point | ✅ Done | "Update your details with your PSN →" link on the Login page (no password needed) |
@@ -248,10 +250,119 @@
 | 16.11 Header PSN entry | ✅ Done | The public site header now has a visible **Staff PSN** input (desktop nav + mobile menu) — typing a PSN jumps straight into the self-service portal with it prefilled |
 | 16.12 PSN-safe CSV import | ✅ Done | **Import from Register** now skips rows whose **PSN is already on file — untouched, never overwritten** (in addition to name-dedup), dedupes repeated PSNs inside the sheet, normalizes grades to the system's `GL xx` format (`07` → `GL 07`), matches cadres to the register list (unambiguous only; unmatched kept as typed + reported), and shows an up-front plan: N to import · skipped counts (existing name / existing PSN / dup-in-sheet / empty name) + unmatched cadre values. `normalizeGrade`/`findCadreMatch`/`buildImportPlan` in `src/lib/csv.ts` (pure, tested) |
 | 16.13 Self-service rework | ✅ Done | (a) **Photo bug fixed** — the portal uploaded photos but never sent them on submit (`buildChanges` iterated `FIELDS`, which excludes `photo`); the photo URL is now in the payload + review diff (with thumbnails) + "already submitted" preview. (b) **Self-registration CLOSED** — a PSN not in the register now gets a friendly "contact the Board Office" message; the `employee_registrations` queue, its functions and the whole admin **New Officer Registrations** page/sidebar/badge were removed (new staff come in via CSV import or PSN Tools). (c) **Admin unlock tool** — new `reset_self_service_lock(psn)` SECURITY DEFINER function (admin+ only, audited) + an **Unlock Officer** card on the PSN Tools page (sidebar entry renamed **PSN Tools**) to clear the one-shot lockout for testing/corrections |
-| 16.14 Security audit + env guard | ✅ Done | Full top-to-bottom security review (RLS, SECURITY DEFINER fns, storage, edge fns, XSS, deps). Fixed: (a) **Vercel env guard** — `vite.config.ts` now fails the build loudly on Vercel if any required `VITE_` var (Supabase + Cloudinary) is missing (local/CI only warn), preventing silent broken-upload deploys; (b) **nanoid vuln** (`npm audit fix` → 0 vulnerabilities). Findings awaiting decision: anon self-service functions expose salary + allow updating any record by uuid (no PSN binding); any signed-in user can read all employees/payroll/documents via API (permission checks are UI-only); contact form has no spam protection; CMS headings render admin HTML unsanitized; missing security headers |
+| 16.14 Security audit + env guard | ✅ Done | Full top-to-bottom security review (RLS, SECURITY DEFINER fns, storage, edge fns, XSS, deps). Fixed: (a) **Vercel env guard** — `vite.config.ts` now fails the build loudly on Vercel if any required `VITE_` var (Supabase + Cloudinary) is missing (local/CI only warn), preventing silent broken-upload deploys; (b) **nanoid vuln** (`npm audit fix` → 0 vulnerabilities). Findings awaiting decision: anon self-service functions allow updating any record by uuid (no PSN binding — the salary-exposure half of this was retired in Phase 18 when the salary field was removed); any signed-in user can read all employees/documents via API (permission checks are UI-only); contact form has no spam protection; CMS headings render admin HTML unsanitized; missing security headers |
 
 ### PSN not in the database
 Self-registration is **closed** — a lookup miss shows a "contact the Board Office" message. New staff are registered by the board office only: via **Import from Register** (CSV, 16.12) or the admin **PSN Tools** page (16.10).
+
+---
+
+## 🚀 Phase 17: LGA Area Officers Register (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_lga_officers.sql` in the Supabase SQL Editor (creates `lga_area_officers` — one row per LGA, `employee_id` FK → `employees`), then re-run `supabase/setup_rls.sql` so the table gets its policies (idempotent, safe to re-run).
+
+**Model:** each of the 21 LGAs has **one** area officer, and the officer is always a staff member from the `employees` register — never a free-text name. Rows are keyed by a UNIQUE `lga`, so assigning again simply replaces the sitting officer; deleting the staff record clears the assignment (`on delete set null`) instead of dropping the LGA row. Managed by admins only (`settings.manage`), the same access model as stations/cadres/centres.
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 17.1 DB table | ✅ Done | `supabase/setup_lga_officers.sql` — `lga_area_officers` (`lga` UNIQUE, `employee_id` FK → employees `on delete set null` + **UNIQUE** index, `remarks`, timestamps). One officer per LGA **and one LGA per officer** — the unique index on `employee_id` is nullable, so LGAs can still sit without an officer |
+| 17.2 RLS policies | ✅ Done | `setup_rls.sql` — new guarded block: any signed-in user reads, admin+ writes (same model as stations/cadres/facilitators) |
+| 17.3 Types + Supabase service | ✅ Done | `LgaAreaOfficer` type + `'lga-officers'` in `AppPage`; `src/supabase/lgaOfficers.ts` — `dbLoadLgaAreaOfficers` / `dbSetLgaAreaOfficer` (upsert on `lga`) / `dbRemoveLgaAreaOfficer`, all writes audited |
+| 17.4 Register page | ✅ Done | `src/pages/LgaOfficersManager.tsx` — lists **all 21 LGAs** (assigned or not) with search + assigned/unassigned filter, coverage stat cards, a searchable staff-register picker, assign / change / unassign, and print. A staff member who already covers another LGA is greyed out and unselectable (🚫), and the save is refused even if one is selected another way — unassign first, then assign to the new LGA |
+| 17.5 Routing + navigation | ✅ Done | `lga-officers` page in `App.tsx` (lazy, `settings.manage` guard + prop), Sidebar entry next to Learning Centres, `PAGE_TITLES` entry |
+| 17.6 Profile + dashboard surfacing | ✅ Done | Area-officer badge + field on the employee profile (read live from the register) and an LGA coverage panel with per-LGA officer chips on the Dashboard (admin-only **Manage** link). Printed profile matches the screen via a new optional `printEmployeeProfile(employee, officerLgas)` argument |
+| 17.7 Print + backup | ✅ Done | `printLgaAreaOfficers()` register print (all LGAs with assignment status); `lga_area_officers` added to the JSON backup table list |
+| 17.8 Tests + docs | ✅ Done | 4 new service tests in `registerServices.test.ts` (139 total at the time; 131 after Phase 18); README setup order + schema row, `supabase/verify_rls.sql`, `DEPLOYMENT.md` and the docs set updated |
+| 17.9 Reconciliation pass | ✅ Done | Audited every registry the facilitators feature touches: fixed `verify_rls.sql` (never checked the new table), README setup order + schema row, `DEPLOYMENT.md` script order, the whole `docs/` set, stale test counts (86/135 → 139 at the time), and a register bug where a stored LGA outside the statutory 21 was invisible. New shared `mergeLgas()` in `src/data/constants.ts` (also used by the dashboard panel and the public LGA dropdown) keeps every list view on the same LGA set |
+| 17.10 One LGA per officer | ✅ Done | Blocked (was a warning): unique index on `lga_area_officers.employee_id`, greyed-out/unselectable candidates in the picker with the reason, a blocking error + disabled **Save** in the dialog, a re-check inside `handleSave`, and a plain-English message if the database still rejects a race-condition duplicate. Docs (README, 04, 06) updated to match |
+
+---
+
+## 🚀 Phase 18: Payroll & Salary Removed (Code Complete)
+
+> **One-time go-live (existing databases):** run `supabase/remove_payroll.sql` in the Supabase SQL Editor — it drops `payroll_runs`, `payroll_lines` and `employees.basic_salary` (⚠ the salary figures are gone permanently — export a backup first if you want them). Then re-run `supabase/setup_selfservice.sql`, because the portal's `self_service_lookup` function has to stop returning a column that no longer exists.
+
+**Why:** the Board does **not** pay salaries from this system — pay is handled by government processes — so the platform carried a feature it was never meant to own. The register keeps `employees.step` as a grade-progression detail; **no money amount is stored, entered, imported, exported or printed anywhere**.
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 18.1 Module deleted | ✅ Done | Removed `src/pages/Payroll.tsx`, `src/lib/payroll.ts` (+ its test file), `src/supabase/payroll.ts` and `supabase/setup_payroll.sql` |
+| 18.2 Navigation + permissions | ✅ Done | Route, sidebar item (**Payroll & Salary**), `PAGE_TITLES` entry, route guard and the `payroll.manage` permission all removed; `'payroll'` dropped from `AppPage` and the audit-action union |
+| 18.3 Salary field removed | ✅ Done | `employees.basic_salary` gone from the type, the create/update payload, the employee form (field 11 removed, later fields renumbered), CSV import aliases and CSV export column, and the self-service portal (field + review diff + typed-value handling) |
+| 18.4 Print | ✅ Done | `printPayrollSheet` deleted along with its `fmtNaira`/`PayrollRow` imports. No printout has ever carried a money column |
+| 18.5 Database cleanup | ✅ Done | New `supabase/remove_payroll.sql` (drops both tables + the column, with verification queries); `setup_selfservice.sql` no longer lists or validates `basic_salary` in `self_service_lookup` / `submit_self_service_update` |
+| 18.6 Security dividend | ✅ Done | Retires security **Finding #3**: the anonymous PSN lookup can no longer disclose pay figures, which was flagged HIGH in the assessment. Finding #4 is narrowed to the staff register + documents |
+| 18.7 Tests + docs | ✅ Done | `payroll.test.ts` removed (**131 tests / 14 files**); the CSV suite gains a test asserting a Salary column is ignored. Rebuilt the QA inventory with accurate per-file counts, refreshed the database dictionary, requirements, admin/user manuals, security assessment, roadmap and deployment checklists |
+
+---
+
+## 🚀 Phase 19: Partner Organisations & Centre Ownership (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_partners.sql` in the Supabase SQL Editor, then re-run `supabase/setup_rls.sql` (adds the new tables' policies and **tightens the staff register**). No edge-function redeploy is required for existing users, but `manage-users` must be redeployed to provision partner accounts.
+
+**Why:** NGOs, LGAs and CSOs run learning centres, but the platform had no way to say *who owns a centre* and no way to let a partner manage their own delivery without seeing the board's entire staff register. Phase 19 introduces the tenant model (`partner_organisations` + `organisation_members`), centre ownership, and an approval queue so partner-created centres can't appear publicly unvetted.
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 19.1 DB tables | ✅ Done | `supabase/setup_partners.sql` — `partner_organisations` (name, type, contact, MOU ref, agreement dates, status) + `organisation_members` (user ↔ organisation, `org_role`, unique per pair, indexed). RLS enabled immediately (deny-all until policies arrive). |
+| 19.2 Centre ownership | ✅ Done | Idempotent ALTERs add `owner_type`, `partner_org_id`, `centre_code` (unique partial index), `funding_source`, agreement dates and the approval columns. Existing centres default to `ADSMEB` + `approved`, so **nothing already public disappears**. |
+| 19.3 RLS helpers | ✅ Done | `auth_org_ids()`, `has_org_access(org)`, `is_adsmeb_staff()`, `can_view_staff_register()` — following the existing `auth_role()` pattern. `auth_org_ids()` is SECURITY DEFINER so the membership lookup isn't blocked by its own policies. |
+| 19.4 Approval guard | ✅ Done | `enforce_centres_approval` trigger forces any non-board write back to `pending` and clears the approval fields — a partner can never self-approve, and editing an approved centre returns it to the queue. |
+| 19.5 Staff-register lockdown | ✅ Done | ⚠️ `employees_select` was "any signed-in user". Now that external partner accounts exist, it is restricted to `can_view_staff_register()` (board roles only) — **this was a real data leak** once partners could sign in. |
+| 19.6 Tenant-scoped centres | ✅ Done | `centres_select` = board staff **or** the caller's own organisation; partners may insert/update their own centres only (RLS), with the trigger enforcing review. |
+| 19.7 Public directory gate | ✅ Done | `public_centres` re-created to expose `owner_type`, `centre_code` and partner name, and to show **only** `approval_status = 'approved'` centres. |
+| 19.8 Roles & permissions | ✅ Done | `src/lib/roles.ts` gains `meb_officer`, `lga_officer`, `enumerator`, `partner_admin`, `partner_editor`, `partner_viewer`, `mne_viewer`; new permissions `centres.manage`, `programmes.manage`, `learners.manage`, `enrolments.manage`, `forms.submit`, `reports.view`, `approvals.review`, `partners.manage`; `isPartnerRole()` helper. Existing roles keep their old capabilities. |
+| 19.9 Service layer | ✅ Done | `src/supabase/partners.ts` — `dbLoadPartnerOrganisations`, `dbSavePartnerOrganisation`, `dbDeletePartnerOrganisation`, `dbLoadOrganisationMembers`, `dbLoadPendingCentres`, `dbSetCentreApproval`; every write audited (`approve`/`reject` added to the audit-action union, plus an optional `organisation_id` on audit rows). |
+| 19.10 Partner registry page | ✅ Done | `src/pages/PartnerOrganisations.tsx` — summary cards, search, register/edit dialog, delete confirm, member list, and an inline **centre approval queue** (approve, or reject with a reason). Super-admin only; wired into `App.tsx` (lazy + `partners.manage` guard), the Sidebar Settings section, and `PAGE_TITLES`. |
+| 19.11 User provisioning | ✅ Done | `manage-users` edge function gains the new role list, `organisation_id` + `org_role` on create (rolling the account back if the membership write fails), a `setOrg` action, tenant info on `list`, and membership cleanup on delete. `UserManagement` shows an Organisation column and a partner-org picker when a partner role is selected. |
+| 19.12 Backup | ✅ Done | `partner_organisations` + `organisation_members` added to the JSON backup table list. |
+| 19.13 Tests | ✅ Done | 8 new service tests in `registerServices.test.ts` (**139 total / 14 files**): org CRUD call shapes + defaults, audit on success / no audit on failure, membership read, approve with approver stamp, reject with reason. |
+
+### Not yet done (next phases)
+Partner-scoped learner CSV import, per-cohort attendance/registers, certificate generation, and notification digests remain candidates for future phases (see the delivery pages' current limitations).
+
+---
+
+## 🚀 Phase 20: Real Public Routes (Code Complete)
+
+> **No database changes.** Pure front-end routing: `react-router` (already a dependency) is now mounted and the public website serves real URLs — `/programs`, `/programs/<slug>`, `/centres`, `/news`, `/news/<slug>` — alongside the state-driven portal at `/portal/<page>`. Deep links survive hard refreshes on Vercel via the updated SPA rewrite.
+
+**Why:** programme/news links were in-page state changes, so they couldn't be shared, bookmarked, or refreshed; the centre directory and news only existed as Landing-page sections. Phase 20 turns each into its own page with a stable URL (derived from the title via `slugify`, with the raw row id also accepted so old/external links keep working).
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 20.1 Router mounted | ✅ Done | `BrowserRouter` + `ScrollManager` in `main.tsx`. `App.tsx` derives its view from `location.pathname`: public pages, `/login`, `/self-service?psn=…`, and `/portal/<page>` (replaces the old `view`/`currentPage` state). Signed-in users hitting `/` or `/login` are redirected to `/portal`; unauthenticated visitors to `/portal/*` go to `/login`. |
+| 20.2 URL helpers | ✅ Done | `src/lib/slug.ts` — `slugify()`, a `paths` map (single source of truth for public URLs) and `findBySlug()` (slug match with raw-id fallback). 8 new unit tests (147 total). |
+| 20.3 Public shell | ✅ Done | `src/components/layout/PublicShell.tsx` — govt bar + sticky header (CMS logo, active-link nav) + footer used by every public sub-page; `PublicPageHeader` banner and `RichText` (plain-text safe renderer — **no** `dangerouslySetInnerHTML`, closing the CMS-heading XSS finding on these pages). |
+| 20.4 Programmes pages | ✅ Done | `/programs` catalogue + `/programs/<slug>` detail (replaces the in-page detail view). Unknown slug → friendly not-found with a link back. Cards on the Landing page now link out via `paths.program(slugify(title))`. |
+| 20.5 News pages | ✅ Done | `/news` listing + `/news/<slug>` article (replaces the in-page article view); card titles and "Read more" are real links now. |
+| 20.6 Centre directory | ✅ Done | `/centres` standalone directory — search, LGA filter chips, capacity/contact/facilitator/partner chips, results count — reading the same public `public_centres` view (approved centres only). Landing CTAs point here. |
+| 20.7 Landing slimmed | ✅ Done | `DetailShell`/`ProgramDetailPage`/`NewsArticlePage`/`renderDetails` removed (~370 lines); landing keeps its richer single-page header. |
+| 20.8 Portal routing | ✅ Done | Sidebar navigation pushes `/portal/<page>` (back/forward work inside the portal); route guards unchanged; `NotFound` "go home" now navigates to `/portal`. Password-reset flow navigates by URL. |
+| 20.9 Vercel deep links | ✅ Done | `vercel.json` rewrites everything except `assets/` to the SPA (assets keep 404ing properly instead of returning HTML). |
+| 20.10 E2E coverage | ✅ Done | New `e2e/public-routes.spec.ts` (5 tests): catalogue render, slug deep link, unknown-slug empty state, news link shape (skips on empty DB), centres search + LGA filter, and hard-refresh deep-link survival. |
+
+---
+
+## 🚀 Phases 21–25: Partner Portal, Programmes & Cohorts, Learner Register, Reports & M&E (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_delivery.sql` in the Supabase SQL Editor (creates `programmes`, `cohorts`, `learners` + the `cohort_overview` view, idempotent), then re-run `supabase/setup_rls.sql` (adds the §4.7 owner_org-scoped policies). No edge-function changes.
+
+**Why:** Phase 19 introduced partner tenants but had no portal for them and no way to track *delivery* — what is taught, where, to whom, with what outcomes. Phases 21–25 close that gap with the partner portal home, the programme → cohort → learner data model, and a cross-cutting M&E dashboard. Learners are **not** staff: the learner register is separate from the employees register, and no salary/money fields exist anywhere (pay stays outside this system).
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 21.1 Delivery schema | ✅ Done | `supabase/setup_delivery.sql` — `programmes` (title, category, duration, status), `cohorts` (programme × centre, dates, capacity), `learners` (reference no UNIQUE-partial, age group, cohort FK, status), all with nullable `owner_org_id` (null = board-owned) + the `cohort_overview` view (cohort + programme + centre + learner count). RLS enabled immediately on all three. |
+| 21.2 Delivery RLS | ✅ Done | `setup_rls.sql` §4.7 (guarded block): board roles see everything (`can_view_staff_register`), enumerators get learner write, `mne_viewer`/`partner_viewer` read-only; partner users are scoped to `owner_org_id in auth_org_ids()` — same tenant model as centres. |
+| 21.3 Types + services | ✅ Done | `Programme`/`Cohort`/`CohortOverviewRow`/`Learner` types; `src/supabase/delivery.ts` — load/save/delete for all three, `ownerOrgId` stamping, `completed_on` auto-stamp, every write audited (11 new service tests, mocked Supabase). |
+| 21.4 Programmes page | ✅ Done | `src/pages/ProgrammesManager.tsx` — summary cards, search, add/edit/delete dialogs, status chips. `programmes.manage` gates writes; read-only viewers see the catalogue. |
+| 21.5 Cohorts page | ✅ Done | `src/pages/CohortsManager.tsx` — cohort × programme × centre table (from `cohort_overview`), learner/capacity counts, add/edit/delete. Writes gated on `programmes.manage` or `learners.manage`. |
+| 21.6 Learner register | ✅ Done | `src/pages/LearnersPage.tsx` — stats, search, status/cohort filters, enrol/edit/remove dialogs, CSV export with joined cohort/programme/centre columns (`src/lib/learnerCsv.ts`, pure + tested: escaping, validation, header aliases). `learners.manage` gates writes. |
+| 21.7 Reports & M&E | ✅ Done | `src/pages/ReportsPage.tsx` — headline cards, learner outcomes (active/completed/dropped/transferred with %), gender split, learners-by-LGA and learners-by-programme bars, cohort fill-rate table. Degrades gracefully when `setup_delivery.sql` hasn't run. `reports.view`. |
+| 21.8 Partner portal home | ✅ Done | `src/pages/PartnerPortal.tsx` — the partner's org card (type, contact, own role, suspended warning), delivery summary, own centres with approval chips, recent cohorts. Everything RLS-scoped; friendly empty state when the account has no organisation yet. Reachable at `/portal/partner-home`. |
+| 21.9 Navigation | ✅ Done | New sidebar **Programme Delivery** section (Programmes, Cohorts, Learner Register, Learning Centres, Reports & M&E) permission-gated so partner roles and viewers see exactly their slice; Learning Centres moved out of "Browse By"; 5 new `AppPage` values + `PAGE_TITLES` entries; route guards in `App.tsx`. |
+| 21.10 Backup + verify | ✅ Done | `programmes`/`cohorts`/`learners` added to the JSON backup; `verify_rls.sql` checks the three new tables. |
+| 21.11 Tests | ✅ Done | **168 unit tests / 17 files** (21 new: 11 delivery services + 10 learner CSV). Typecheck, lint (0 errors), build, and all 8 public e2e tests pass. |
 
 ---
 
@@ -325,7 +436,7 @@ Self-registration is **closed** — a lookup miss shows a "contact the Board Off
 - `src/hooks/useTheme.tsx` ✅ — Dark/light theme toggle
 - `src/hooks/useToast.tsx` ✅ — Toast notifications (via sonner)
 
-### Unit tests (15 files, 135 tests)
+### Unit tests (14 files, 139 tests)
 - `src/lib/__tests__/utils.test.ts` — cn() utility tests
 - `src/lib/__tests__/roles.test.ts` — Role/permission matrix tests
 - `src/lib/__tests__/retirement.test.ts` — Retirement & tenure math (age 60 / 35 years of service)
@@ -356,7 +467,7 @@ Self-registration is **closed** — a lookup miss shows a "contact the Board Off
 ```bash
 cd ameb-ems-react
 npm run dev       # Development server (localhost:5173)
-npm test          # Run 86 unit tests
+npm test          # Run 168 unit tests
 npm run test:e2e  # Run Playwright browser smoke tests
 npm run build     # Production build
 ```

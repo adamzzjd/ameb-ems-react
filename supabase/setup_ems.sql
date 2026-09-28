@@ -74,7 +74,7 @@ create table if not exists public.stations (
 -- ── Cadres (staff cadres) ────────────────────────────────────────────────────
 -- The app auto-seeds the standard cadre list from src/data/constants.ts the
 -- first time this table is empty, so no seed rows are needed here.
--- `grade` carries the cadre's typical salary grade level (e.g. 'GL 08').
+-- `grade` carries the cadre's typical grade level (e.g. 'GL 08').
 create table if not exists public.cadres (
   id         uuid primary key,
   name       text not null default '',

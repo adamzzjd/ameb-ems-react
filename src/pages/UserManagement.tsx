@@ -8,13 +8,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ROLES, ROLE_LABELS, normalizeRole, type Role } from '../lib/roles';
-import { Shield, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { ROLES, ROLE_LABELS, normalizeRole, isPartnerRole, type Role } from '../lib/roles';
+import { ORG_ROLES, ORG_ROLE_LABELS } from '../data/constants';
+import { dbLoadPartnerOrganisations } from '../supabase/partners';
+import type { PartnerOrganisation, OrgRole } from '../types';
+import { Shield, Trash2, RefreshCw, Loader2, Building2 } from 'lucide-react';
 
 interface AdminUser {
   id: string;
   email: string;
   role: Role | null;
+  organisation_id?: string | null;
+  organisation_name?: string | null;
+  org_role?: OrgRole | null;
   created_at: string;
   last_sign_in_at: string | null;
 }
@@ -29,6 +35,10 @@ function roleBadgeVariant(role: Role | null): 'default' | 'outline' | 'secondary
     case 'staff': return 'outline';
     default: return 'outline';
   }
+}
+
+function normalizeOrgRole(value: string): OrgRole {
+  return (ORG_ROLES as readonly string[]).includes(value) ? (value as OrgRole) : 'org_viewer';
 }
 
 function fmtDate(d: string | null | undefined): string {
@@ -50,6 +60,10 @@ export function UserManagement() {
   const [password, setPassword] = useState('');
   const [newRole, setNewRole] = useState<Role>('staff');
   const [creating, setCreating] = useState(false);
+  // Partner organisations a partner-role user can be attached to.
+  const [orgs, setOrgs] = useState<PartnerOrganisation[]>([]);
+  const [newOrgId, setNewOrgId] = useState('');
+  const [newOrgRole, setNewOrgRole] = useState<OrgRole>('org_viewer');
 
   // Delete confirm
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
@@ -85,14 +99,26 @@ export function UserManagement() {
     loadUsers();
   }, [loadUsers]);
 
+  // Partner organisations (only needed when creating a partner-role account).
+  useEffect(() => {
+    dbLoadPartnerOrganisations().then(({ data }) => setOrgs(data ?? []));
+  }, []);
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { toast('Email and password are required.', true); return; }
+    if (isPartnerRole(newRole) && !newOrgId) {
+      toast('Select the organisation this partner account belongs to.', true);
+      return;
+    }
     setCreating(true);
     try {
-      await callApi({ action: 'create', email: email.trim(), password, role: newRole });
+      await callApi({
+        action: 'create', email: email.trim(), password, role: newRole,
+        ...(isPartnerRole(newRole) ? { organisation_id: newOrgId, org_role: newOrgRole } : {}),
+      });
       toast(`✓ User ${email.trim()} created as ${ROLE_LABELS[newRole]}.`);
-      setEmail(''); setPassword(''); setNewRole('staff');
+      setEmail(''); setPassword(''); setNewRole('staff'); setNewOrgId(''); setNewOrgRole('org_viewer');
       loadUsers();
     } catch (err) {
       toast('⚠️ ' + (err instanceof Error ? err.message : 'Create failed.'), true);
@@ -194,6 +220,32 @@ npx supabase functions deploy manage-users`}
               {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
             </select>
           </div>
+          {isPartnerRole(newRole) && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Organisation</Label>
+                <select value={newOrgId} onChange={e => setNewOrgId(e.target.value)}
+                  className="h-9 w-full px-2.5 rounded-lg border text-[13px] outline-none focus:ring-2 focus:ring-ring"
+                  style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
+                  <option value="">— Select organisation —</option>
+                  {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                </select>
+                {orgs.length === 0 && (
+                  <span className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
+                    No organisations yet — register one under Partner Organisations first.
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>Org Role</Label>
+                <select value={newOrgRole} onChange={e => setNewOrgRole((normalizeOrgRole(e.target.value)) )}
+                  className="h-9 w-full px-2.5 rounded-lg border text-[13px] outline-none focus:ring-2 focus:ring-ring"
+                  style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
+                  {ORG_ROLES.map(r => <option key={r} value={r}>{ORG_ROLE_LABELS[r]}</option>)}
+                </select>
+              </div>
+            </>
+          )}
           <Button type="submit" disabled={creating || loading} className="h-9">
             {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create User'}
           </Button>
@@ -228,7 +280,7 @@ npx supabase functions deploy manage-users`}
             <table className="w-full border-collapse">
               <thead>
                 <tr>
-                  {['User', 'Role', 'Created', 'Last Sign In', 'Actions'].map(h => (
+                  {['User', 'Role', 'Organisation', 'Created', 'Last Sign In', 'Actions'].map(h => (
                     <th key={h} className="text-left text-[11px] font-bold uppercase tracking-wider px-4 py-2.5 border-b whitespace-nowrap"
                       style={{ color: 'var(--color-text-muted)', background: 'var(--color-surface-warm)', borderColor: 'var(--color-border)' }}>
                       {h}
@@ -266,6 +318,19 @@ npx supabase functions deploy manage-users`}
                           {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                         </select>
                       </div>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                      {u.organisation_name ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Building2 size={12} className="opacity-60" />
+                          <span>{u.organisation_name}</span>
+                          {u.org_role && (
+                            <span className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                              {ORG_ROLE_LABELS[u.org_role] ?? u.org_role}
+                            </span>
+                          )}
+                        </span>
+                      ) : '—'}
                     </td>
                     <td className="px-4 py-2.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{fmtDate(u.created_at)}</td>
                     <td className="px-4 py-2.5 text-xs" style={{ color: 'var(--color-text-secondary)' }}>{fmtDate(u.last_sign_in_at)}</td>

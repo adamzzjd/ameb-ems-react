@@ -32,7 +32,6 @@ interface LookupResult {
   station: string | null;
   address: string | null;
   photo: string | null;
-  basic_salary: number | null;
   step: string | null;
   remarks: string | null;
   already_submitted: boolean;
@@ -58,8 +57,7 @@ const FIELDS: readonly FieldDef[] = [
   { key: 'lga', label: 'LGA of Origin', type: 'select', options: LGAs },
   { key: 'station', label: 'Present Station', type: 'select', options: STATIONS },
   { key: 'address', label: 'Residential Address', type: 'text', placeholder: 'e.g. 15 Ahmadu Bello Way, Yola' },
-  { key: 'basic_salary', label: 'Basic Salary (₦/month)', type: 'number', placeholder: 'e.g. 485200' },
-  { key: 'step', label: 'Salary Step', type: 'text', placeholder: 'e.g. 1' },
+  { key: 'step', label: 'Step', type: 'text', placeholder: 'e.g. 1' },
   { key: 'remarks', label: 'Remarks / Notes', type: 'textarea', placeholder: 'Optional notes…' },
 ];
 
@@ -102,7 +100,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
   const [looking, setLooking] = useState(false);
   const [error, setError] = useState('');
 
-  // Form state — one string per field (basic_salary converted on submit).
+  // Form state — one string per field.
   const [form, setForm] = useState<Record<string, string>>({});
   const [photoUploading, setPhotoUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -123,7 +121,6 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
       station: norm(emp.station),
       address: norm(emp.address),
       photo: norm(emp.photo),
-      basic_salary: emp.basic_salary !== null && emp.basic_salary !== undefined ? String(emp.basic_salary) : '',
       step: norm(emp.step),
       remarks: norm(emp.remarks),
     });
@@ -175,11 +172,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
     for (const f of FIELDS) {
       const before = norm((emp as unknown as Record<string, string | number | null>)[f.key]);
       const after = norm(form[f.key]);
-      if (f.key === 'basic_salary') {
-        if ((Number(after) || 0) !== (Number(before) || 0)) {
-          changed.push({ field: f.key, label: f.label, before: before || '—', after: after || '—' });
-        }
-      } else if (after !== before) {
+      if (after !== before) {
         changed.push({ field: f.key, label: f.label, before: before || '—', after: after || '—' });
       }
     }
@@ -197,11 +190,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
   const buildChanges = (): Record<string, string | number | null> => {
     const out: Record<string, string | number | null> = {};
     for (const f of FIELDS) {
-      if (f.key === 'basic_salary') {
-        out[f.key] = form[f.key] ? Number(form[f.key]) || null : null;
-      } else {
-        out[f.key] = form[f.key] ?? null;
-      }
+      out[f.key] = form[f.key] ?? null;
     }
     // `photo` has its own uploader (not a FIELDS entry) — send it explicitly so
     // an uploaded photo actually reaches the register.

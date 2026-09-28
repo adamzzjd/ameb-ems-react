@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { useAuth } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
 import { useEmployees } from './hooks/useEmployees';
@@ -23,6 +24,12 @@ const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Lan
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 const SelfService = lazy(() => import('./pages/SelfService').then(m => ({ default: m.SelfService })));
+// Public sub-pages (Phase 20 — real routes for the website)
+const ProgramsPage = lazy(() => import('./pages/public/ProgramsPage').then(m => ({ default: m.ProgramsPage })));
+const ProgramDetailPage = lazy(() => import('./pages/public/ProgramDetailPage').then(m => ({ default: m.ProgramDetailPage })));
+const CentresPage = lazy(() => import('./pages/public/CentresPage').then(m => ({ default: m.CentresPage })));
+const NewsPage = lazy(() => import('./pages/public/NewsPage').then(m => ({ default: m.NewsPage })));
+const NewsArticlePage = lazy(() => import('./pages/public/NewsArticlePage').then(m => ({ default: m.NewsArticlePage })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const EmployeesPage = lazy(() => import('./pages/Employees').then(m => ({ default: m.EmployeesPage })));
 const EmployeeProfile = lazy(() => import('./pages/EmployeeProfile').then(m => ({ default: m.EmployeeProfile })));
@@ -33,6 +40,7 @@ const StationsManager = lazy(() => import('./pages/StationsManager').then(m => (
 const CadresManager = lazy(() => import('./pages/CadresManager').then(m => ({ default: m.CadresManager })));
 const FacilitatorsManager = lazy(() => import('./pages/FacilitatorsManager').then(m => ({ default: m.FacilitatorsManager })));
 const LgaOfficersManager = lazy(() => import('./pages/LgaOfficersManager').then(m => ({ default: m.LgaOfficersManager })));
+const PartnerOrganisations = lazy(() => import('./pages/PartnerOrganisations').then(m => ({ default: m.PartnerOrganisations })));
 const CentresManager = lazy(() => import('./pages/CentresManager').then(m => ({ default: m.CentresManager })));
 const CmsDashboard = lazy(() => import('./pages/cms/CmsDashboard').then(m => ({ default: m.CmsDashboard })));
 const SiteContent = lazy(() => import('./pages/cms/SiteContent').then(m => ({ default: m.SiteContent })));
@@ -48,11 +56,16 @@ const AuditLogPage = lazy(() => import('./pages/AuditLog').then(m => ({ default:
 const MyAccountPage = lazy(() => import('./pages/MyAccount').then(m => ({ default: m.MyAccountPage })));
 const RetirementPage = lazy(() => import('./pages/Retirement').then(m => ({ default: m.RetirementPage })));
 const PromotionPage = lazy(() => import('./pages/Promotion').then(m => ({ default: m.PromotionPage })));
-const PayrollPage = lazy(() => import('./pages/Payroll').then(m => ({ default: m.PayrollPage })));
 const LeavePage = lazy(() => import('./pages/Leave').then(m => ({ default: m.LeavePage })));
 const PsnCheckPage = lazy(() => import('./pages/PsnCheck').then(m => ({ default: m.PsnCheckPage })));
 const DataQualityPage = lazy(() => import('./pages/DataQuality').then(m => ({ default: m.DataQualityPage })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
+// Programme delivery (Phases 21-24)
+const ProgrammesManager = lazy(() => import('./pages/ProgrammesManager').then(m => ({ default: m.ProgrammesManager })));
+const CohortsManager = lazy(() => import('./pages/CohortsManager').then(m => ({ default: m.CohortsManager })));
+const LearnersPage = lazy(() => import('./pages/LearnersPage').then(m => ({ default: m.LearnersPage })));
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
+const PartnerPortal = lazy(() => import('./pages/PartnerPortal').then(m => ({ default: m.PartnerPortal })));
 
 // ── Loading spinner ───────────────────────────────────────────────────────
 function LoadingSpinner({ text = 'Loading…' }: { text?: string }) {
@@ -71,14 +84,36 @@ type View = 'landing' | 'login' | 'app' | 'selfservice';
 export default function App() {
   const { user, loading: authLoading, can } = useAuth();
   const { toast } = useToast();
-  const [view, setView] = useState<View>('landing');
-  const [currentPage, setCurrentPage] = useState('dashboard');
-  // PSN prefilled into the self-service portal when entered from the site header.
-  const [selfServicePsn, setSelfServicePsn] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [tableReady, setTableReady] = useState(true);
   // Password-recovery mode: Supabase emails a link that returns here with a
   // `#/reset` hash carrying the recovery tokens (see ResetPassword).
   const [resetMode, setResetMode] = useState(() => window.location.hash.startsWith('#/reset'));
+
+  // ── URL-driven view state (Phase 20) ─────────────────────────────────────
+  // The public site now has real routes; the portal lives under /portal/<page>.
+  const path = location.pathname.replace(/\/+$/, '') || '/';
+  const publicPage =
+    /^\/programs\/.+/.test(path) ? 'program'
+    : path === '/programs' ? 'programs'
+    : path === '/centres' ? 'centres'
+    : /^\/news\/.+/.test(path) ? 'article'
+    : path === '/news' ? 'news'
+    : null;
+  const portalPage = path.match(/^\/portal(?:\/([\w-]+))?/)?.[1] ?? null;
+  // PSN prefilled into the self-service portal when entered from the site header.
+  const selfServicePsn = new URLSearchParams(location.search).get('psn') ?? '';
+
+  const view: View = (() => {
+    if (publicPage) return 'landing';
+    if (user) return 'app';
+    if (path === '/login') return 'login';
+    if (path.startsWith('/self-service')) return 'selfservice';
+    if (portalPage !== null) return 'app';
+    return 'landing';
+  })();
+  const currentPage = portalPage ?? 'dashboard';
 
   const {
     employees, loading: empLoading,
@@ -94,16 +129,14 @@ export default function App() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showCsvImport, setShowCsvImport] = useState(false);
 
+  // Signed-in users opening the site root (or /login) go straight to the
+  // portal — the same behaviour the old view-state router had. Unauthenticated
+  // visitors to /portal/* are sent to the login page.
   useEffect(() => {
-    // Stay on the reset view while a recovery link is being processed — the
-    // setSession call signs the user in, but they must finish setting the new
-    // password before entering the app.
-    if (!authLoading && user && !resetMode) setView('app');
-  }, [user, authLoading, resetMode]);
-
-  useEffect(() => {
-    if (view === 'app' && !user && !authLoading) setView('login');
-  }, [view, user, authLoading]);
+    if (authLoading || resetMode) return;
+    if (user && (path === '/' || path === '/login')) navigate('/portal', { replace: true });
+    if (!user && path.startsWith('/portal')) navigate('/login', { replace: true });
+  }, [user, authLoading, resetMode, path, navigate]);
 
   useEffect(() => {
     if (view === 'app') {
@@ -111,13 +144,16 @@ export default function App() {
     }
   }, [view]);
 
-  const handleGoToLogin = () => setView('login');
-  const handleBackToSite = () => setView('landing');
+  const handleGoToLogin = useCallback(() => navigate('/login'), [navigate]);
+  const handleBackToSite = useCallback(() => navigate('/'), [navigate]);
   const handleGoToSelfService = useCallback((psn?: string) => {
-    setSelfServicePsn(psn || '');
-    setView('selfservice');
-  }, []);
-  const handleNavigate = useCallback((page: string) => setCurrentPage(page), []);
+    navigate(psn ? `/self-service?psn=${encodeURIComponent(psn)}` : '/self-service');
+  }, [navigate]);
+  const handleNavigate = useCallback((page: string) => {
+    window.scrollTo(0, 0);
+    navigate(`/portal/${page}`);
+  }, [navigate]);
+  const goPortalDashboard = useCallback(() => navigate('/portal', { replace: true }), [navigate]);
 
   const handleViewEmployee = useCallback((id: string) => {
     const emp = employees.find(e => e.id === id);
@@ -204,22 +240,28 @@ export default function App() {
   // (only enforced inside the app shell, so landing/login always render)
   const ACCESS_DENIED = 'You do not have permission to view this page.';
   if (view === 'app' && currentPage.startsWith('cms-') && !can('cms.edit')) {
-    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
   if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres' || currentPage === 'facilitators' || currentPage === 'lga-officers') && !can('settings.manage')) {
-    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
+  }
+  if (view === 'app' && currentPage === 'partners' && !can('partners.manage')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
   if (view === 'app' && currentPage === 'users' && !can('users.manage')) {
-    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
   if (view === 'app' && currentPage === 'audit-log' && !can('audit.view')) {
-    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
-  }
-  if (view === 'app' && currentPage === 'payroll' && !can('payroll.manage')) {
-    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
   if (view === 'app' && currentPage === 'psn-check' && !can('employees.import')) {
-    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
+  }
+  if (view === 'app' && ['programmes', 'cohorts', 'learners', 'reports'].includes(currentPage) && !can('reports.view') && !can('learners.manage') && !can('programmes.manage')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
+  }
+  if (view === 'app' && currentPage === 'partner-home' && !can('centres.manage')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
 
   // ── Main content ──
@@ -272,6 +314,8 @@ export default function App() {
         return <FacilitatorsManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'lga-officers':
         return <LgaOfficersManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
+      case 'partners':
+        return <PartnerOrganisations canManage={can('partners.manage')} />;
       case 'centres':
         return <CentresManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'cms-dashboard':
@@ -302,16 +346,24 @@ export default function App() {
         return <RetirementPage employees={employees} onViewEmployee={handleViewEmployee} />;
       case 'promotions':
         return <PromotionPage employees={employees} onViewEmployee={handleViewEmployee} />;
-      case 'payroll':
-        return <PayrollPage employees={employees} />;
       case 'leaves':
         return <LeavePage employees={employees} />;
       case 'psn-check':
         return <PsnCheckPage />;
       case 'data-quality':
         return <DataQualityPage employees={employees} onEditEmployee={handleEditEmployee} />;
+      case 'programmes':
+        return <ProgrammesManager canManage={can('programmes.manage')} />;
+      case 'cohorts':
+        return <CohortsManager canManage={can('programmes.manage') || can('learners.manage')} />;
+      case 'learners':
+        return <LearnersPage canManage={can('learners.manage')} />;
+      case 'reports':
+        return <ReportsPage isBoard={can('employees.view')} />;
+      case 'partner-home':
+        return <PartnerPortal />;
       default:
-        return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={() => setCurrentPage('dashboard')} />;
+        return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={goPortalDashboard} />;
     }
   };
 
@@ -320,15 +372,20 @@ export default function App() {
       {resetMode && (
         <Suspense fallback={<LoadingSpinner />}>
           <ResetPassword
-            onDone={() => { setResetMode(false); setView('app'); }}
-            onCancel={() => { setResetMode(false); setView('login'); }}
+            onDone={() => { setResetMode(false); navigate('/portal', { replace: true }); }}
+            onCancel={() => { setResetMode(false); navigate('/login', { replace: true }); }}
           />
         </Suspense>
       )}
 
       {!resetMode && view === 'landing' && (
         <Suspense fallback={<LoadingSpinner />}>
-          <Landing onGoToLogin={handleGoToLogin} onGoToSelfService={handleGoToSelfService} />
+          {publicPage === 'programs' ? <ProgramsPage />
+            : publicPage === 'program' ? <ProgramDetailPage />
+            : publicPage === 'centres' ? <CentresPage />
+            : publicPage === 'news' ? <NewsPage />
+            : publicPage === 'article' ? <NewsArticlePage />
+            : <Landing onGoToLogin={handleGoToLogin} onGoToSelfService={handleGoToSelfService} />}
         </Suspense>
       )}
 
@@ -340,7 +397,7 @@ export default function App() {
 
       {!resetMode && view === 'selfservice' && (
         <Suspense fallback={<LoadingSpinner />}>
-          <SelfService onBack={() => setView('landing')} initialPsn={selfServicePsn} />
+          <SelfService onBack={handleBackToSite} initialPsn={selfServicePsn} />
         </Suspense>
       )}
 

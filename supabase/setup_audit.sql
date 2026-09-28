@@ -3,7 +3,7 @@
 -- ----------------------------------------------------------------------------
 -- Records who did what, when, on which record — an accountability trail for
 -- all admin/editor writes (employees, stations, cadres, centres, facilitators,
--- enrolment stats, CMS content, contact inbox actions).
+-- LGA area officers, enrolment stats, CMS content, contact inbox actions).
 --
 -- HOW TO RUN:
 --   1. Open your Supabase project dashboard → SQL Editor → New query
