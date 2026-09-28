@@ -4,7 +4,7 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "rewrites": [
-    { "source": "/((?!assets/).*)" }
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ],
   "trailingSlash": false,
   "cleanUrls": true
