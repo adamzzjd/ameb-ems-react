@@ -67,7 +67,7 @@ const ProgrammesManager = lazy(() => import('./pages/ProgrammesManager').then(m 
 const CohortsManager = lazy(() => import('./pages/CohortsManager').then(m => ({ default: m.CohortsManager })));
 const LearnersPage = lazy(() => import('./pages/LearnersPage').then(m => ({ default: m.LearnersPage })));
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
-const PartnerPortal = lazy(() => import('./pages/PartnerPortal').then(m => ({ default: m.PartnerPortal })));
+const OrgPortal = lazy(() => import('./pages/OrgPortal').then(m => ({ default: m.OrgPortal })));
 // Data collection (Phase 26)
 const FormBuilder = lazy(() => import('./pages/FormBuilder').then(m => ({ default: m.FormBuilder })));
 const MyAssignments = lazy(() => import('./pages/MyAssignments').then(m => ({ default: m.MyAssignments })));
@@ -158,11 +158,17 @@ export default function App() {
   const [showCsvImport, setShowCsvImport] = useState(false);
 
   // Signed-in users opening the site root (or /login) go straight to the
-  // portal — the same behaviour the old view-state router had. Unauthenticated
-  // visitors to /portal/* are sent to the login page.
+  // portal — role-based landing (Phase 29): partners open their own org portal,
+  // everyone else the board dashboard. Unauthenticated visitors to /portal/*
+  // are sent to the login page.
   useEffect(() => {
     if (authLoading || resetMode) return;
-    if (user && (path === '/' || path === '/login')) navigate('/portal', { replace: true });
+    if (user && (path === '/' || path === '/login')) {
+      const isPartner = ['partner_admin', 'partner_editor', 'partner_viewer'].includes(
+        (user.app_metadata?.role as string) ?? '',
+ );
+      navigate(isPartner ? '/portal/partner-home' : '/portal', { replace: true });
+    }
     if (!user && path.startsWith('/portal')) navigate('/login', { replace: true });
   }, [user, authLoading, resetMode, path, navigate]);
 
@@ -394,7 +400,7 @@ export default function App() {
       case 'reports':
         return <ReportsPage isBoard={can('employees.view')} />;
       case 'partner-home':
-        return <PartnerPortal />;
+        return <OrgPortal boardView={can('employees.view')} />;
       case 'form-builder':
         return <FormBuilder canManage={can('forms.manage')} />;
       case 'my-assignments':

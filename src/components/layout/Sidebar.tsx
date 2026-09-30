@@ -75,7 +75,7 @@ const navSections: NavSection[] = [
     label: 'Partners',
     items: [
       { page: 'partners', icon: <Handshake size={18} />, label: 'Organisations', permission: 'partners.manage' },
-      { page: 'partner-home', icon: <Landmark size={18} />, label: 'Partner Portal', permission: 'centres.manage' },
+      { page: 'partner-home', icon: <Landmark size={18} />, label: 'Partner Portals', permission: 'centres.manage' },
       { page: 'programmes', icon: <BookOpen size={18} />, label: 'Programmes', permission: 'reports.view' },
       { page: 'cohorts', icon: <CalendarRange size={18} />, label: 'Cohorts', permission: 'reports.view' },
       { page: 'learners', icon: <GraduationCap size={18} />, label: 'Learner Register', permission: 'reports.view' },
@@ -135,6 +135,9 @@ export function Sidebar({
 }: SidebarProps) {
   const { user, role, can } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  // Partner users get their own slim world (Phase 29): their org portal, the
+  // drill-down navigator, and field data collection. Board sections are hidden.
+  const isPartner = role !== null && ['partner_admin', 'partner_editor', 'partner_viewer'].includes(role);
 
   // Show the board's actual logo (from CMS) in the sidebar when one is set.
   useEffect(() => {
@@ -148,7 +151,15 @@ export function Sidebar({
     return () => { cancelled = true; };
   }, []);
 
-  const visibleSections = navSections.filter(s => !s.permission || can(s.permission));
+  const visibleSections = navSections
+    .filter(s => !s.permission || can(s.permission))
+    .filter(s => !isPartner || s.label === 'Overview' || s.label === 'Data Collection')
+    .map(s =>
+      isPartner
+        ? { ...s, items: s.items.filter(i => ['explore', 'account', 'my-assignments'].includes(i.page)) }
+        : s,
+    )
+    .filter(s => s.items.length > 0);
   const visibleActions = actions.filter(a => can(a.permission));
 
   const handleNav = (page: string) => {

@@ -171,7 +171,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   cohorts:        { title: '🗓 Cohorts',                subtitle: 'Programme deliveries at centres' },
   learners:       { title: '🎓 Learner Register',       subtitle: 'People enrolled in cohorts — not staff' },
   reports:        { title: '📊 Reports & M&E',          subtitle: 'Delivery outcomes across programmes and LGAs' },
-  'partner-home': { title: '🤝 Partner Portal',         subtitle: 'Your organisation at a glance' },
+  'partner-home': { title: '🤝 Organisation Portal',    subtitle: 'The organisation\u2019s own world: LGAs → centres → learners → facilitators' },
   'form-builder': { title: '📋 Form Builder',           subtitle: 'Design data-collection forms and assign them' },
   'my-assignments': { title: '📝 My Assignments',        subtitle: 'Fill your assigned forms in the field' },
   'submissions-review': { title: '📥 Submissions Review',  subtitle: 'Approve, reject and export field data' },
