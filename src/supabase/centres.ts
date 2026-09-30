@@ -2,6 +2,25 @@ import { supabase } from './client';
 import { logAudit } from './audit';
 import type { Centre } from '../types';
 
+// Phase 28: after setup_hierarchy.sql the centres table has NO partner_org_id
+// column (org involvement moved to centre_organisations). Probe once per
+// session and only include the legacy column in the payload while it exists —
+// writing an absent column makes PostgREST reject the whole save.
+let centreOrgTableProbe: Promise<boolean> | null = null;
+function centreOrganisationsTableExists(): Promise<boolean> {
+  if (!centreOrgTableProbe) {
+    centreOrgTableProbe = (async () => {
+      try {
+        const r = await supabase.from('centre_organisations').select('id').limit(1);
+        return !r.error;
+      } catch {
+        return false;
+      }
+    })();
+  }
+  return centreOrgTableProbe;
+}
+
 export async function dbLoadCentres(): Promise<{ data: Centre[] | null; error: Error | null }> {
   const { data, error } = await supabase
     .from('centres')
@@ -22,6 +41,11 @@ export async function dbGetCentre(id: string): Promise<{ data: Centre | null; er
 export async function dbSaveCentre(
   centre: Partial<Centre> & { name: string; lga: string }
 ): Promise<{ data: Centre | null; error: Error | null }> {
+  // Legacy column only exists pre-hierarchy (see probe above).
+  const legacyPartnerOrg = (await centreOrganisationsTableExists())
+    ? undefined
+    : (centre.partner_org_id ?? null);
+
   if (centre.id) {
     // Update
     const { data, error } = await supabase
@@ -35,7 +59,7 @@ export async function dbSaveCentre(
         status: centre.status || 'Active',
         capacity: centre.capacity != null ? centre.capacity : null,
         phone: centre.phone || null,
-        partner_org_id: centre.partner_org_id ?? null,
+        ...(legacyPartnerOrg !== undefined ? { partner_org_id: legacyPartnerOrg } : {}),
         remarks: centre.remarks || null,
         updated_at: new Date().toISOString(),
       })
@@ -58,7 +82,7 @@ export async function dbSaveCentre(
         status: centre.status || 'Active',
         capacity: centre.capacity != null ? centre.capacity : null,
         phone: centre.phone || null,
-        partner_org_id: centre.partner_org_id ?? null,
+        ...(legacyPartnerOrg !== undefined ? { partner_org_id: legacyPartnerOrg } : {}),
         remarks: centre.remarks || null,
       })
       .select()

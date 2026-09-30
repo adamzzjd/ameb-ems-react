@@ -99,6 +99,18 @@ begin
     where c.partner_org_id is not null
     on conflict (centre_id, org_id) do nothing;
 
+    -- The live public_centres view joins on partner_org_id — drop it here so
+    -- the column can go; §7 below re-creates it from the join table.
+    drop view if exists public.public_centres;
+
+    -- The §4.6 centres policies reference partner_org_id (Postgres tracks
+    -- column dependencies for policies too). Drop them here; re-running
+    -- setup_rls.sql afterwards re-creates the schema-aware set (§4.6 writes
+    -- different policies depending on whether this column exists).
+    drop policy if exists "centres_select" on public.centres;
+    drop policy if exists "centres_partner_insert" on public.centres;
+    drop policy if exists "centres_partner_update" on public.centres;
+
     alter table public.centres drop column partner_org_id;
   end if;
 end

@@ -324,27 +324,62 @@ begin
       );
 
     -- ── Centres: scope partners to their own organisation ──
-    drop policy if exists "centres_select" on public.centres;
-    create policy "centres_select" on public.centres
-      for select using (
-        public.is_adsmeb_staff()
-        or partner_org_id in (select public.auth_org_ids())
-      );
+    -- Phase 28: when centre_organisations exists (setup_hierarchy.sql ran),
+    -- involvement goes through the join table; otherwise fall back to the
+    -- legacy partner_org_id column (fresh installs pre-hierarchy).
+    if exists (select 1 from information_schema.tables
+               where table_schema = 'public' and table_name = 'centre_organisations') then
+      drop policy if exists "centres_select" on public.centres;
+      create policy "centres_select" on public.centres
+        for select using (
+          public.is_adsmeb_staff()
+          or exists (
+            select 1 from public.centre_organisations co
+            where co.centre_id = centres.id
+              and co.org_id in (select public.auth_org_ids())
+          )
+        );
 
-    -- A partner may create centres for its own organisation only. The
-    -- enforce_centres_approval trigger forces approval_status back to
-    -- 'pending', so a partner can never self-approve.
-    drop policy if exists "centres_partner_insert" on public.centres;
-    create policy "centres_partner_insert" on public.centres
-      for insert with check (
-        partner_org_id is not null
-        and partner_org_id in (select public.auth_org_ids())
-      );
+      -- A partner may submit centres for approval (the enforce_centres_approval
+      -- trigger forces approval_status back to 'pending', so a partner can
+      -- never self-approve). The org binding is made afterwards through the
+      -- centre_organisations writer, whose own RLS scopes it to the org.
+      drop policy if exists "centres_partner_insert" on public.centres;
+      create policy "centres_partner_insert" on public.centres
+        for insert with check (
+          public.auth_role() in ('partner_admin', 'partner_editor')
+        );
 
-    drop policy if exists "centres_partner_update" on public.centres;
-    create policy "centres_partner_update" on public.centres
-      for update using (partner_org_id in (select public.auth_org_ids()))
-      with check (partner_org_id in (select public.auth_org_ids()));
+      drop policy if exists "centres_partner_update" on public.centres;
+      create policy "centres_partner_update" on public.centres
+        for update using (
+          exists (
+            select 1 from public.centre_organisations co
+            where co.centre_id = centres.id
+              and co.org_id in (select public.auth_org_ids())
+          )
+        )
+        with check (true);
+    else
+      drop policy if exists "centres_select" on public.centres;
+      create policy "centres_select" on public.centres
+        for select using (
+          public.is_adsmeb_staff()
+          or partner_org_id in (select public.auth_org_ids())
+        );
+
+      drop policy if exists "centres_partner_insert" on public.centres;
+      create policy "centres_partner_insert" on public.centres
+        for insert with check (
+          partner_org_id is not null
+          and partner_org_id in (select public.auth_org_ids())
+        );
+
+      drop policy if exists "centres_partner_update" on public.centres;
+      create policy "centres_partner_update" on public.centres
+        for update using (partner_org_id in (select public.auth_org_ids()))
+        with check (partner_org_id in (select public.auth_org_ids()));
+    end if;
   end if;
 end $$;
 
