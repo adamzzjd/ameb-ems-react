@@ -10,8 +10,8 @@ import { ROLE_LABELS, type Permission } from '@/lib/roles';
 import {
   LayoutDashboard, Users, MapPin, BarChart3,
   GraduationCap, BookOpen, Building2, Settings, FileText,
-  Download, Printer, Plus, LogOut, UserCog, UsersRound, Save,
-  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp, CalendarDays,
+  Download, Printer, LogOut, UserCog, UsersRound, Save,
+  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp,
   MapPinned,
   UserPlus,
   Handshake,
@@ -23,7 +23,6 @@ import {
 interface SidebarProps {
   currentPage: string;
   onNavigate: (page: string) => void;
-  onAddEmployee: () => void;
   onImportCsv: () => void;
   onExportCsv: () => void;
   onPrint: () => void;
@@ -65,7 +64,6 @@ const navSections: NavSection[] = [
       { page: 'departments', icon: <Landmark size={18} />, label: 'Departments', permission: 'settings.manage' },
       { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
       { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
-      { page: 'leaves', icon: <CalendarDays size={18} />, label: 'Leave Management' },
       { page: 'psn-check', icon: <UserPlus size={18} />, label: 'PSN Tools', permission: 'employees.import' },
       { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
       { page: 'lga-officers', icon: <MapPinned size={18} />, label: 'LGA Area Officers', permission: 'settings.manage' },
@@ -121,7 +119,6 @@ const navSections: NavSection[] = [
 ];
 
 const actions: { icon: React.ReactNode; label: string; key: string; permission: Permission }[] = [
-  { icon: <Plus size={18} />, label: 'Add Employee', key: 'add', permission: 'employees.create' },
   { icon: <Download size={18} />, label: 'Import from Register', key: 'import', permission: 'employees.import' },
   { icon: <Download size={18} />, label: 'Export to CSV', key: 'export', permission: 'employees.export' },
   { icon: <Printer size={18} />, label: 'Print Full Register', key: 'print', permission: 'employees.view' },
@@ -129,7 +126,7 @@ const actions: { icon: React.ReactNode; label: string; key: string; permission: 
 ];
 
 export function Sidebar({
-  currentPage, onNavigate, onAddEmployee, onImportCsv, onExportCsv,
+  currentPage, onNavigate, onImportCsv, onExportCsv,
   onPrint, onBackup, onLogout, employeeCount, unreadContactCount = 0,
   mobileOpen, onMobileClose,
 }: SidebarProps) {
@@ -169,7 +166,6 @@ export function Sidebar({
 
   const handleAction = (key: string) => {
     switch (key) {
-      case 'add': onAddEmployee(); break;
       case 'import': onImportCsv(); break;
       case 'export': onExportCsv(); break;
       case 'print': onPrint(); break;
@@ -196,7 +192,7 @@ export function Sidebar({
             Adamawa MEB
           </div>
           <div className="text-[10px] text-sidebar-foreground/50 mt-0.5 truncate">
-            Staff Portal
+            Education Management System
           </div>
         </div>
       </div>

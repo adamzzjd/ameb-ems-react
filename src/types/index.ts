@@ -631,7 +631,6 @@ export type AppPage =
   | 'account'
   | 'retirement'
   | 'promotions'
-  | 'leaves'
   | 'psn-check'
   | 'data-quality'
   | 'programmes'

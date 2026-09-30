@@ -1,11 +1,12 @@
-/* Phase 29 — Board dashboard redesigned around *work*, not stat soup:
-   Today (what needs action) → The Board → Delivery → Partners.
-   Every section is one click from where the work lives. */
+/* Phase 29.1 — Board dashboard: work sections with icon tiles.
+   Today (what needs action) → The Board → Delivery → Partners. */
 
 import { useEffect, useState } from 'react';
 import type { Employee } from '../types';
 import {
   Landmark, GraduationCap, Handshake, ChevronRight, ShieldCheck, AlertTriangle,
+  ClipboardList, Users, MapPin, MapPinned, Network, BookOpen, CalendarRange,
+  Inbox, Building2, UsersRound, UserPlus,
 } from 'lucide-react';
 import { dbLoadLgaAreaOfficers } from '../supabase/lgaOfficers';
 import { dbLoadDepartments } from '../supabase/departments';
@@ -25,17 +26,28 @@ const card = {
   borderColor: 'var(--color-border)',
 } as const;
 
+// Section accent tints (icon tiles + header rail)
+const TONES = {
+  amber: 'rgba(198,138,0,.14)',
+  green: 'rgba(26,92,56,.12)',
+  blue: 'rgba(37,99,235,.12)',
+  gold: 'rgba(180,130,20,.16)',
+} as const;
+type Tone = keyof typeof TONES;
+
 function Section({
-  icon, title, subtitle, action, onAction, children,
+  icon, tone, title, subtitle, action, onAction, children,
 }: {
-  icon: React.ReactNode; title: string; subtitle: string;
+  icon: React.ReactNode; tone: Tone; title: string; subtitle: string;
   action?: string; onAction?: () => void; children: React.ReactNode;
 }) {
   return (
     <section className="rounded-xl border overflow-hidden" style={card}>
       <div className="flex items-center justify-between gap-3 px-4 py-3 border-b" style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface-warm)' }}>
-        <div className="flex items-center gap-2 min-w-0">
-          <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: TONES[tone], color: 'var(--color-primary)' }}>
+            {icon}
+          </span>
           <div className="min-w-0">
             <div className="text-[13px] font-bold truncate">{title}</div>
             <div className="text-[11px] text-muted-foreground truncate">{subtitle}</div>
@@ -54,14 +66,29 @@ function Section({
   );
 }
 
-function Metric({ label, value, sub, onClick }: { label: string; value: React.ReactNode; sub?: string; onClick?: () => void }) {
+function Metric({
+  icon, label, value, sub, tone, onClick, progress,
+}: {
+  icon: React.ReactNode; label: string; value: React.ReactNode; sub?: string;
+  tone: Tone; onClick?: () => void; progress?: number;
+}) {
   return (
     <button onClick={onClick} disabled={!onClick}
-      className={`rounded-lg border p-3 text-left transition-colors ${onClick ? 'hover:bg-muted/60 cursor-pointer' : 'cursor-default'}`}
-      style={{ borderColor: 'var(--color-border)' }}>
-      <div className="text-xl font-heading font-bold leading-none">{value}</div>
-      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mt-1.5">{label}</div>
+      className={`rounded-xl border p-3.5 text-left transition-all ${onClick ? 'hover:shadow-sm hover:-translate-y-px cursor-pointer' : 'cursor-default'}`}
+      style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: TONES[tone], color: 'var(--color-primary)' }}>
+          {icon}
+        </span>
+        <span className="text-2xl font-heading font-bold leading-none">{value}</span>
+      </div>
+      <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mt-2.5">{label}</div>
       {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
+      {progress != null && (
+        <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${Math.min(100, progress * 100)}%`, background: 'var(--color-primary)' }} />
+        </div>
+      )}
     </button>
   );
 }
@@ -117,17 +144,17 @@ export function Dashboard({ employees, onNavigate }: DashboardProps) {
     <div className="space-y-5">
       {/* ── Today — what needs action ── */}
       <Section
-        icon={<ShieldCheck size={16} />} title="Today" subtitle="Things waiting on a decision"
+        icon={<ShieldCheck size={16} />} tone="amber" title="Today" subtitle="Things waiting on a decision"
         onAction={can('centres.manage') || can('partners.manage') ? () => onNavigate('partners') : undefined} action="Review"
       >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-          <Metric label="centre approvals" value={pendingCentres} sub={pendingCentres > 0 ? 'action needed' : 'all clear'}
+          <Metric icon={<ShieldCheck size={15} />} tone="amber" label="centre approvals" value={pendingCentres} sub={pendingCentres > 0 ? 'action needed' : 'all clear'}
             onClick={() => onNavigate('partners')} />
-          <Metric label="overdue forms" value={overdueAssignments} sub={overdueAssignments > 0 ? 'past due date' : 'none open'}
+          <Metric icon={<ClipboardList size={15} />} tone="amber" label="overdue forms" value={overdueAssignments} sub={overdueAssignments > 0 ? 'past due date' : 'none open'}
             onClick={() => onNavigate('submissions-review')} />
-          <Metric label="officers w/o dept" value={noDepartment} sub="assign in employee form"
+          <Metric icon={<UserPlus size={15} />} tone="amber" label="officers w/o dept" value={noDepartment} sub="assign in employee form"
             onClick={() => onNavigate('employees')} />
-          <Metric label="officers w/o station" value={noStation} sub="missing posting"
+          <Metric icon={<MapPin size={15} />} tone="amber" label="officers w/o station" value={noStation} sub="missing posting"
             onClick={() => onNavigate('employees')} />
         </div>
         {overdueAssignments > 0 && (
@@ -139,44 +166,45 @@ export function Dashboard({ employees, onNavigate }: DashboardProps) {
 
       {/* ── The Board ── */}
       <Section
-        icon={<Landmark size={16} />} title="The Board" subtitle="Staff establishment & structure"
+        icon={<Landmark size={16} />} tone="green" title="The Board" subtitle="Staff establishment & structure"
         action="Staff register" onAction={() => onNavigate('employees')}
       >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-          <Metric label="officers on register" value={employees.length}
+          <Metric icon={<Users size={15} />} tone="green" label="officers on register" value={employees.length}
             onClick={() => onNavigate('employees')} />
-          <Metric label="departments" value={departments} sub={departments === 0 ? 'create the first' : 'active units'}
+          <Metric icon={<Landmark size={15} />} tone="green" label="departments" value={departments} sub={departments === 0 ? 'create the first' : 'active units'}
             onClick={() => onNavigate('departments')} />
-          <Metric label="LGA officers" value={officerCoverage} sub="of 21 LGAs covered"
+          <Metric icon={<MapPinned size={15} />} tone="green" label="LGA officers" value={officerCoverage} sub="of 21 LGAs covered"
+            progress={officerCoverage / 21}
             onClick={() => onNavigate('lga-officers')} />
-          <Metric label="explorable hierarchy" value="Explore" sub="the whole platform, nested"
+          <Metric icon={<Network size={15} />} tone="green" label="explore" value="Whole platform" sub="nested, one click away"
             onClick={() => onNavigate('explore')} />
         </div>
       </Section>
 
       {/* ── Delivery ── */}
       <Section
-        icon={<GraduationCap size={16} />} title="Delivery" subtitle="Programmes, cohorts & learners"
+        icon={<GraduationCap size={16} />} tone="blue" title="Delivery" subtitle="Programmes, cohorts & learners"
         action="Reports & M&E" onAction={() => onNavigate('reports')}
       >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-          <Metric label="programmes" value={programmeCount} onClick={() => onNavigate('programmes')} />
-          <Metric label="running cohorts" value={runningCohorts} sub={`${cohorts.length} total`} onClick={() => onNavigate('cohorts')} />
-          <Metric label="learners enrolled" value={learnerCount} sub={`${totalLearnersInCohorts} in active cohorts`} onClick={() => onNavigate('learners')} />
-          <Metric label="field data" value="Review" sub="submissions inbox" onClick={() => onNavigate('submissions-review')} />
+          <Metric icon={<BookOpen size={15} />} tone="blue" label="programmes" value={programmeCount} onClick={() => onNavigate('programmes')} />
+          <Metric icon={<CalendarRange size={15} />} tone="blue" label="running cohorts" value={runningCohorts} sub={`${cohorts.length} total`} onClick={() => onNavigate('cohorts')} />
+          <Metric icon={<GraduationCap size={15} />} tone="blue" label="learners enrolled" value={learnerCount} sub={`${totalLearnersInCohorts} in active cohorts`} onClick={() => onNavigate('learners')} />
+          <Metric icon={<Inbox size={15} />} tone="blue" label="field data" value="Inbox" sub="review submissions" onClick={() => onNavigate('submissions-review')} />
         </div>
       </Section>
 
       {/* ── Partners ── */}
       <Section
-        icon={<Handshake size={16} />} title="Partners" subtitle="Organisations and where they work"
+        icon={<Handshake size={16} />} tone="gold" title="Partners" subtitle="Organisations and where they work"
         action="Open portals" onAction={() => onNavigate('partner-home')}
       >
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-          <Metric label="organisations" value={orgs} onClick={() => onNavigate('partners')} />
-          <Metric label="centre links" value={orgCentreLinks} sub="org ↔ centre (lead + partners)" onClick={() => onNavigate('centres')} />
-          <Metric label="learning centres" value="Register" onClick={() => onNavigate('centres')} />
-          <Metric label="facilitators" value="Manage" onClick={() => onNavigate('facilitators')} />
+          <Metric icon={<Handshake size={15} />} tone="gold" label="organisations" value={orgs} onClick={() => onNavigate('partners')} />
+          <Metric icon={<Building2 size={15} />} tone="gold" label="centre links" value={orgCentreLinks} sub="lead + partners" onClick={() => onNavigate('centres')} />
+          <Metric icon={<MapPin size={15} />} tone="gold" label="learning centres" value="Register" onClick={() => onNavigate('centres')} />
+          <Metric icon={<UsersRound size={15} />} tone="gold" label="facilitators" value="Manage" onClick={() => onNavigate('facilitators')} />
         </div>
       </Section>
     </div>

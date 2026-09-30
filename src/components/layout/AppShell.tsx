@@ -12,18 +12,16 @@ interface AppShellProps {
   children: React.ReactNode;
   currentPage: string;
   onNavigate: (page: string) => void;
-  onAddEmployee: () => void;
   onImportCsv?: () => void;
   onExportCsv?: () => void;
   onPrint?: () => void;
   onBackup?: () => void;
   employeeCount: number;
-  canAdd?: boolean;
 }
 
 export function AppShell({
-  children, currentPage, onNavigate, onAddEmployee,
-  onImportCsv, onExportCsv, onPrint, onBackup, employeeCount, canAdd,
+  children, currentPage, onNavigate,
+  onImportCsv, onExportCsv, onPrint, onBackup, employeeCount,
 }: AppShellProps) {
   const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -48,7 +46,6 @@ export function AppShell({
       <Sidebar
         currentPage={currentPage}
         onNavigate={onNavigate}
-        onAddEmployee={onAddEmployee}
         onImportCsv={onImportCsv || (() => {})}
         onExportCsv={onExportCsv || (() => {})}
         onPrint={onPrint || (() => {})}
@@ -65,7 +62,7 @@ export function AppShell({
           currentPage={currentPage}
           onToggleSidebar={toggleSidebar}
           onPrint={onPrint}
-          onAdd={canAdd ? onAddEmployee : undefined}
+          onAdd={undefined}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6 bg-background main-scroll">
           {children}

@@ -145,7 +145,6 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   employees:     { title: 'All Employees',           subtitle: 'Permanent & Pensionable Officers' },
   retirement:    { title: '🎓 Retirement & Tenure',   subtitle: 'Age 60 / 35 years of service projections' },
   promotions:    { title: '📈 Promotions & Progression', subtitle: 'Due/overdue officers & promotion history' },
-  leaves:        { title: '🗓 Leave Management',         subtitle: 'Requests, approvals & annual balances' },
   'psn-check':    { title: '🗂 PSN Tools',               subtitle: 'Check PSNs, register new officers & unlock self-service updates' },
   'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },

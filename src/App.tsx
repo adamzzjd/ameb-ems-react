@@ -58,7 +58,6 @@ const AuditLogPage = lazy(() => import('./pages/AuditLog').then(m => ({ default:
 const MyAccountPage = lazy(() => import('./pages/MyAccount').then(m => ({ default: m.MyAccountPage })));
 const RetirementPage = lazy(() => import('./pages/Retirement').then(m => ({ default: m.RetirementPage })));
 const PromotionPage = lazy(() => import('./pages/Promotion').then(m => ({ default: m.PromotionPage })));
-const LeavePage = lazy(() => import('./pages/Leave').then(m => ({ default: m.LeavePage })));
 const PsnCheckPage = lazy(() => import('./pages/PsnCheck').then(m => ({ default: m.PsnCheckPage })));
 const DataQualityPage = lazy(() => import('./pages/DataQuality').then(m => ({ default: m.DataQualityPage })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
@@ -199,11 +198,6 @@ export default function App() {
     const emp = employees.find(e => e.id === id);
     if (emp) { setEditingEmployee(emp); setShowForm(true); }
   }, [can, employees, toast]);
-
-  const handleAddEmployee = useCallback(() => {
-    if (!can('employees.create')) { toast('You need editor access to add records.', true); return; }
-    setEditingEmployee(null); setShowForm(true);
-  }, [can, toast]);
 
   const handleSaveEmployee = useCallback(async (data: Partial<Employee> & { name: string }) => {
     if (data.id ? !can('employees.edit') : !can('employees.create')) {
@@ -385,8 +379,6 @@ export default function App() {
         return <RetirementPage employees={employees} onViewEmployee={handleViewEmployee} />;
       case 'promotions':
         return <PromotionPage employees={employees} onViewEmployee={handleViewEmployee} />;
-      case 'leaves':
-        return <LeavePage employees={employees} />;
       case 'psn-check':
         return <PsnCheckPage />;
       case 'data-quality':
@@ -450,12 +442,10 @@ export default function App() {
         <AppShell
           currentPage={currentPage}
           onNavigate={handleNavigate}
-          onAddEmployee={handleAddEmployee}
           onImportCsv={() => setShowCsvImport(true)}
           onExportCsv={handleExportCSV}
           onPrint={handlePrint}
           employeeCount={employees.length}
-          canAdd={can('employees.create')}
           onBackup={handleBackup}
         >
           <Suspense fallback={<LoadingSpinner />}>
