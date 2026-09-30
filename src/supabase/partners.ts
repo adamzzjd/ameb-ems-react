@@ -5,6 +5,8 @@ import type {
   OrganisationMember,
   ApprovalStatus,
   Centre,
+  CentreOrgLink,
+  OrgLgaCoverage,
 } from '../types';
 
 // ── Partner organisations ───────────────────────────────────────────────────
@@ -83,6 +85,77 @@ export async function dbDeletePartnerOrganisation(id: string): Promise<{ error: 
   const { error } = await supabase.from('partner_organisations').delete().eq('id', id);
   if (!error) await logAudit({ action: 'delete', table: 'partner_organisations', rowId: id });
   return { error };
+}
+
+// ── Centre ↔ Organisation links (Phase 28.5 — the many-to-many) ────────────
+// Lives on centre_organisations (setup_hierarchy.sql). Callers probe table
+// existence via this loader's error (unlike the degrade-to-empty loader in
+// hierarchy.ts, this keeps the envelope so callers can tell missing vs empty).
+export async function dbLoadCentreOrganisationLinks(): Promise<{
+  data: CentreOrgLink[] | null; error: Error | null;
+}> {
+  const { data, error } = await supabase.from('centre_organisations').select('*');
+  return { data: data as CentreOrgLink[] | null, error };
+}
+
+/** Replace a centre's organisation links: one lead plus any partners. */
+export async function dbSetCentreOrganisations(
+  centreId: string,
+  orgs: { org_id: string; role: 'lead' | 'partner' | 'funder' | 'host' }[],
+): Promise<{ error: Error | null }> {
+  const { error: delErr } = await supabase
+    .from('centre_organisations')
+    .delete()
+    .eq('centre_id', centreId);
+  if (delErr) return { error: delErr };
+  if (orgs.length === 0) {
+    await logAudit({ action: 'assign', table: 'centre_organisations', rowId: centreId, details: { orgs: [] } });
+    return { error: null };
+  }
+
+  const { error: insErr } = await supabase
+    .from('centre_organisations')
+    .insert(orgs.map(o => ({ centre_id: centreId, org_id: o.org_id, role: o.role })));
+  if (!insErr) {
+    await logAudit({
+      action: 'assign', table: 'centre_organisations', rowId: centreId,
+      details: { orgs: orgs.map(o => o.org_id) },
+    });
+  }
+  return { error: insErr };
+}
+
+// ── Organisation ↔ LGA coverage (Phase 28.5) ────────────────────────────────
+/** The LGAs an organisation works in. Degrades to null when the table is missing. */
+export async function dbLoadOrgLgaCoverage(): Promise<{
+  data: OrgLgaCoverage[] | null; error: Error | null;
+}> {
+  const { data, error } = await supabase.from('organisation_lga_coverage').select('*');
+  return { data: data as OrgLgaCoverage[] | null, error };
+}
+
+/** Replace an organisation's LGA coverage with the given set. */
+export async function dbSetOrgLgaCoverage(
+  orgId: string,
+  lgas: string[],
+): Promise<{ error: Error | null }> {
+  const { error: delErr } = await supabase
+    .from('organisation_lga_coverage')
+    .delete()
+    .eq('org_id', orgId);
+  if (delErr) return { error: delErr };
+  if (lgas.length === 0) {
+    await logAudit({ action: 'assign', table: 'organisation_lga_coverage', rowId: orgId, details: { lgas: [] } });
+    return { error: null };
+  }
+
+  const { error: insErr } = await supabase
+    .from('organisation_lga_coverage')
+    .insert(lgas.map(lga => ({ org_id: orgId, lga })));
+  if (!insErr) {
+    await logAudit({ action: 'assign', table: 'organisation_lga_coverage', rowId: orgId, details: { lgas } });
+  }
+  return { error: insErr };
 }
 
 /** All user↔organisation links (readable by board staff). */

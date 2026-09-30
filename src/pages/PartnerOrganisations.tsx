@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   dbLoadPartnerOrganisations, dbSavePartnerOrganisation, dbDeletePartnerOrganisation,
+  dbLoadOrgLgaCoverage, dbSetOrgLgaCoverage,
   dbLoadOrganisationMembers, dbLoadPendingCentres, dbSetCentreApproval,
   type PartnerOrganisationInput,
 } from '../supabase/partners';
@@ -65,18 +66,35 @@ export function PartnerOrganisations({ canManage = false }: { canManage?: boolea
   const [deleteTarget, setDeleteTarget] = useState<PartnerOrganisation | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [approvalNote, setApprovalNote] = useState<Record<string, string>>({});
+  // Phase 28.5 — org ↔ LGA coverage (organisation_lga_coverage). Degrades
+  // silently when setup_hierarchy.sql hasn't run yet.
+  const [coverage, setCoverage] = useState<Map<string, string[]>>(new Map());
+  const [coverageAvailable, setCoverageAvailable] = useState(true);
+  const [formCoverage, setFormCoverage] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [orgRes, memberRes, pendingRes] = await Promise.all([
+    const [orgRes, memberRes, pendingRes, coverageRes] = await Promise.all([
       dbLoadPartnerOrganisations(),
       dbLoadOrganisationMembers(),
       dbLoadPendingCentres(),
+      dbLoadOrgLgaCoverage(),
     ]);
     if (orgRes.error) toast('⚠️ ' + orgRes.error.message, true);
     setOrgs(orgRes.data ?? []);
     setMembers(memberRes.data ?? []);
     setPending(pendingRes.data ?? []);
+    if (coverageRes.error) {
+      setCoverageAvailable(false);
+      setCoverage(new Map());
+    } else {
+      setCoverageAvailable(true);
+      const map = new Map<string, string[]>();
+      for (const row of coverageRes.data ?? []) {
+        map.set(row.org_id, [...(map.get(row.org_id) ?? []), row.lga]);
+      }
+      setCoverage(map);
+    }
     setLoading(false);
   }, [toast]);
 
@@ -108,9 +126,25 @@ export function PartnerOrganisations({ canManage = false }: { canManage?: boolea
     if (!form) return;
     if (!form.name.trim()) { toast('Organisation name is required.', true); return; }
     setSaving(true);
-    const { error } = await dbSavePartnerOrganisation(form);
+    const { data, error } = await dbSavePartnerOrganisation(form);
+    if (error) {
+      setSaving(false);
+      toast('⚠️ ' + error.message, true);
+      return;
+    }
+    // Persist LGA coverage (Phase 28.5) once the org id is known.
+    const orgId = data?.id ?? form.id ?? null;
+    if (coverageAvailable && orgId) {
+      const { error: covErr } = await dbSetOrgLgaCoverage(orgId, formCoverage);
+      if (covErr) {
+        setSaving(false);
+        toast(`Saved, but LGA coverage failed: ${covErr.message}`, true);
+        setForm(null);
+        load();
+        return;
+      }
+    }
     setSaving(false);
-    if (error) { toast('⚠️ ' + error.message, true); return; }
     toast(`✓ Organisation "${form.name.trim()}" ${form.id ? 'updated' : 'registered'}.`);
     setForm(null);
     load();
@@ -239,7 +273,7 @@ export function PartnerOrganisations({ canManage = false }: { canManage?: boolea
           <Input value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search name, type, LGA…" className="pl-9" />
         </div>
-        <Button onClick={() => setForm({ ...emptyForm })}>
+        <Button onClick={() => { setFormCoverage([]); setForm({ ...emptyForm }); }}>
           <Plus size={15} /> Register Organisation
         </Button>
       </div>
@@ -289,6 +323,11 @@ export function PartnerOrganisations({ canManage = false }: { canManage?: boolea
                           <div className="text-[11px]" style={{ color: 'var(--color-text-muted)' }}>
                             {[org.lga, org.mou_reference].filter(Boolean).join(' · ') || '—'}
                           </div>
+                          {coverageAvailable && (coverage.get(org.id)?.length ?? 0) > 0 && (
+                            <div className="text-[10px] mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
+                              📍 {coverage.get(org.id)!.slice(0, 4).join(', ')}{(coverage.get(org.id)!.length > 4) ? ` +${coverage.get(org.id)!.length - 4}` : ''}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -312,7 +351,7 @@ export function PartnerOrganisations({ canManage = false }: { canManage?: boolea
                     </td>
                     <td className="px-4 py-2.5">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => setForm({ ...org })}
+                        <button onClick={() => { setFormCoverage(coverage.get(org.id) ?? []); setForm({ ...org }); }}
                           className="inline-flex items-center gap-1.5 text-xs font-semibold border px-2.5 py-1.5 rounded-lg transition-colors hover:bg-surface-warm"
                           style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
                           <Pencil size={13} /> Edit
@@ -414,6 +453,29 @@ export function PartnerOrganisations({ canManage = false }: { canManage?: boolea
                 <Label className="text-xs">Registration No.</Label>
                 <Input value={form.registration_no ?? ''} onChange={e => set('registration_no', e.target.value)} placeholder="CAC / LGA reg." />
               </div>
+
+              {coverageAvailable && (
+                <div className="sm:col-span-2 flex flex-col gap-1.5">
+                  <Label className="text-xs">LGA Coverage — where this organisation works</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {LGAs.map(lga => {
+                      const on = formCoverage.includes(lga);
+                      return (
+                        <button key={lga} type="button"
+                          onClick={() => setFormCoverage(prev => on ? prev.filter(l => l !== lga) : [...prev, lga])}
+                          className={`text-[11px] font-semibold px-2 py-1 rounded-full border cursor-pointer transition-colors ${
+                            on ? 'bg-primary text-primary-foreground border-primary' : 'bg-transparent text-muted-foreground border-border hover:bg-muted'
+                          }`}>
+                          {lga}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>
+                    {formCoverage.length === 0 ? 'No coverage set — the organisation has no declared LGAs yet.' : `${formCoverage.length} LGA${formCoverage.length !== 1 ? 's' : ''} selected · click again to remove`}
+                  </p>
+                </div>
+              )}
 
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs">MOU Reference</Label>

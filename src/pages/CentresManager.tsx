@@ -3,7 +3,10 @@ import { Modal } from '../components/ui/Modal';
 import { LGAs } from '../data/constants';
 import type { Centre, Facilitator, CentreFacilitator, PartnerOrganisation } from '../types';
 import { dbLoadCentres, dbSaveCentre, dbDeleteCentre } from '../supabase/centres';
-import { dbLoadPartnerOrganisations } from '../supabase/partners';
+import {
+  dbLoadPartnerOrganisations, dbSetCentreOrganisations, dbLoadCentreOrganisationLinks,
+} from '../supabase/partners';
+import type { CentreOrgLink } from '../types';
 import {
   dbLoadFacilitators, dbLoadCentreFacilitators, dbSetCentreFacilitators, dbAddFacilitator,
 } from '../supabase/facilitators';
@@ -182,6 +185,13 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
   const [formPhone, setFormPhone] = useState('');
   const [formFacilitatorIds, setFormFacilitatorIds] = useState<string[]>([]);
   const [formPartnerOrgId, setFormPartnerOrgId] = useState('');
+  // Phase 28.5 — multi-org links (centre_organisations). Used when the table
+  // exists (orgLinkMode 'table'); otherwise the single partner_org_id column
+  // above keeps working ('column' mode — setup_hierarchy.sql not yet run).
+  const [centreOrgLinks, setCentreOrgLinks] = useState<CentreOrgLink[]>([]);
+  const [orgLinkMode, setOrgLinkMode] = useState<'column' | 'table' | 'unknown'>('unknown');
+  const [formLeadOrgId, setFormLeadOrgId] = useState('');
+  const [formPartnerOrgIds, setFormPartnerOrgIds] = useState<string[]>([]);
   const [formRemarks, setFormRemarks] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -195,16 +205,25 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [centreRes, facRes, linkRes, partnerRes] = await Promise.all([
+    const [centreRes, facRes, linkRes, partnerRes, orgLinkRes] = await Promise.all([
       dbLoadCentres(),
       dbLoadFacilitators(),
       dbLoadCentreFacilitators(),
       dbLoadPartnerOrganisations(),
+      dbLoadCentreOrganisationLinks(),
     ]);
     if (!centreRes.error && centreRes.data) setCentres(centreRes.data);
     if (!facRes.error && facRes.data) setFacilitators(facRes.data);
     if (!linkRes.error && linkRes.data) setLinks(linkRes.data);
     if (!partnerRes.error && partnerRes.data) setPartners(partnerRes.data);
+    // Phase 28.5: probe the centre_organisations table once.
+    if (!orgLinkRes.error) {
+      setCentreOrgLinks(orgLinkRes.data ?? []);
+      setOrgLinkMode('table');
+    } else {
+      setCentreOrgLinks([]);
+      setOrgLinkMode('column');
+    }
     setLoading(false);
   }, []);
 
@@ -218,6 +237,27 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
   const partnerOptions = useMemo(
     () => [...partners].sort((a, b) => a.name.localeCompare(b.name)),
     [partners]
+  );
+
+  // ── Phase 28.5: organisation links (single-column vs many-to-many) ──
+  // "Organisations involved" resolves from centre_organisations when the
+  // table exists, else from the legacy partner_org_id column.
+  const orgsForCentre = useCallback(
+    (centreId: string): { id: string; name: string; role: string }[] => {
+      if (orgLinkMode === 'table') {
+        return centreOrgLinks
+          .filter(l => l.centre_id === centreId)
+          .map(l => ({ id: l.org_id, name: partnerName(l.org_id) ?? 'Unknown org', role: String(l.role) }))
+          .sort((a, b) => (a.role === 'lead' ? -1 : b.role === 'lead' ? 1 : a.name.localeCompare(b.name)));
+      }
+      const id = centres.find(c => c.id === centreId)?.partner_org_id;
+      return id ? [{ id, name: partnerName(id) ?? 'Unknown org', role: 'lead' }] : [];
+    },
+    [orgLinkMode, centreOrgLinks, centres, partnerName],
+  );
+  const orgNamesForCentre = useCallback(
+    (centreId: string) => orgsForCentre(centreId).map(o => o.name).join(', '),
+    [orgsForCentre],
   );
 
   // centreId → assigned facilitators (sorted by name)
@@ -248,10 +288,13 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
       total: centres.length,
       active: byStatus['Active'] || 0,
       lgasCovered: Object.keys(byLGA).length,
-      withPartner: centres.filter(c => c.partner_org_id).length,
+      withPartner:
+        orgLinkMode === 'table'
+          ? new Set(centreOrgLinks.map(l => l.centre_id)).size
+          : centres.filter(c => c.partner_org_id).length,
       facilitators: facilitators.length,
     };
-  }, [centres, facilitators]);
+  }, [centres, facilitators, orgLinkMode, centreOrgLinks]);
 
   // Filtered centres
   const filtered = useMemo(() => {
@@ -259,13 +302,13 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     return centres.filter(c =>
       (!q || (c.name||'').toLowerCase().includes(q) ||
              (c.community||'').toLowerCase().includes(q) ||
-             (c.partner_org_id ? (partnerName(c.partner_org_id) ?? '') : '').toLowerCase().includes(q) ||
+             orgsForCentre(c.id).some(o => o.name.toLowerCase().includes(q)) ||
              (facilitatorsByCentre.get(c.id) || []).some(f => (f.name||'').toLowerCase().includes(q)))
       && (!filterLGA    || c.lga    === filterLGA)
       && (!filterType   || c.type   === filterType)
       && (!filterStatus || c.status === filterStatus)
     );
-  }, [centres, search, filterLGA, filterType, filterStatus, facilitatorsByCentre, partnerName]);
+  }, [centres, search, filterLGA, filterType, filterStatus, facilitatorsByCentre, orgsForCentre]);
 
   const clearFilters = () => {
     setSearch('');
@@ -288,6 +331,8 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     setFormPhone('');
     setFormFacilitatorIds([]);
     setFormPartnerOrgId('');
+    setFormLeadOrgId('');
+    setFormPartnerOrgIds([]);
     setFormRemarks('');
     setFormError('');
     setShowForm(true);
@@ -305,6 +350,11 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     setFormPhone(c.phone || '');
     setFormFacilitatorIds((facilitatorsByCentre.get(c.id) || []).map(f => f.id));
     setFormPartnerOrgId(c.partner_org_id ?? '');
+    {
+      const links = orgsForCentre(c.id);
+      setFormLeadOrgId(links.find(o => o.role === 'lead')?.id ?? '');
+      setFormPartnerOrgIds(links.filter(o => o.role !== 'lead').map(o => o.id));
+    }
     setFormRemarks(c.remarks || '');
     setFormError('');
     setShowForm(true);
@@ -360,6 +410,23 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
           ...formFacilitatorIds.map(fid => ({ centre_id: data.id, facilitator_id: fid })),
         ]);
       }
+      // Phase 28.5: persist organisation links when the many-to-many table
+      // exists (lead + partners). Column mode keeps using partner_org_id above.
+      if (orgLinkMode === 'table') {
+        const orgs = [
+          ...(formLeadOrgId ? [{ org_id: formLeadOrgId, role: 'lead' as const }] : []),
+          ...formPartnerOrgIds.filter(id => id !== formLeadOrgId).map(id => ({ org_id: id, role: 'partner' as const })),
+        ];
+        const { error: orgErr } = await dbSetCentreOrganisations(data.id, orgs);
+        if (orgErr) {
+          toast('Centre saved, but organisation links failed: ' + orgErr.message, true);
+        } else {
+          setCentreOrgLinks(prev => [
+            ...prev.filter(l => l.centre_id !== data.id),
+            ...orgs.map(o => ({ id: `${data.id}:${o.org_id}`, centre_id: data.id, org_id: o.org_id, role: o.role })),
+          ]);
+        }
+      }
       if (editing) {
         setCentres(prev => prev.map(c => c.id === data.id ? data : c));
       } else {
@@ -396,6 +463,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     if (!items.length) { toast('No centres to print.', true); return; }
     const rows = items.map((c, i) => {
       const facNames = (facilitatorsByCentre.get(c.id) || []).map(f => f.name).join(', ');
+      const orgNames = orgsForCentre(c.id).map(o => o.role === 'lead' ? o.name : `${o.name} (${o.role})`).join(', ');
       return `
       <tr>
         <td>${i + 1}</td>
@@ -405,7 +473,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
         <td>${esc(c.community||'—')}</td>
         <td>${esc(c.type||'—')}</td>
         <td>${esc(facNames || '—')}</td>
-        <td>${esc(partnerName(c.partner_org_id)||'—')}</td>
+        <td>${esc(orgNames || '—')}</td>
         <td>${esc(c.capacity != null ? String(c.capacity) : '—')}</td>
         <td>${esc(c.status||'—')}</td>
       </tr>`;
@@ -476,7 +544,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
         <div class="field"><div class="fl">Capacity</div><div class="fv">${c.capacity != null ? c.capacity : '—'}</div></div>
         <div class="field"><div class="fl">Facilitators</div><div class="fv">${esc(facNames || '—')}</div></div>
         <div class="field"><div class="fl">Phone</div><div class="fv">${esc(c.phone||'—')}</div></div>
-        <div class="field"><div class="fl">Partner Org</div><div class="fv">${esc(partnerName(c.partner_org_id)||'—')}</div></div>
+        <div class="field"><div class="fl">Organisations</div><div class="fv">${esc(orgsForCentre(c.id).map(o => o.role === 'lead' ? o.name : `${o.name} (${o.role})`).join(', ')||'—')}</div></div>
         <div class="field"><div class="fl">Status</div><div class="fv">${esc(c.status||'—')}</div></div>
       </div>
       ${c.remarks ? `<div class="rem"><strong>Remarks:</strong> ${esc(c.remarks)}</div>` : ''}
@@ -652,7 +720,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                         </div>
                       )}
                     </td>
-                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(partnerName(c.partner_org_id) || '—')}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(orgNamesForCentre(c.id) || '—')}</td>
                     <td style={tdStyle}>
                       <span style={{
                         display: 'inline-block', padding: '2px 9px', borderRadius: 20,
@@ -771,13 +839,56 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
             />
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Partner Organisation</label>
-            <select value={formPartnerOrgId} onChange={e => setFormPartnerOrgId(e.target.value)} style={{ ...inputStyle, appearance: 'auto' }}>
-              <option value="">— Board-run (no partner) —</option>
-              {partnerOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
+          {orgLinkMode === 'table' ? (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Lead Organisation</label>
+                <select value={formLeadOrgId} onChange={e => setFormLeadOrgId(e.target.value)} style={{ ...inputStyle, appearance: 'auto' }}>
+                  <option value="">— Board-run (no lead org) —</option>
+                  {partnerOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
+                  Partner Organisations <span style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>({formPartnerOrgIds.length} additional — a centre can involve several)</span>
+                </label>
+                {partnerOptions.length === 0 ? (
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>No organisations registered yet.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {partnerOptions.filter(p => p.id !== formLeadOrgId).map(p => {
+                      const on = formPartnerOrgIds.includes(p.id);
+                      return (
+                        <button key={p.id} type="button"
+                          onClick={() => setFormPartnerOrgIds(prev => on ? prev.filter(x => x !== p.id) : [...prev, p.id])}
+                          style={{
+                            padding: '4px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            border: `1px solid ${on ? 'var(--color-primary)' : 'var(--color-border)'}`,
+                            background: on ? 'rgba(22,163,74,.12)' : 'transparent',
+                            color: on ? 'var(--color-primary)' : 'var(--color-text-secondary)',
+                          }}>
+                          🤝 {esc(p.name)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Partner Organisation</label>
+              <select value={formPartnerOrgId} onChange={e => setFormPartnerOrgId(e.target.value)} style={{ ...inputStyle, appearance: 'auto' }}>
+                <option value="">— Board-run (no partner) —</option>
+                {partnerOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+              {orgLinkMode === 'column' && (
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                  Multi-org centres unlock after <code>setup_hierarchy.sql</code> runs.
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Remarks</label>
@@ -829,11 +940,11 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                 <span style={{ background: 'rgba(255,255,255,.15)', color: '#fff', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
                   📍 {esc(viewCentre.lga || '—')}
                 </span>
-                {viewCentre.partner_org_id && partnerName(viewCentre.partner_org_id) && (
-                  <span style={{ background: 'rgba(225,245,238,.15)', color: '#e1f5ee', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-                    🤝 {esc(partnerName(viewCentre.partner_org_id) || '')}
+                {orgsForCentre(viewCentre.id).map(o => (
+                  <span key={o.id} style={{ background: 'rgba(225,245,238,.15)', color: '#e1f5ee', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
+                    🤝 {esc(o.name)}{o.role !== 'lead' ? ` (${esc(o.role)})` : ''}
                   </span>
-                )}
+                ))}
               </div>
             </div>
 
@@ -845,7 +956,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                 ['Community', viewCentre.community],
                 ['Capacity', viewCentre.capacity != null ? String(viewCentre.capacity) : null],
                 ['Phone', viewCentre.phone],
-                ['Partner Org', partnerName(viewCentre.partner_org_id)],
+                ['Organisations', orgNamesForCentre(viewCentre.id) || null],
                 ['Status', viewCentre.status],
               ].map(([label, val]) => (
                 <div key={String(label)} style={{ padding: '9px 14px', borderBottom: '1px solid var(--color-border)', borderRight: label === 'LGA' || label === 'Community' || label === 'Phone' || label === 'Status' ? '1px solid var(--color-border)' : 'none' }}>
