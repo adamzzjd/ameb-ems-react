@@ -245,7 +245,11 @@ begin
       and c.ngo_partner is not null
       and lower(btrim(c.ngo_partner)) = lower(btrim(po.name));
 
-    drop column public.centres.ngo_partner;  -- single source of truth: partner_org_id
+    -- The old public_centres view selects ngo_partner directly — drop it here
+    -- so the column can go; §4 below re-creates it from the join.
+    drop view if exists public.public_centres;
+
+    alter table public.centres drop column ngo_partner;  -- single source of truth: partner_org_id
   end if;
 end
 $ngo_migration$;
