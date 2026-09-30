@@ -49,7 +49,12 @@ begin
              where table_schema = 'public'
                and table_name in ('centre_facilitators', 'facilitators'))
   then
-    create or replace view public.public_centres as
+    -- Drop-first: see setup_partners.sql — "create or replace" fails with 42P16
+    -- when an older public_centres has different columns. Re-granted below.
+    -- Note: no ngo_partner — the column was dropped in Phase 27; partner names
+    -- resolve via the partner_org_id join in the fuller view definitions.
+    drop view if exists public.public_centres;
+    create view public.public_centres as
     select
       c.id,
       c.name,
@@ -60,7 +65,6 @@ begin
       c.status,
       c.capacity,
       c.phone,
-      c.ngo_partner,
       coalesce(
         array_agg(f.name order by f.name) filter (where f.name is not null),
         '{}'::text[]

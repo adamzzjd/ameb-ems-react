@@ -1,6 +1,6 @@
 // ── CSV import/export helpers (pure — unit tested) ──────────────────────────
 import type { Employee } from '../types';
-import { GRADES, CADRE_NAMES } from '../data/constants';
+import { GRADES, CADRE_NAMES, LGAs } from '../data/constants';
 
 // Column name mapping — CSV column headers (normalized) → system field names.
 export const CSV_COLUMN_MAP: Record<string, string> = {
@@ -53,6 +53,19 @@ export function normalizeGrade(raw: string): string {
  * Match a sheet cadre value to the system's cadre list. Returns the canonical
  * system name when the match is unambiguous, otherwise null (unmatched).
  */
+/**
+ * Canonical LGA name for import (Phase 27): the DB FKs every lga column to
+ * the `lgas` reference table, so a value that isn't one of the statutory 21
+ * would be rejected. Case/whitespace-insensitive match against the list;
+ * null when unrecognised (caller decides whether to skip or report).
+ */
+export function canonicalizeLga(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const needle = raw.trim().toLowerCase();
+  if (!needle) return null;
+  return LGAs.find(l => l.toLowerCase() === needle) ?? null;
+}
+
 export function findCadreMatch(raw: string): string | null {
   const v = raw.trim();
   if (!v) return null;
@@ -92,7 +105,7 @@ export function mapRowToEmployee(
     cadre: matchCadre(pick('cadre')) || null,
     phone: pick('phone') || null,
     station: pick('station') || null,
-    lga: pick('lga') || null,
+    lga: canonicalizeLga(pick('lga')),
     psn: psn ? psn.toUpperCase() : null,
     date_first_appt: pick('date_first_appt') || null,
     date_present_appt: pick('date_present_appt') || null,

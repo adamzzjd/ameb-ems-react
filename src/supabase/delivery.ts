@@ -1,6 +1,6 @@
 import { supabase } from './client';
 import { logAudit } from './audit';
-import type { Cohort, CohortOverviewRow, Learner, Programme } from '../types';
+import type { Cohort, CohortOverviewRow, Learner, Programme, ProgrammeLgaLink } from '../types';
 
 // ── Programme delivery services (programmes / cohorts / learners) ───────────
 // RLS is the real gate: board staff see everything, partner users are scoped
@@ -54,6 +54,58 @@ export async function dbSaveProgramme(
 export async function dbDeleteProgramme(id: string): Promise<{ error: Error | null }> {
   const { error } = await supabase.from('programmes').delete().eq('id', id);
   if (!error) await logAudit({ action: 'delete', table: 'programmes', rowId: id });
+  return { error };
+}
+
+// ── Programme ↔ LGA scope (Phase 28) ────────────────────────────────────────
+/** Where a programme is meant to run. Errors degrade to null data (missing
+ *  table = setup_hierarchy.sql hasn't run). */
+export async function dbLoadProgrammeLgas(): Promise<{
+  data: ProgrammeLgaLink[] | null; error: Error | null;
+}> {
+  const { data, error } = await supabase
+    .from('programme_lgas')
+    .select('*');
+  return { data: data as ProgrammeLgaLink[] | null, error };
+}
+
+/**
+ * Replace a programme's LGA scope with the given set: upserts the wanted rows
+ * and deletes the rest. An empty set clears the scope (programme runs anywhere
+ * / unspecified).
+ */
+export async function dbSetProgrammeLgaScope(
+  programmeId: string,
+  lgas: string[],
+): Promise<{ error: Error | null }> {
+  const want = lgas.map(l => l.trim()).filter(l => !!l);
+
+  if (want.length > 0) {
+    const { error } = await supabase
+      .from('programme_lgas')
+      .upsert(
+        want.map(lga => ({ programme_id: programmeId, lga })),
+        { onConflict: 'programme_id,lga' },
+      );
+    if (error) return { error };
+  }
+
+  // Drop rows no longer in the set (or everything when the set is empty).
+  const { error } =
+    want.length === 0
+      ? await supabase.from('programme_lgas').delete().eq('programme_id', programmeId)
+      : await supabase
+          .from('programme_lgas')
+          .delete()
+          .eq('programme_id', programmeId)
+          .not('lga', 'in', `(${want.map(l => `"${l}"`).join(',')})`);
+
+  if (!error) {
+    await logAudit({
+      action: 'assign', table: 'programme_lgas', rowId: programmeId,
+      details: { lgas: want },
+    });
+  }
   return { error };
 }
 

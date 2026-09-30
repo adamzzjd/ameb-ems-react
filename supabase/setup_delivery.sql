@@ -15,11 +15,26 @@
 --   • No money fields anywhere (pay is outside this system).
 --
 -- HOW TO RUN:
---   1. Supabase dashboard → SQL Editor → paste → Run (idempotent, safe to
+--   1. Run AFTER `setup_ems.sql` (centres) and `setup_partners.sql`
+--      (partner_organisations) — the FKs below point at those tables.
+--   2. Supabase dashboard → SQL Editor → paste → Run (idempotent, safe to
 --      re-run).
---   2. Re-run `setup_rls.sql` afterwards — it adds the RLS policies.
---   3. Re-run `setup_selfservice.sql`/`setup_partners.sql` is NOT required.
+--   3. Re-run `setup_rls.sql` afterwards — it adds the RLS policies.
 -- ============================================================================
+
+-- ── Preflight: fail early with a clear message, not a cryptic FK error ──────
+do $preflight$
+begin
+  if not exists (select 1 from information_schema.tables
+                 where table_schema = 'public' and table_name = 'partner_organisations') then
+    raise exception 'setup_delivery.sql: public.partner_organisations is missing — run supabase/setup_partners.sql first';
+  end if;
+  if not exists (select 1 from information_schema.tables
+                 where table_schema = 'public' and table_name = 'centres') then
+    raise exception 'setup_delivery.sql: public.centres is missing — run supabase/setup_ems.sql first';
+  end if;
+end
+$preflight$;
 
 -- ── Programmes (delivery catalogue) ─────────────────────────────────────────
 create table if not exists public.programmes (
@@ -96,7 +111,12 @@ create unique index if not exists learners_reference_no_unique
 
 -- ── Convenience view: cohort + programme + centre in one row ────────────────
 -- Used by the learner register's cohort picker and the M&E dashboard.
-create or replace view public.cohort_overview as
+-- Re-created (drop + create, never "create or replace") so a column change
+-- can't trip Postgres' "cannot change name of view column" error, and
+-- SECURITY INVOKER so the caller's RLS applies — without it, partner users
+-- would see every organisation's cohorts through the view.
+drop view if exists public.cohort_overview;
+create view public.cohort_overview with (security_invoker = true) as
 select
   co.id,
   co.name,
@@ -117,3 +137,6 @@ join public.programmes p on p.id = co.programme_id
 join public.centres   c on c.id = co.centre_id;
 
 grant select on public.cohort_overview to authenticated;
+grant select on public.programmes to authenticated;
+grant select on public.cohorts to authenticated;
+grant select on public.learners to authenticated;

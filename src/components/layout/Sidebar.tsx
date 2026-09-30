@@ -16,6 +16,8 @@ import {
   UserPlus,
   Handshake,
   CalendarRange,
+  ClipboardList, Send, Inbox,
+  Network, Landmark,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -52,33 +54,46 @@ const navSections: NavSection[] = [
     label: 'Overview',
     items: [
       { page: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-      { page: 'employees', icon: <Users size={18} />, label: 'All Employees', badge: true },
+      { page: 'explore', icon: <Network size={18} />, label: 'Explore' },
       { page: 'account', icon: <UserCog size={18} />, label: 'My Account' },
-      { page: 'psn-check', icon: <UserPlus size={18} />, label: 'PSN Tools', permission: 'employees.import' },
     ],
   },
   {
-    label: 'Programme Delivery',
+    label: 'Board',
     items: [
+      { page: 'employees', icon: <Users size={18} />, label: 'Staff Register', badge: true },
+      { page: 'departments', icon: <Landmark size={18} />, label: 'Departments', permission: 'settings.manage' },
+      { page: 'station', icon: <MapPin size={18} />, label: 'By Station' },
+      { page: 'lga', icon: <Map size={18} />, label: 'By LGA of Origin' },
+      { page: 'grade', icon: <BarChart3 size={18} />, label: 'By Grade Level' },
+      { page: 'appointment', icon: <Calendar size={18} />, label: 'By Appointment Date' },
+      { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
+      { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
+      { page: 'leaves', icon: <CalendarDays size={18} />, label: 'Leave Management' },
+      { page: 'psn-check', icon: <UserPlus size={18} />, label: 'PSN Tools', permission: 'employees.import' },
+      { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
+      { page: 'lga-officers', icon: <MapPinned size={18} />, label: 'LGA Area Officers', permission: 'settings.manage' },
+    ],
+  },
+  {
+    label: 'Partners',
+    items: [
+      { page: 'partners', icon: <Handshake size={18} />, label: 'Organisations', permission: 'partners.manage' },
+      { page: 'partner-home', icon: <Landmark size={18} />, label: 'Partner Portal', permission: 'centres.manage' },
       { page: 'programmes', icon: <BookOpen size={18} />, label: 'Programmes', permission: 'reports.view' },
       { page: 'cohorts', icon: <CalendarRange size={18} />, label: 'Cohorts', permission: 'reports.view' },
       { page: 'learners', icon: <GraduationCap size={18} />, label: 'Learner Register', permission: 'reports.view' },
       { page: 'centres', icon: <MapPin size={18} />, label: 'Learning Centres', permission: 'centres.manage' },
+      { page: 'facilitators', icon: <UsersRound size={18} />, label: 'Facilitators', permission: 'settings.manage' },
       { page: 'reports', icon: <BarChart3 size={18} />, label: 'Reports & M&E', permission: 'reports.view' },
     ],
   },
   {
-    label: 'Browse By',
+    label: 'Data Collection',
     items: [
-      { page: 'station', icon: <MapPin size={18} />, label: 'Present Station' },
-      { page: 'lga', icon: <Map size={18} />, label: 'LGA of Origin' },
-      { page: 'grade', icon: <BarChart3 size={18} />, label: 'Grade Level' },
-      { page: 'appointment', icon: <Calendar size={18} />, label: 'Appointment Date' },
-      { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
-      { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
-      { page: 'leaves', icon: <CalendarDays size={18} />, label: 'Leave Management' },
-      { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
-      { page: 'lga-officers', icon: <MapPinned size={18} />, label: 'LGA Area Officers', permission: 'settings.manage' },
+      { page: 'form-builder', icon: <ClipboardList size={18} />, label: 'Form Builder', permission: 'forms.manage' },
+      { page: 'my-assignments', icon: <Send size={18} />, label: 'My Assignments', permission: 'forms.submit' },
+      { page: 'submissions-review', icon: <Inbox size={18} />, label: 'Submissions Review', permission: 'reports.view' },
     ],
   },
   {
@@ -87,8 +102,6 @@ const navSections: NavSection[] = [
     items: [
       { page: 'stations', icon: <Building2 size={18} />, label: 'Manage Stations' },
       { page: 'cadres', icon: <BookOpen size={18} />, label: 'Manage Cadres' },
-      { page: 'facilitators', icon: <UsersRound size={18} />, label: 'Manage Facilitators' },
-      { page: 'partners', icon: <Handshake size={18} />, label: 'Partner Organisations', permission: 'partners.manage' },
       { page: 'users', icon: <UserCog size={18} />, label: 'User Management', permission: 'users.manage' },
       { page: 'audit-log', icon: <FileText size={18} />, label: 'Audit Log', permission: 'audit.view' },
     ],

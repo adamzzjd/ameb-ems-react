@@ -33,6 +33,7 @@ export async function dbSave(emp: Partial<Employee> & { name: string }): Promise
     step: emp.step || null,
     address: emp.address || null,
     remarks: emp.remarks || '',
+    department_id: emp.department_id ?? null,
     updated_at: new Date().toISOString(),
   };
 

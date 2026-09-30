@@ -204,7 +204,12 @@ begin
        and exists (select 1 from information_schema.tables
                where table_schema = 'public' and table_name = 'facilitators')
     then
-      create or replace view public.public_centres as
+      -- Drop-first: "create or replace" fails with 42P16 ("cannot change name
+      -- of view column") when an older public_centres exists with different
+      -- columns (the pre-Phase-19 view had facilitators in an earlier slot).
+      -- Grants are re-applied right after creation.
+      drop view if exists public.public_centres;
+      create view public.public_centres as
       select
         c.id,
         c.name,
@@ -215,7 +220,6 @@ begin
         c.status,
         c.capacity,
         c.phone,
-        c.ngo_partner,
         c.owner_type,
         c.centre_code,
         po.name as partner_name,
@@ -230,7 +234,8 @@ begin
       where c.approval_status = 'approved'
       group by c.id, po.name;
     else
-      create or replace view public.public_centres as
+      drop view if exists public.public_centres;
+      create view public.public_centres as
       select
         c.id,
         c.name,
@@ -241,7 +246,6 @@ begin
         c.status,
         c.capacity,
         c.phone,
-        c.ngo_partner,
         c.owner_type,
         c.centre_code,
         po.name as partner_name,

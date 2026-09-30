@@ -7,6 +7,7 @@ import {
   buildImportPlan,
   normalizeGrade,
   matchCadre,
+  canonicalizeLga,
 } from '../../lib/csv';
 
 describe('normalizeCol', () => {
@@ -189,5 +190,25 @@ describe('buildImportPlan (PSN-safe import)', () => {
 
     expect(plan.unmatchedCadres).toEqual(['Zonal Coordinator']);
     expect(plan.records[1].cadre).toBe('Driver');
+  });
+});
+
+describe('canonicalizeLga (Phase 27)', () => {
+  it('matches case and whitespace variants to the statutory 21', () => {
+    expect(canonicalizeLga('yola north ')).toBe('Yola North');
+    expect(canonicalizeLga('GANYE')).toBe('Ganye');
+    expect(canonicalizeLga('mubi north')).toBe('Mubi North');
+  });
+  it('returns null for unknown LGAs and empty input', () => {
+    expect(canonicalizeLga('Atlantis')).toBeNull();
+    expect(canonicalizeLga('')).toBeNull();
+    expect(canonicalizeLga(null)).toBeNull();
+  });
+  it('mapRowToEmployee routes lga through canonicalization', () => {
+    const sysToCSV = Object.fromEntries(
+      ['name', 'lga'].map(f => [f, f.toUpperCase()])
+    ) as Record<string, string>;
+    const rec = mapRowToEmployee({ NAME: 'Ada', LGA: ' ganye ' }, sysToCSV);
+    expect(rec.lga).toBe('Ganye');
   });
 });

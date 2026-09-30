@@ -99,7 +99,6 @@ create table if not exists public.centres (
   status       text not null default 'Active',
   capacity     integer,
   phone        text,
-  ngo_partner  text,
   remarks      text,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()

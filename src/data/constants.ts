@@ -141,6 +141,7 @@ export const STATIONS = [
 
 export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   dashboard:     { title: 'Dashboard',              subtitle: 'Overview' },
+  explore:       { title: '🕸 Explore',               subtitle: 'The Board and its partners, nested: orgs → programmes → LGAs → centres → learners' },
   employees:     { title: 'All Employees',           subtitle: 'Permanent & Pensionable Officers' },
   station:       { title: 'By Station',              subtitle: 'Staff grouped by present posting' },
   lga:           { title: 'By LGA of Origin',        subtitle: 'Staff grouped by local government' },
@@ -152,6 +153,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   'psn-check':    { title: '🗂 PSN Tools',               subtitle: 'Check PSNs, register new officers & unlock self-service updates' },
   'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
+  departments:   { title: '🏛 Departments',            subtitle: "The Board's units — staff, assets and correspondence live here" },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
   facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },
   'lga-officers':{ title: 'LGA Area Officers',       subtitle: 'One area officer per local government — assigned from staff' },
@@ -174,4 +176,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   learners:       { title: '🎓 Learner Register',       subtitle: 'People enrolled in cohorts — not staff' },
   reports:        { title: '📊 Reports & M&E',          subtitle: 'Delivery outcomes across programmes and LGAs' },
   'partner-home': { title: '🤝 Partner Portal',         subtitle: 'Your organisation at a glance' },
+  'form-builder': { title: '📋 Form Builder',           subtitle: 'Design data-collection forms and assign them' },
+  'my-assignments': { title: '📝 My Assignments',        subtitle: 'Fill your assigned forms in the field' },
+  'submissions-review': { title: '📥 Submissions Review',  subtitle: 'Approve, reject and export field data' },
 };

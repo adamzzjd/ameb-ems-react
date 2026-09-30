@@ -30,7 +30,7 @@ vi.mock('../client', () => {
     chain.upsert = (payload: unknown, opts: unknown) => record('upsert', { payload, opts });
     chain.update = (payload: unknown) => record('update', { payload });
     chain.delete = () => record('delete');
-    chain.not = () => chain;
+    chain.not = (col: unknown, op: unknown, val: unknown) => record('not', { col, val: `${op} ${val}` });
     return chain;
   };
   return {
@@ -50,6 +50,7 @@ import {
   dbSaveProgramme, dbDeleteProgramme,
   dbSaveCohort, dbDeleteCohort,
   dbSaveLearner, dbDeleteLearner,
+  dbSetProgrammeLgaScope,
 } from '../delivery';
 
 // logAudit is mocked (same pattern as registerServices.test.ts) so tests can
@@ -58,7 +59,7 @@ const { logAudit } = vi.hoisted(() => ({ logAudit: vi.fn() }));
 vi.mock('../audit', () => ({ logAudit, dbLoadAuditLog: vi.fn() }));
 
 const lastAudit = () => {
-  const calls = logAudit.mock.calls as unknown as Array<[{ table: string; action: string }]>;
+  const calls = logAudit.mock.calls as unknown as Array<[{ table: string; action: string; details?: Record<string, unknown> }]>;
   return calls[calls.length - 1]?.[0];
 };
 
@@ -107,6 +108,55 @@ describe('dbSaveProgramme', () => {
   it('does not audit when the write fails', async () => {
     state.result = { data: null, error: { message: 'RLS violation' } };
     await dbSaveProgramme({ title: 'X' });
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+});
+
+describe('dbSetProgrammeLgaScope', () => {
+  it('upserts the wanted LGAs and prunes the rest', async () => {
+    resolve(null);
+    const { error } = await dbSetProgrammeLgaScope('p1', ['Ganye', 'Mubi North']);
+    expect(error).toBeNull();
+
+    const upsert = state.ops.find(o => o.op === 'upsert');
+    expect(upsert?.table).toBe('programme_lgas');
+    expect(upsert?.payload).toEqual([
+      { programme_id: 'p1', lga: 'Ganye' },
+      { programme_id: 'p1', lga: 'Mubi North' },
+    ]);
+    expect(upsert?.opts).toEqual({ onConflict: 'programme_id,lga' });
+
+    const del = state.ops.filter(o => o.op === 'delete' && o.table === 'programme_lgas');
+    expect(del).toHaveLength(1);
+    expect(state.ops.some(o => o.op === 'eq' && o.col === 'programme_id' && o.val === 'p1')).toBe(true);
+    expect(state.ops.some(o => o.op === 'not' && o.col === 'lga' && o.val === 'in ("Ganye","Mubi North")')).toBe(true);
+    expect(lastAudit()).toMatchObject({ table: 'programme_lgas', action: 'assign' });
+  });
+
+  it('clears the whole scope when given an empty set', async () => {
+    resolve(null);
+    const { error } = await dbSetProgrammeLgaScope('p2', []);
+    expect(error).toBeNull();
+    expect(state.ops.some(o => o.op === 'upsert')).toBe(false);
+    const del = state.ops.filter(o => o.op === 'delete' && o.table === 'programme_lgas');
+    expect(del).toHaveLength(1);
+    expect(state.ops.some(o => o.op === 'eq' && o.col === 'programme_id' && o.val === 'p2')).toBe(true);
+    expect(state.ops.some(o => o.op === 'not')).toBe(false);
+  });
+
+  it('filters empty LGA values and audits with the cleaned list', async () => {
+    resolve(null);
+    await dbSetProgrammeLgaScope('p3', ['Ganye', '', '  ']);
+    const upsert = state.ops.find(o => o.op === 'upsert');
+    expect(upsert?.payload).toEqual([{ programme_id: 'p3', lga: 'Ganye' }]);
+    expect(lastAudit()?.details).toMatchObject({ lgas: ['Ganye'] });
+  });
+
+  it('propagates the upsert error and skips the audit', async () => {
+    state.result = { data: null, error: { message: 'FK violation' } };
+    const { error } = await dbSetProgrammeLgaScope('p1', ['Ganye']);
+    expect(error).not.toBeNull();
+    expect((error as Error | null)?.message).toBe('FK violation');
     expect(logAudit).not.toHaveBeenCalled();
   });
 });

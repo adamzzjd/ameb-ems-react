@@ -18,6 +18,8 @@ export interface Employee {
   remarks: string;
   /** Set once the officer has used the self-service portal (one-shot lockout). */
   self_service_submitted_at?: string | null;
+  /** The Board unit this officer belongs to (Phase 28 hierarchy). */
+  department_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -183,7 +185,6 @@ export interface Centre {
   status: string;
   capacity: number | null;
   phone: string;
-  ngo_partner: string;
   remarks: string;
   /** Who owns/operates the centre — powers the public directory filter. */
   owner_type?: CentreOwnerType;
@@ -308,12 +309,49 @@ export interface PublicCentre {
   status: string;
   capacity: number | null;
   phone: string | null;
-  ngo_partner: string | null;
   /** Who owns/operates the centre — only approved centres are exposed. */
   owner_type?: CentreOwnerType | null;
   centre_code?: string | null;
   partner_name?: string | null;
   facilitators: string[];
+}
+
+// ── Board & partner hierarchy (Phase 28) ──────────────────────────────────
+/** A unit of the Board — staff belong to one; assets and correspondence file under it. */
+export interface Department {
+  id: string;
+  name: string;
+  code: string | null;
+  description: string;
+  head_employee_id: string | null;
+  status: 'active' | 'merged' | 'closed' | string;
+  created_by: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** A centre's link to an organisation — exactly one lead plus any partners/funders/hosts. */
+export type CentreOrgRole = 'lead' | 'partner' | 'funder' | 'host';
+
+/** Centre ↔ organisation many-to-many row (centre_organisations). */
+export interface CentreOrgLink {
+  id: string;
+  centre_id: string;
+  org_id: string;
+  role: CentreOrgRole | string;
+  created_at?: string;
+}
+
+/** Programme ↔ LGA scope row (programme_lgas). */
+export interface ProgrammeLgaLink {
+  programme_id: string;
+  lga: string;
+}
+
+/** Organisation ↔ LGA coverage row (organisation_lga_coverage). */
+export interface OrgLgaCoverage {
+  org_id: string;
+  lga: string;
 }
 
 // ── Employee Documents (document vault) ──────────────────────────────────────
@@ -482,7 +520,66 @@ export const LEARNER_STATUSES = ['active', 'completed', 'dropped_out', 'transfer
 
 export const COHORT_STATUSES = ['planned', 'running', 'completed', 'cancelled'] as const;
 
-// ── Filter State ───────────────────────────────────────────────────────────────
+// ── Data collection (forms / assignments / submissions) ────────────────────
+/** One question on a form template. */
+export interface FormField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'select' | 'multi' | 'date' | 'boolean' | 'textarea';
+  options?: string[];
+  required?: boolean;
+  min?: number;
+  max?: number;
+  help?: string;
+}
+
+/** A form the board designs. fields is the JSONB column on form_templates. */
+export interface FormTemplate {
+  id: string;
+  title: string;
+  description: string;
+  status: 'draft' | 'active' | 'retired' | string;
+  version: number;
+  fields: FormField[];
+  owner_org_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** A template pushed to a user (or open to all enumerators) with scope + due date. */
+export interface FormAssignment {
+  id: string;
+  template_id: string;
+  /** null = open to every enumerator. */
+  assigned_to: string | null;
+  centre_id: string | null;
+  cohort_id: string | null;
+  due_date: string | null;
+  status: 'open' | 'closed' | string;
+  owner_org_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** One person's answers to a template (draft → submitted → approved/rejected). */
+export interface FormSubmission {
+  id: string;
+  template_id: string;
+  assignment_id: string | null;
+  answers: Record<string, unknown>;
+  status: 'draft' | 'submitted' | 'approved' | 'rejected' | string;
+  submitted_by: string | null;
+  submitted_at: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  centre_id: string | null;
+  cohort_id: string | null;
+  owner_org_id: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface FilterState {
   search: string;
   lga: string;
@@ -512,12 +609,14 @@ export interface PageTitle {
 export type AppPage =
   | 'dashboard'
   | 'employees'
+  | 'explore'
   | 'station'
   | 'lga'
   | 'grade'
   | 'appointment'
   | 'stations'
   | 'cadres'
+  | 'departments'
   | 'facilitators'
   | 'lga-officers'
   | 'partners'
@@ -543,4 +642,7 @@ export type AppPage =
   | 'cohorts'
   | 'learners'
   | 'reports'
-  | 'partner-home';
+  | 'partner-home'
+  | 'form-builder'
+  | 'my-assignments'
+  | 'submissions-review';

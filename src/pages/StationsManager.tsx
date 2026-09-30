@@ -44,7 +44,10 @@ export function StationsManager({ onNavigate: _onNavigate }: StationsManagerProp
     if (!error && data && data.length > 0) {
       setStations(data);
     } else {
-      // Seed defaults
+      // Seed defaults (the DB also seeds these itself via
+      // setup_canonical_links.sql — employees.station_id FKs point here, so
+      // station NAMES are the join key; rename with care, the sync trigger
+      // propagates renames to every officer posted there)
       try {
         const seedRecords = [...STATIONS].map(name => ({ name, lga: '', type: '' }));
         const { data: seeded, error: seedErr } = await dbBulkInsertStations(seedRecords);

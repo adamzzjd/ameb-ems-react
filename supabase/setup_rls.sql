@@ -433,6 +433,7 @@ begin
   if exists (select 1 from information_schema.tables
              where table_schema = 'public' and table_name = 'learners') then
     -- ── Learners ── (field capture roles + partners; viewers read-only)
+
     drop policy if exists "learners_select" on public.learners;
     create policy "learners_select" on public.learners
       for select using (
@@ -461,6 +462,340 @@ begin
 
     drop policy if exists "learners_delete" on public.learners;
     create policy "learners_delete" on public.learners
+      for delete using (
+        public.auth_role() in ('super_admin', 'admin')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+  end if;
+end $$;
+
+-- ── 4.10. Canonical LGAs reference table (Phase 27) ─────────────────────────
+-- Guarded: only applies once setup_canonical_links.sql has created it. All
+-- signed-in users (and the anon public directory) read; writes are admin+ —
+-- the 21 statutory LGAs are reference data, not user content.
+do $$
+begin
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'lgas') then
+    alter table public.lgas enable row level security;
+
+    drop policy if exists "lgas_select" on public.lgas;
+    create policy "lgas_select" on public.lgas
+      for select using (true);
+
+    drop policy if exists "lgas_write" on public.lgas;
+    create policy "lgas_write" on public.lgas
+      for all
+      using (public.auth_role() in ('super_admin', 'admin'))
+      with check (public.auth_role() in ('super_admin', 'admin'));
+  end if;
+end $$;
+
+-- ── 4.11. Board & partner hierarchy (Phase 28.1) ─────────────────────────────
+-- Guarded — the tables come from setup_hierarchy.sql, which may not have run yet.
+--
+-- BOARD side (departments, assets, correspondence) follows the employees
+-- access model: readable by any signed-in user, writable by data_collector+.
+--
+-- PARTNER joins (centre_organisations, programme_lgas,
+-- organisation_lga_coverage) follow the owner_org_id tenant model: board
+-- staff see everything, partner users see (and manage) only rows that
+-- involve their own organisation.
+do $$
+begin
+  -- ── Departments ── (references employees.head — board register viewers only)
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'departments') then
+    alter table public.departments enable row level security;
+
+    drop policy if exists "departments_select" on public.departments;
+    create policy "departments_select" on public.departments
+      for select using (public.can_view_staff_register());
+
+    drop policy if exists "departments_write" on public.departments;
+    create policy "departments_write" on public.departments
+      for all
+      using (public.auth_role() in ('super_admin', 'admin', 'meb_officer'))
+      with check (public.auth_role() in ('super_admin', 'admin', 'meb_officer'));
+  end if;
+
+  -- ── Centre ↔ Organisation (many-to-many) ──
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'centre_organisations') then
+    alter table public.centre_organisations enable row level security;
+
+    drop policy if exists "centre_orgs_select" on public.centre_organisations;
+    create policy "centre_orgs_select" on public.centre_organisations
+      for select using (
+        public.is_adsmeb_staff()
+        or org_id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "centre_orgs_board_insert" on public.centre_organisations;
+    create policy "centre_orgs_board_insert" on public.centre_organisations
+      for insert with check (public.auth_role() in ('super_admin', 'admin', 'meb_officer'));
+
+    drop policy if exists "centre_orgs_partner_insert" on public.centre_organisations;
+    create policy "centre_orgs_partner_insert" on public.centre_organisations
+      for insert with check (org_id in (select public.auth_org_ids()));
+
+    drop policy if exists "centre_orgs_board_update" on public.centre_organisations;
+    create policy "centre_orgs_board_update" on public.centre_organisations
+      for update using (public.auth_role() in ('super_admin', 'admin', 'meb_officer'))
+      with check (public.auth_role() in ('super_admin', 'admin', 'meb_officer'));
+
+    drop policy if exists "centre_orgs_partner_update" on public.centre_organisations;
+    create policy "centre_orgs_partner_update" on public.centre_organisations
+      for update using (org_id in (select public.auth_org_ids()))
+      with check (org_id in (select public.auth_org_ids()));
+
+    drop policy if exists "centre_orgs_delete" on public.centre_organisations;
+    create policy "centre_orgs_delete" on public.centre_organisations
+      for delete using (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or org_id in (select public.auth_org_ids())
+      );
+  end if;
+
+  -- ── Programme ↔ LGA scope ── (visibility mirrors the programmes policy)
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'programme_lgas') then
+    alter table public.programme_lgas enable row level security;
+
+    drop policy if exists "programme_lgas_select" on public.programme_lgas;
+    create policy "programme_lgas_select" on public.programme_lgas
+      for select using (
+        public.can_view_staff_register()
+        or exists (
+          select 1 from public.programmes p
+          where p.id = programme_id
+            and p.owner_org_id in (select public.auth_org_ids())
+        )
+      );
+
+    drop policy if exists "programme_lgas_write" on public.programme_lgas;
+    create policy "programme_lgas_write" on public.programme_lgas
+      for all
+      using (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or exists (
+          select 1 from public.programmes p
+          where p.id = programme_id
+            and p.owner_org_id in (select public.auth_org_ids())
+        )
+      )
+      with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or exists (
+          select 1 from public.programmes p
+          where p.id = programme_id
+            and p.owner_org_id in (select public.auth_org_ids())
+        )
+      );
+  end if;
+
+  -- ── Organisation ↔ LGA coverage ──
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'organisation_lga_coverage') then
+    alter table public.organisation_lga_coverage enable row level security;
+
+    drop policy if exists "org_coverage_select" on public.organisation_lga_coverage;
+    create policy "org_coverage_select" on public.organisation_lga_coverage
+      for select using (
+        public.can_view_staff_register()
+        or org_id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "org_coverage_board_write" on public.organisation_lga_coverage;
+    create policy "org_coverage_board_write" on public.organisation_lga_coverage
+      for all
+      using (public.auth_role() in ('super_admin', 'admin', 'meb_officer'))
+      with check (public.auth_role() in ('super_admin', 'admin', 'meb_officer'));
+
+    drop policy if exists "org_coverage_org_write" on public.organisation_lga_coverage;
+    create policy "org_coverage_org_write" on public.organisation_lga_coverage
+      for all
+      using (org_id in (select public.auth_org_ids()))
+      with check (org_id in (select public.auth_org_ids()));
+  end if;
+
+  -- ── Board assets ── (employees model: any signed-in read, data_collector+ write)
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'board_assets') then
+    alter table public.board_assets enable row level security;
+
+    drop policy if exists "board_assets_select" on public.board_assets;
+    create policy "board_assets_select" on public.board_assets
+      for select using (public.auth_role() is not null);
+
+    drop policy if exists "board_assets_insert" on public.board_assets;
+    create policy "board_assets_insert" on public.board_assets
+      for insert with check (public.auth_role() in ('data_collector', 'admin', 'super_admin'));
+
+    drop policy if exists "board_assets_update" on public.board_assets;
+    create policy "board_assets_update" on public.board_assets
+      for update using (public.auth_role() in ('data_collector', 'admin', 'super_admin'))
+      with check (public.auth_role() in ('data_collector', 'admin', 'super_admin'));
+
+    drop policy if exists "board_assets_delete" on public.board_assets;
+    create policy "board_assets_delete" on public.board_assets
+      for delete using (public.auth_role() in ('data_collector', 'admin', 'super_admin'));
+  end if;
+
+  -- ── Correspondence ── (employee_documents model + a status update policy)
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'correspondence') then
+    alter table public.correspondence enable row level security;
+
+    drop policy if exists "correspondence_select" on public.correspondence;
+    create policy "correspondence_select" on public.correspondence
+      for select using (public.auth_role() is not null);
+
+    drop policy if exists "correspondence_insert" on public.correspondence;
+    create policy "correspondence_insert" on public.correspondence
+      for insert with check (public.auth_role() in ('data_collector', 'admin', 'super_admin'));
+
+    drop policy if exists "correspondence_update" on public.correspondence;
+    create policy "correspondence_update" on public.correspondence
+      for update using (public.auth_role() in ('data_collector', 'admin', 'super_admin'))
+      with check (public.auth_role() in ('data_collector', 'admin', 'super_admin'));
+
+    drop policy if exists "correspondence_delete" on public.correspondence;
+    create policy "correspondence_delete" on public.correspondence
+      for delete using (public.auth_role() in ('data_collector', 'admin', 'super_admin'));
+  end if;
+end $$;
+
+-- ── 4.9. Data collection: form_templates, form_assignments, form_submissions ──
+-- Guarded — the tables come from setup_forms.sql, which may not have run yet.
+-- Decision A: field staff see ONLY their own submissions. Decision B: board
+-- reviewers (reports.view roles) see all and approve/reject. Board writes
+-- templates/assignments (forms.manage). Partner users are scoped by
+-- owner_org_id as everywhere else.
+do $$
+begin
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'form_templates') then
+    -- ── Templates: signed-in read, board writes ──
+    drop policy if exists "form_templates_select" on public.form_templates;
+    create policy "form_templates_select" on public.form_templates
+      for select using (
+        public.auth_role() is not null
+        or owner_org_id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "form_templates_insert" on public.form_templates;
+    create policy "form_templates_insert" on public.form_templates
+      for insert with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "form_templates_update" on public.form_templates;
+    create policy "form_templates_update" on public.form_templates
+      for update using (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      )
+      with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "form_templates_delete" on public.form_templates;
+    create policy "form_templates_delete" on public.form_templates
+      for delete using (
+        public.auth_role() in ('super_admin', 'admin')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+  end if;
+
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'form_assignments') then
+    -- ── Assignments: board writes; field staff see own or open ones ──
+    drop policy if exists "form_assignments_select" on public.form_assignments;
+    create policy "form_assignments_select" on public.form_assignments
+      for select using (
+        public.can_view_staff_register()
+        or assigned_to = auth.uid()
+        or (assigned_to is null and public.auth_role() in (
+          'enumerator', 'data_collector', 'lga_officer', 'meb_officer'
+        ))
+        or owner_org_id in (select public.auth_org_ids())
+       );
+
+    drop policy if exists "form_assignments_insert" on public.form_assignments;
+    create policy "form_assignments_insert" on public.form_assignments
+      for insert with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "form_assignments_update" on public.form_assignments;
+    create policy "form_assignments_update" on public.form_assignments
+      for update using (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      )
+      with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+
+    drop policy if exists "form_assignments_delete" on public.form_assignments;
+    create policy "form_assignments_delete" on public.form_assignments
+      for delete using (
+        public.auth_role() in ('super_admin', 'admin')
+        or (owner_org_id in (select public.auth_org_ids()))
+      );
+  end if;
+
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'form_submissions') then
+    -- ── Submissions: own-only for field staff; board reviews ──
+    drop policy if exists "form_submissions_select" on public.form_submissions;
+    create policy "form_submissions_select" on public.form_submissions
+      for select using (
+        public.can_view_staff_register()
+        or submitted_by = auth.uid()
+        or owner_org_id in (select public.auth_org_ids())
+      );
+
+    drop policy if exists "form_submissions_insert" on public.form_submissions;
+    create policy "form_submissions_insert" on public.form_submissions
+      for insert with check (
+        -- draft/submitted only: the review transitions go through the
+        -- reviewer policies below, which require the review roles.
+        (status in ('draft', 'submitted'))
+        and (
+          public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer', 'data_collector', 'enumerator')
+          or (owner_org_id in (select public.auth_org_ids()))
+        )
+      );
+
+    drop policy if exists "form_submissions_field_update" on public.form_submissions;
+    create policy "form_submissions_field_update" on public.form_submissions
+      for update using (
+        submitted_by = auth.uid()
+        and status in ('draft', 'submitted', 'rejected')  -- approved rows are frozen
+        and public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer', 'data_collector', 'enumerator')
+      )
+      with check (
+        submitted_by = auth.uid()
+        and status in ('draft', 'submitted')
+      );
+
+    drop policy if exists "form_submissions_review_update" on public.form_submissions;
+    create policy "form_submissions_review_update" on public.form_submissions
+      for update using (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'mne_viewer')
+      )
+      with check (
+        public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'mne_viewer')
+      );
+
+    drop policy if exists "form_submissions_delete" on public.form_submissions;
+    create policy "form_submissions_delete" on public.form_submissions
       for delete using (
         public.auth_role() in ('super_admin', 'admin')
         or (owner_org_id in (select public.auth_org_ids()))

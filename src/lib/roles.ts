@@ -83,6 +83,7 @@ export type Permission =
   | 'learners.manage'
   | 'enrolments.manage'
   | 'forms.submit'
+  | 'forms.manage'
   | 'reports.view'
   | 'approvals.review'
   // Administration
@@ -117,6 +118,7 @@ const PERMISSIONS: Record<Role, readonly Permission[]> = {
     'programmes.manage',
     'learners.manage',
     'enrolments.manage',
+    'forms.manage',
     'forms.submit',
     'reports.view',
     'approvals.review',
@@ -141,6 +143,7 @@ const PERMISSIONS: Record<Role, readonly Permission[]> = {
     'forms.submit',
     'reports.view',
     'approvals.review',
+    'forms.manage',
     'settings.manage',
     'cms.edit',
     'leave.approve',
@@ -154,6 +157,7 @@ const PERMISSIONS: Record<Role, readonly Permission[]> = {
     'forms.submit',
     'reports.view',
     'approvals.review',
+    'forms.manage',
     'settings.manage',
     'cms.edit',
   ],

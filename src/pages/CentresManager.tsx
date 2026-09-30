@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Modal } from '../components/ui/Modal';
 import { LGAs } from '../data/constants';
-import type { Centre, Facilitator, CentreFacilitator } from '../types';
+import type { Centre, Facilitator, CentreFacilitator, PartnerOrganisation } from '../types';
 import { dbLoadCentres, dbSaveCentre, dbDeleteCentre } from '../supabase/centres';
+import { dbLoadPartnerOrganisations } from '../supabase/partners';
 import {
   dbLoadFacilitators, dbLoadCentreFacilitators, dbSetCentreFacilitators, dbAddFacilitator,
 } from '../supabase/facilitators';
@@ -159,6 +160,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
   const [centres, setCentres] = useState<Centre[]>([]);
   const [facilitators, setFacilitators] = useState<Facilitator[]>([]);
   const [links, setLinks] = useState<CentreFacilitator[]>([]);
+  const [partners, setPartners] = useState<PartnerOrganisation[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter state
@@ -179,7 +181,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
   const [formCapacity, setFormCapacity] = useState('');
   const [formPhone, setFormPhone] = useState('');
   const [formFacilitatorIds, setFormFacilitatorIds] = useState<string[]>([]);
-  const [formNgo, setFormNgo] = useState('');
+  const [formPartnerOrgId, setFormPartnerOrgId] = useState('');
   const [formRemarks, setFormRemarks] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -193,18 +195,30 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [centreRes, facRes, linkRes] = await Promise.all([
+    const [centreRes, facRes, linkRes, partnerRes] = await Promise.all([
       dbLoadCentres(),
       dbLoadFacilitators(),
       dbLoadCentreFacilitators(),
+      dbLoadPartnerOrganisations(),
     ]);
     if (!centreRes.error && centreRes.data) setCentres(centreRes.data);
     if (!facRes.error && facRes.data) setFacilitators(facRes.data);
     if (!linkRes.error && linkRes.data) setLinks(linkRes.data);
+    if (!partnerRes.error && partnerRes.data) setPartners(partnerRes.data);
     setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Partner register lookups (replaces the old free-text ngo_partner column).
+  const partnerName = useCallback(
+    (id: string | null | undefined) => partners.find(p => p.id === id)?.name ?? null,
+    [partners]
+  );
+  const partnerOptions = useMemo(
+    () => [...partners].sort((a, b) => a.name.localeCompare(b.name)),
+    [partners]
+  );
 
   // centreId → assigned facilitators (sorted by name)
   const facilitatorsByCentre = useMemo(() => {
@@ -234,7 +248,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
       total: centres.length,
       active: byStatus['Active'] || 0,
       lgasCovered: Object.keys(byLGA).length,
-      withNgo: centres.filter(c => c.ngo_partner).length,
+      withPartner: centres.filter(c => c.partner_org_id).length,
       facilitators: facilitators.length,
     };
   }, [centres, facilitators]);
@@ -245,13 +259,13 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     return centres.filter(c =>
       (!q || (c.name||'').toLowerCase().includes(q) ||
              (c.community||'').toLowerCase().includes(q) ||
-             (c.ngo_partner||'').toLowerCase().includes(q) ||
+             (c.partner_org_id ? (partnerName(c.partner_org_id) ?? '') : '').toLowerCase().includes(q) ||
              (facilitatorsByCentre.get(c.id) || []).some(f => (f.name||'').toLowerCase().includes(q)))
       && (!filterLGA    || c.lga    === filterLGA)
       && (!filterType   || c.type   === filterType)
       && (!filterStatus || c.status === filterStatus)
     );
-  }, [centres, search, filterLGA, filterType, filterStatus, facilitatorsByCentre]);
+  }, [centres, search, filterLGA, filterType, filterStatus, facilitatorsByCentre, partnerName]);
 
   const clearFilters = () => {
     setSearch('');
@@ -273,7 +287,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     setFormCapacity('');
     setFormPhone('');
     setFormFacilitatorIds([]);
-    setFormNgo('');
+    setFormPartnerOrgId('');
     setFormRemarks('');
     setFormError('');
     setShowForm(true);
@@ -290,7 +304,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     setFormCapacity(c.capacity != null ? String(c.capacity) : '');
     setFormPhone(c.phone || '');
     setFormFacilitatorIds((facilitatorsByCentre.get(c.id) || []).map(f => f.id));
-    setFormNgo(c.ngo_partner || '');
+    setFormPartnerOrgId(c.partner_org_id ?? '');
     setFormRemarks(c.remarks || '');
     setFormError('');
     setShowForm(true);
@@ -325,7 +339,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
       status: formStatus || 'Active',
       capacity: formCapacity ? parseInt(formCapacity) || null : null,
       phone: formPhone.trim(),
-      ngo_partner: formNgo.trim(),
+      partner_org_id: formPartnerOrgId || null,
       remarks: formRemarks.trim(),
     };
 
@@ -391,7 +405,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
         <td>${esc(c.community||'—')}</td>
         <td>${esc(c.type||'—')}</td>
         <td>${esc(facNames || '—')}</td>
-        <td>${esc(c.ngo_partner||'—')}</td>
+        <td>${esc(partnerName(c.partner_org_id)||'—')}</td>
         <td>${esc(c.capacity != null ? String(c.capacity) : '—')}</td>
         <td>${esc(c.status||'—')}</td>
       </tr>`;
@@ -462,7 +476,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
         <div class="field"><div class="fl">Capacity</div><div class="fv">${c.capacity != null ? c.capacity : '—'}</div></div>
         <div class="field"><div class="fl">Facilitators</div><div class="fv">${esc(facNames || '—')}</div></div>
         <div class="field"><div class="fl">Phone</div><div class="fv">${esc(c.phone||'—')}</div></div>
-        <div class="field"><div class="fl">NGO Partner</div><div class="fv">${esc(c.ngo_partner||'—')}</div></div>
+        <div class="field"><div class="fl">Partner Org</div><div class="fv">${esc(partnerName(c.partner_org_id)||'—')}</div></div>
         <div class="field"><div class="fl">Status</div><div class="fv">${esc(c.status||'—')}</div></div>
       </div>
       ${c.remarks ? `<div class="rem"><strong>Remarks:</strong> ${esc(c.remarks)}</div>` : ''}
@@ -506,8 +520,8 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>In the registry</div>
         </div>
         <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px' }}>With NGO Partner</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)', marginTop: 2 }}>{stats.withNgo}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px' }}>With Partner Org</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)', marginTop: 2 }}>{stats.withPartner}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Supported centres</div>
         </div>
       </div>
@@ -588,7 +602,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                 <th style={thStyle}>Community</th>
                 <th style={thStyle}>Type</th>
                 <th style={thStyle}>Facilitators</th>
-                <th style={thStyle}>NGO Partner</th>
+                <th style={thStyle}>Partner Org</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Actions</th>
               </tr>
@@ -638,7 +652,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                         </div>
                       )}
                     </td>
-                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.ngo_partner || '—')}</td>
+                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(partnerName(c.partner_org_id) || '—')}</td>
                     <td style={tdStyle}>
                       <span style={{
                         display: 'inline-block', padding: '2px 9px', borderRadius: 20,
@@ -758,8 +772,11 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>NGO Partner</label>
-            <input value={formNgo} onChange={e => setFormNgo(e.target.value)} placeholder="e.g. UNICEF, Save the Children" style={inputStyle} />
+            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>Partner Organisation</label>
+            <select value={formPartnerOrgId} onChange={e => setFormPartnerOrgId(e.target.value)} style={{ ...inputStyle, appearance: 'auto' }}>
+              <option value="">— Board-run (no partner) —</option>
+              {partnerOptions.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -812,9 +829,9 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                 <span style={{ background: 'rgba(255,255,255,.15)', color: '#fff', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
                   📍 {esc(viewCentre.lga || '—')}
                 </span>
-                {viewCentre.ngo_partner && (
+                {viewCentre.partner_org_id && partnerName(viewCentre.partner_org_id) && (
                   <span style={{ background: 'rgba(225,245,238,.15)', color: '#e1f5ee', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-                    🤝 {esc(viewCentre.ngo_partner)}
+                    🤝 {esc(partnerName(viewCentre.partner_org_id) || '')}
                   </span>
                 )}
               </div>
@@ -828,7 +845,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                 ['Community', viewCentre.community],
                 ['Capacity', viewCentre.capacity != null ? String(viewCentre.capacity) : null],
                 ['Phone', viewCentre.phone],
-                ['NGO Partner', viewCentre.ngo_partner],
+                ['Partner Org', partnerName(viewCentre.partner_org_id)],
                 ['Status', viewCentre.status],
               ].map(([label, val]) => (
                 <div key={String(label)} style={{ padding: '9px 14px', borderBottom: '1px solid var(--color-border)', borderRight: label === 'LGA' || label === 'Community' || label === 'Phone' || label === 'Status' ? '1px solid var(--color-border)' : 'none' }}>

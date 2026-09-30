@@ -3,8 +3,9 @@ import { useAuth } from '../hooks/useAuth';
 import { dbLoadCohorts, dbLoadLearners, dbLoadProgrammes } from '../supabase/delivery';
 import { dbLoadCentres } from '../supabase/centres';
 import { dbLoadEnrolmentStats } from '../supabase/enrolments';
-import type { CohortOverviewRow, EnrolmentStat, Learner, Programme } from '../types';
-import { BarChart3, BookOpen, GraduationCap, MapPin } from 'lucide-react';
+import { dbLoadSubmissions } from '../supabase/forms';
+import type { CohortOverviewRow, EnrolmentStat, FormSubmission, Learner, Programme } from '../types';
+import { BarChart3, BookOpen, GraduationCap, MapPin, ClipboardList } from 'lucide-react';
 
 interface Props {
   /** True for board staff — adds the centre/LGA tables. */
@@ -37,14 +38,15 @@ export function ReportsPage({ isBoard }: Props) {
   const [learners, setLearners] = useState<Learner[]>([]);
   const [centres, setCentres] = useState<{ id: string; name: string; lga: string }[]>([]);
   const [enrolmentStats, setEnrolmentStats] = useState<EnrolmentStat[]>([]);
+  const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const [p, c, l, ct, es] = await Promise.all([
-        dbLoadProgrammes(), dbLoadCohorts(), dbLoadLearners(), dbLoadCentres(), dbLoadEnrolmentStats(),
+      const [p, c, l, ct, es, subs] = await Promise.all([
+        dbLoadProgrammes(), dbLoadCohorts(), dbLoadLearners(), dbLoadCentres(), dbLoadEnrolmentStats(), dbLoadSubmissions(),
       ]);
       if (!active) return;
       // The cohorts/learners calls fail cleanly on DBs that haven't run
@@ -54,6 +56,8 @@ export function ReportsPage({ isBoard }: Props) {
       setLearners(l.data ?? []);
       setCentres((ct.data ?? []).map(x => ({ id: x.id, name: x.name, lga: x.lga })));
       setEnrolmentStats(es.data ?? []);
+      // Forms may not exist yet (setup_forms.sql not run) — degrade to zeros.
+      setSubmissions(subs.data ?? []);
       if (p.error && c.error && l.error) {
         setError('Delivery data is not available — has setup_delivery.sql been run?');
       }
@@ -184,7 +188,27 @@ export function ReportsPage({ isBoard }: Props) {
         </div>
       </div>
 
-      {/* Cohort fill rates (board only — partners see their own via RLS anyway) */}
+      {/* Field data (approved submissions only — Decision B) */}
+      {submissions.length > 0 && (
+        <div className="rounded-xl border p-5" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+          <h3 className="font-heading text-[15px] font-bold mb-4 flex items-center gap-2"><ClipboardList size={16} /> Field Data</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Total', value: submissions.length, tone: 'bg-muted text-muted-foreground' },
+              { label: 'Approved', value: submissions.filter(s => s.status === 'approved').length, tone: 'bg-green-100 text-green-700' },
+              { label: 'Awaiting review', value: submissions.filter(s => s.status === 'submitted').length, tone: 'bg-blue-100 text-blue-700' },
+              { label: 'Rejected', value: submissions.filter(s => s.status === 'rejected').length, tone: 'bg-red-100 text-red-700' },
+            ].map(c => (
+              <div key={c.label} className="rounded-lg border p-3" style={{ borderColor: 'var(--color-border)' }}>
+                <div className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold ${c.tone}`}>{c.label}</div>
+                <div className="text-xl font-heading font-bold mt-1.5">{c.value}</div>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground mt-3">M&E counts approved submissions only. Manage forms under Data Collection → Form Builder.</p>
+        </div>
+      )}
+
       {isBoard && cohorts.length > 0 && (
         <div className="rounded-xl border p-5" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
           <h3 className="font-heading text-[15px] font-bold mb-4">Cohort Fill Rate</h3>

@@ -2,7 +2,7 @@
 
 > **From:** `ameb-ems/` (Vanilla JS)  
 > **To:** `ameb-ems-react/` (React 19 + TypeScript 6 + Vite 8)  
-> **Last updated:** September 28, 2026 (Phases 20–25 — public routes, partner portal, programmes & cohorts, learner register, M&E)
+> **Last updated:** September 30, 2026 (Phases 20–25 delivery platform · Phase 26 data-collection tool · Phase 27 canonical data links · **Phase 28 board & partner hierarchy** — departments, multi-org centres, assets & correspondence)
 
 ---
 
@@ -346,7 +346,7 @@ Partner-scoped learner CSV import, per-cohort attendance/registers, certificate 
 
 ## 🚀 Phases 21–25: Partner Portal, Programmes & Cohorts, Learner Register, Reports & M&E (Code Complete)
 
-> **One-time go-live:** run `supabase/setup_delivery.sql` in the Supabase SQL Editor (creates `programmes`, `cohorts`, `learners` + the `cohort_overview` view, idempotent), then re-run `supabase/setup_rls.sql` (adds the §4.7 owner_org-scoped policies). No edge-function changes.
+> **One-time go-live:** run `supabase/setup_delivery.sql` in the Supabase SQL Editor (creates `programmes`, `cohorts`, `learners` + the `cohort_overview` view, idempotent) — it must run **after** `setup_ems.sql` and `setup_partners.sql` (FK prerequisites; the script now preflights and says so explicitly) — then re-run `supabase/setup_rls.sql` (adds the §4.7 owner_org-scoped policies). No edge-function changes. Skipping the script shows up in the app as PostgREST's "Could not find the table 'public.programmes' in the schema cache".
 
 **Why:** Phase 19 introduced partner tenants but had no portal for them and no way to track *delivery* — what is taught, where, to whom, with what outcomes. Phases 21–25 close that gap with the partner portal home, the programme → cohort → learner data model, and a cross-cutting M&E dashboard. Learners are **not** staff: the learner register is separate from the employees register, and no salary/money fields exist anywhere (pay stays outside this system).
 
@@ -363,6 +363,77 @@ Partner-scoped learner CSV import, per-cohort attendance/registers, certificate 
 | 21.9 Navigation | ✅ Done | New sidebar **Programme Delivery** section (Programmes, Cohorts, Learner Register, Learning Centres, Reports & M&E) permission-gated so partner roles and viewers see exactly their slice; Learning Centres moved out of "Browse By"; 5 new `AppPage` values + `PAGE_TITLES` entries; route guards in `App.tsx`. |
 | 21.10 Backup + verify | ✅ Done | `programmes`/`cohorts`/`learners` added to the JSON backup; `verify_rls.sql` checks the three new tables. |
 | 21.11 Tests | ✅ Done | **168 unit tests / 17 files** (21 new: 11 delivery services + 10 learner CSV). Typecheck, lint (0 errors), build, and all 8 public e2e tests pass. |
+
+---
+
+## 🚀 Phase 26: Data Collection Tool — Forms, Assignments & Field Submissions (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_forms.sql` in the SQL Editor (creates `form_templates`, `form_assignments`, `form_submissions` — preflighted, must run after `setup_ems.sql`, `setup_partners.sql` and `setup_delivery.sql`), then re-run `supabase/setup_rls.sql` (adds the §4.9 policies). No edge-function changes.
+
+**Why:** the `enumerator` role and `forms.submit` permission have existed since Phase 19/21, but there is nothing for them to submit — the only field-capture surface today is the Learner Register. The board needs to design its own forms (surveys, attendance tallies, facility checks), push them to enumerators/partners, and have the answers flow into M&E without hand-copying.
+
+**Model:** the board **designs** a form (`form_templates` — typed fields as JSONB, versioned, activatable) and **assigns** it (`form_assignments` — to a user, an organisation, or open to all enumerators, optionally scoped to a centre/cohort with a due date). Field staff **fill and submit** (`form_submissions` — answers JSONB, draft → submitted → approved/rejected with reviewer note). Everything carries `owner_org_id` and is audited, same tenant model as the delivery tables.
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 26.1 DB schema | ✅ Done | `supabase/setup_forms.sql` — `form_templates` (title, description, status `draft\|active\|retired`, version, `fields` jsonb array, owner_org_id), `form_assignments` (template FK cascade, `assigned_to` null = open to all enumerators, centre/cohort FKs, due_date, status), `form_submissions` (answers jsonb, status `draft\|submitted\|approved\|rejected`, submitted/reviewed stamps, centre/cohort, owner_org_id). Preflight guard per the Phase 21 pattern; RLS enabled immediately; photo fields deferred (Cloudinary upload inside forms = later phase). |
+| 26.2 RLS | ✅ Done | `setup_rls.sql` §4.9: templates — signed-in read, board writes; assignments — field staff see `assigned_to = auth.uid()` **or** open rows, board sees all; submissions — field roles insert draft/submitted only, field update locked to own rows and blocked from touching approved ones (`status in ('draft','submitted','rejected')`), separate review policy for super_admin/admin/meb_officer/mne_viewer, partner scoping via `auth_org_ids()` throughout. |
+| 26.3 Types + pure helpers | ✅ Done | `FormField`/`FormTemplate`/`FormAssignment`/`FormSubmission` types; `src/lib/forms.ts` (pure): `generateFieldKey` (slug + collision suffix), `validateAnswers` (required, number min/max, select/multi option membership), `normalizeAnswers` (trims, coerces numbers/booleans, drops unknown keys), `answersToCsvRows`/`csvFromRows` (per-template CSV), `promoteToLearner` (alias mapping name/sex/village etc. → `Learner`; null when no name). |
+| 26.4 Services | ✅ Done | `src/supabase/forms.ts` — template/assignment/submission CRUD, `dbReviewSubmission` (approve/reject with reviewer stamp), session-attributed `submitted_by`, owner stamping + audited writes exactly like `delivery.ts` (audit only on success). |
+| 26.5–26.6 Form builder + assignments (board) | ✅ Done | `src/pages/FormBuilder.tsx` — summary cards, search, template cards with status chips, editor dialog (add/remove/reorder questions, 7 field types, select/multi options one-per-line, required flag), activate/retire toggle, assign dialog (optional centre/cohort scope + due date; open-to-all-enumerators model), assignments table with revoke. Gated `forms.manage`. |
+| 26.7 Field capture (enumerator) | ✅ Done | `src/pages/MyAssignments.tsx` — mobile-first (42px touch targets): open assignments with overdue flags, fill dialog with type-appropriate inputs (checkbox multi-select, big selects), inline validation errors, Save Draft / Submit, "My submissions" table with status chips + reviewer notes, draft/rejected editable + deletable. Gated `forms.submit`. |
+| 26.8 Review queue (board) | ✅ Done | `src/pages/SubmissionsReview.tsx` — status chips (submitted default) + template + free-text search across answers, full answer display, approve/reject dialog (note required on reject), **Promote to learner** on approved enrolment forms (via the audited `dbSaveLearner`), per-template CSV export (BOM-prefixed). Gated `reports.view`. |
+| 26.9 Reports integration | ✅ Done | `ReportsPage` "Field Data" card: total / approved / awaiting review / rejected counts. Degrades to hidden when `setup_forms.sql` hasn't run. Approved-only counting per Decision B. |
+| 26.10 Tests + docs | ✅ Done | `src/lib/__tests__/forms.test.ts` (19 tests: keys, validation, normalization, CSV, promotion) + `src/supabase/__tests__/forms.test.ts` (12 tests: payload shapes, owner stamping, draft vs submitted stamps, reviewer stamps, audit on success only) — **199 unit tests / 19 files**. README setup order (step 11), `verify_rls.sql` gains the three tables, backup now includes them. |
+| 26.11 Navigation | ✅ Done | New sidebar **Data Collection** section: Form Builder (`forms.manage`), My Assignments (`forms.submit`), Submissions Review (`reports.view`); `forms.manage` permission added to super_admin/admin/meb_officer; 3 new `AppPage` values + `PAGE_TITLES`; route guards in `App.tsx`. |
+
+### ✅ Decisions (signed off Sept 28, 2026)
+- **A. Enumerator visibility — own submissions only.** Each enumerator sees strictly their own drafts/submissions; board reviewers see everything. Simplifies RLS and protects sensitive survey answers.
+- **B. M&E counts approved submissions only.** The review queue is the data-quality gate, mirroring the centre-approval pattern from Phase 19.
+- **C. Online-only in Phase 26.** Field capture requires a network connection; offline outbox (IndexedDB + sync-on-reconnect) deferred to a future phase.
+
+---
+
+## 🚀 Phase 27: Canonical Data Links (Code Complete)
+
+> **One-time go-live:** run `supabase/setup_canonical_links.sql` **after** `setup_ems.sql`, `setup_partners.sql` and `setup_delivery.sql`, then re-run `setup_rls.sql` (§4.10 policies for `lgas`). Idempotent — re-run after fixing any unmatched values it reports.
+
+**Why:** several register fields only *looked* like relationships but were free text — the same 21 LGAs retyped in 5+ tables (typos silently split M&E numbers), an `employees.station` text field duplicating the `stations` register, and `centres.ngo_partner` free text duplicating Phase 19's `partner_org_id`. Phase 27 turns each into a real foreign-key relationship while keeping the app reading plain text (CSV import/export, print and the self-service functions are untouched).
+
+**Model:**
+- `lgas` reference table (the statutory 21, seeded) — `employees.lga`, `centres.lga`, `facilitators.lga`, `learners.lga`, `partner_organisations.lga` all gain FKs to `lgas(name)` with `ON UPDATE CASCADE`. NULL stays legal (unknown origin is real life); a wrong LGA is now impossible. Existing values were canonicalized case-insensitively before the FKs landed.
+- `employees.station_id` FK → `stations`, with two sync triggers: writing station *text* (CSV import, self-service) resolves it to the register row, and picking a station row normalizes the text; renaming a station propagates to every officer posted there. The employee form's dropdown now loads the **live** stations register (hardcoded list only as offline fallback).
+- `centres.ngo_partner` **dropped** — values migrated onto `partner_org_id` where the name matched, `public_centres` re-created to resolve the partner name via the join. Single source of truth: the partner register.
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 27.1 lgas reference table | ✅ Done | `setup_canonical_links.sql` §1 — seed of the 21 statutory LGAs (`on conflict do nothing`), guarded FK creation, RLS enabled (§4.10: public/anon read, admin+ write — reference data, not user content). |
+| 27.2 Canonicalization + 5 FKs | ✅ Done | §1a updates existing rows case-insensitively, then adds `employees_lga_fk`, `centres_lga_fk`, `facilitators_lga_fk`, `learners_lga_fk`, `partner_organisations_lga_fk` — all `on update cascade`, all guarded for re-runnability. |
+| 27.3 Station link | ✅ Done | §2 — `employees.station_id` + index, stations seeded from the canonical list when empty, backfill from legacy text, `sync_employee_station` trigger (text↔id resolution both directions) and `sync_station_rename` trigger (register rename propagates). Employee form dropdown now reads the live register (`App.tsx` loader, fallback to the constant list). |
+| 27.4 ngo_partner killed | ✅ Done | §3 — text migrated to `partner_org_id`, column dropped, `public_centres` re-created (drop-first, anon-readable) resolving `partner_name` via `partner_organisations`. All source scripts cleaned so no code path references the dead column again: `setup_ems.sql` (no longer creates it on fresh installs), `setup_enrolments.sql` (legacy view branch), `setup_partners.sql` (both view branches). §5 of the script prints the checklist queries for unmatched values. |
+| 27.5 App updates | ✅ Done | `CentresManager` — free-text NGO Partner field replaced by a **Partner Organisation** select (board-run option = null), stats/search/table/print/view dialog all via `partnerName()`; `centres.ts` service writes `partner_org_id`; `Centre`/`PublicCentre` types lose `ngo_partner`; `src/lib/csv.ts` gains `canonicalizeLga()` (case/whitespace-insensitive → the 21, else null) wired into `mapRowToEmployee`. |
+| 27.6 Tests + docs | ✅ Done | 3 new `canonicalizeLga` tests (**202 unit tests / 19 files**); README setup order gains step 12; `verify_rls.sql` includes `lgas`; backup includes `lgas`. Typecheck clean, lint 0 errors (23 pre-existing warnings), build passes. |
+
+---
+
+## 🚀 Phase 28: Board & Partner Hierarchy (28.1 Code Complete)
+
+> **One-time go-live (strict order):** ① Phase 26 + 27 scripts, ② `setup_rls.sql`, ③ `supabase/setup_hierarchy.sql` (§4.11 policies), ④ re-run `setup_rls.sql`, ⑤ `NOTIFY pgrst, 'reload schema';`. **28.1 migrates off `centres.partner_org_id` — running it before the app reaches Phase 28 makes centre→org edits fail (see below).**
+
+**Why:** the platform covered the staff register and a flat partner list; the Board's own structure (departments, board-run programmes, assets, correspondence) was unmodellable, and a centre could belong to only one organisation. Phase 28 implements the signed-off "total but not total separation": the Board and partner worlds keep separate trees but meet at the centre.
+
+**Model:**
+- **Board side:** `departments` (units of the Board) with `employees.department_id`; **board programmes** are simply `programmes.owner_org_id = null`; `board_assets` (tag/name/category/quantity/condition — no money values, per board rule) located at a station, department or centre with a custodian; `correspondence` (ref_no/title/kind/direction/parties + optional file) filed per department.
+- **Partner side:** `organisation_lga_coverage` (the LGAs an org works in, backfilled from each org's HQ LGA); `programme_lgas` (a programme's LGA scope); `centre_organisations` many-to-many — a centre hosts one **lead** org plus any number of partner/funder/host orgs, enforced by a partial unique index.
+- **The meeting point:** `centres.owner_type` still says who runs the place; `centre_organisations` says who is involved. Partner users keep seeing only their own slice (every join policy checks `org_id in auth_org_ids()`).
+- **`public_centres`** re-created: `partner_name` = the lead org's name; new `partner_orgs` array exposes the non-lead orgs.
+
+| Step | Status | Notes |
+|------|--------|-------|
+| 28.1 Schema + RLS | ✅ Done | `setup_hierarchy.sql` — preflighted, idempotent; migrates existing `partner_org_id` values into `role='lead'` rows then drops the column (Phase 27 playbook); re-creates `public_centres` drop-first with both branches guarded for missing facilitator tables. `setup_rls.sql` §4.11 — departments follow the employees model; the three joins follow the `owner_org_id` tenant model; assets/correspondence follow the `employee_documents` model. `verify_rls.sql` §1/§2 list the six new tables; backup includes them. README setup order gains step 13. ⚠️ **App follow-up (28.5):** `src/supabase/centres.ts` + `CentresManager` still write `partner_org_id` until the multi-org UI lands — go live with this script only together with the Phase 28 app code. |
+| 28.2 Explore navigator + sidebar regroup | ✅ Done | `src/lib/explore.ts` — pure tree builder (Board branch: departments→staff + board programmes→LGAs→centres→cohorts→learners; org branches: coverage, own programmes, involved centres incl. partner-on-co-run centres) with **10 unit tests** (`explore.test.ts`, now **212 tests / 20 files**). `src/supabase/hierarchy.ts` — read loaders for the six Phase 28 tables + delivery registers, every one degrading to empty when `setup_hierarchy.sql` hasn't run; `hierarchyReady` flag drives an on-page setup hint. `src/pages/Explore.tsx` — drill-down navigator with breadcrumb trail (Board ▸ org ▸ programme ▸ LGA ▸ centre ▸ cohort ▸ learners), cross-chips linking co-run centres back to each involved org, deep links out to the registers (centres/learners/employees/partner portal). Sidebar regrouped **Board** (staff register + all staff views) vs **Partners** (organisations, portal, programmes, cohorts, learners, centres, facilitators, M&E) with new **Explore** entry under Overview; `AppPage` + `PAGE_TITLES` gain `explore`. |
+| 28.3 Departments + staff assignment | ✅ Done | `src/supabase/departments.ts` — CRUD with audit stamps, 5 service tests (**217 tests / 21 files**). `src/pages/Departments.tsx` — StationsManager-style manager (name/code/head/status/description, per-dept staff counts linking to the register, duplicate-name guard, delete warns staff survive as "No department assigned", on-page hint while `setup_hierarchy.sql` hasn't run; gated `settings.manage`, route + guard + PAGE_TITLES + sidebar entry under **Board**). `Employee.department_id` flows through `dbSave`; EmployeeForm gains a **Department** select (disabled with a setup hint until departments exist). Explore's board branch now fills with real data once departments are created. |
+| 28.4 Programme ownership + LGA scope | ✅ Done | ProgrammesManager upgraded: **Owner** toggle — The Board (owner_org_id null) or a partner organisation (select from the live register) — with a Board/Partner summary row and an owner filter on the toolbar; **LGA scope** picker (21 LGAs as toggle chips) writing through `dbSetProgrammeLgaScope` (upsert wanted rows + prune the rest via `.not('lga','in',…)`; empty set clears; audited as `assign`); scope chips render on cards. Graceful: when `programme_lgas` doesn't exist yet the picker hides with a setup hint and saving proceeds scope-less; **4 new service tests** (upsert+prune, clear, empty-filtering, error path — **221 tests / 21 files**). Explore's programme drill-down now reflects the scope once set. |
 
 ---
 
@@ -467,7 +538,7 @@ Partner-scoped learner CSV import, per-cohort attendance/registers, certificate 
 ```bash
 cd ameb-ems-react
 npm run dev       # Development server (localhost:5173)
-npm test          # Run 168 unit tests
+npm test          # Run 199 unit tests
 npm run test:e2e  # Run Playwright browser smoke tests
 npm run build     # Production build
 ```

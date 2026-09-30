@@ -16,6 +16,8 @@ interface EmployeeFormProps {
   cadres: string[];
   /** Cadre name → default grade level (auto-fills the grade field). */
   cadreGrades?: Record<string, string>;
+  /** The Board's departments (Phase 28) — empty until setup_hierarchy.sql runs. */
+  departments?: { id: string; name: string }[];
 }
 
 const NG_PHONE_RE = /^0\d{10}$/;
@@ -38,7 +40,7 @@ const selectClass = "h-[42px] w-full px-3 rounded-lg border text-[13px] outline-
 const labelClass = "text-[12px] font-bold";
 const errorClass = "text-[11px] mt-0.5";
 
-export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres, cadreGrades = {} }: EmployeeFormProps) {
+export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres, cadreGrades = {}, departments = [] }: EmployeeFormProps) {
   const isEdit = !!employee;
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -54,6 +56,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
   const [lga, setLga] = useState('');
   const [psn, setPsn] = useState('');
   const [station, setStation] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
   const [step, setStep] = useState('');
   const [address, setAddress] = useState('');
   const [remarks, setRemarks] = useState('');
@@ -88,6 +91,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
     setLga(employee?.lga || '');
     setPsn(employee?.psn || '');
     setStation(employee?.station || '');
+    setDepartmentId(employee?.department_id || '');
     setStep(employee?.step || '');
     setAddress(employee?.address || '');
     setRemarks(employee?.remarks || '');
@@ -104,7 +108,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
 
   const resetForm = () => {
     setName(''); setGender(''); setGrade(''); setCadre(''); setDateFirstAppt(''); setDatePresentAppt('');
-    setDob(''); setPhone(''); setLga(''); setPsn(''); setStation(''); setStep(''); setAddress(''); setRemarks('');
+    setDob(''); setPhone(''); setLga(''); setPsn(''); setStation(''); setDepartmentId(''); setStep(''); setAddress(''); setRemarks('');
     setPhoto(''); setPhotoPreview('');
     setPhotoUploading(false);
     setPendingPhotoDelete('');
@@ -157,6 +161,7 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
       photo: photo || null, step: step || null,
       address: address.trim() || null,
       remarks: remarks.trim(),
+      department_id: departmentId || null,
     });
     setSaving(false);
     if (success) {
@@ -349,6 +354,20 @@ export function EmployeeForm({ open, onClose, onSave, employee, stations, cadres
           <select value={station} onChange={e => setStation(e.target.value)} className={selectClass}
             style={{ background: 'var(--color-surface)', backgroundImage: chevronSvg, borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
             <option value="">— Select —</option>{selOpts(stations)}
+          </select>
+        </div>
+
+        {/* Department (Phase 28 — the Board's units) */}
+        <div className="flex flex-col gap-1">
+          <label className={labelClass} style={{ color: 'var(--color-text-secondary)' }}>Department</label>
+          <select value={departmentId} onChange={e => setDepartmentId(e.target.value)} className={selectClass}
+            style={{ background: 'var(--color-surface)', backgroundImage: chevronSvg, borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}
+            disabled={departments.length === 0}
+          >
+            <option value="">
+              {departments.length === 0 ? '— Run setup_hierarchy.sql to add departments —' : '— None —'}
+            </option>
+            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </div>
 

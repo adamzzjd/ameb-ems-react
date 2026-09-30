@@ -18,6 +18,8 @@ import { exportEmployeesCSV } from './lib/csv';
 import { fetchFullBackup, downloadBackup } from './lib/backup';
 import { printEmployees } from './utils/print';
 import { CADRE_NAMES, CADRE_GRADES, STATIONS } from './data/constants';
+import { dbLoadStations } from './supabase/stations';
+import { dbLoadDepartments } from './supabase/departments';
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────
 const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
@@ -31,6 +33,7 @@ const CentresPage = lazy(() => import('./pages/public/CentresPage').then(m => ({
 const NewsPage = lazy(() => import('./pages/public/NewsPage').then(m => ({ default: m.NewsPage })));
 const NewsArticlePage = lazy(() => import('./pages/public/NewsArticlePage').then(m => ({ default: m.NewsArticlePage })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
+const Explore = lazy(() => import('./pages/Explore').then(m => ({ default: m.Explore })));
 const EmployeesPage = lazy(() => import('./pages/Employees').then(m => ({ default: m.EmployeesPage })));
 const EmployeeProfile = lazy(() => import('./pages/EmployeeProfile').then(m => ({ default: m.EmployeeProfile })));
 const EmployeeForm = lazy(() => import('./pages/EmployeeForm').then(m => ({ default: m.EmployeeForm })));
@@ -38,6 +41,7 @@ const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m
 const Appointment = lazy(() => import('./pages/Appointment').then(m => ({ default: m.Appointment })));
 const StationsManager = lazy(() => import('./pages/StationsManager').then(m => ({ default: m.StationsManager })));
 const CadresManager = lazy(() => import('./pages/CadresManager').then(m => ({ default: m.CadresManager })));
+const Departments = lazy(() => import('./pages/Departments').then(m => ({ default: m.Departments })));
 const FacilitatorsManager = lazy(() => import('./pages/FacilitatorsManager').then(m => ({ default: m.FacilitatorsManager })));
 const LgaOfficersManager = lazy(() => import('./pages/LgaOfficersManager').then(m => ({ default: m.LgaOfficersManager })));
 const PartnerOrganisations = lazy(() => import('./pages/PartnerOrganisations').then(m => ({ default: m.PartnerOrganisations })));
@@ -66,6 +70,10 @@ const CohortsManager = lazy(() => import('./pages/CohortsManager').then(m => ({ 
 const LearnersPage = lazy(() => import('./pages/LearnersPage').then(m => ({ default: m.LearnersPage })));
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const PartnerPortal = lazy(() => import('./pages/PartnerPortal').then(m => ({ default: m.PartnerPortal })));
+// Data collection (Phase 26)
+const FormBuilder = lazy(() => import('./pages/FormBuilder').then(m => ({ default: m.FormBuilder })));
+const MyAssignments = lazy(() => import('./pages/MyAssignments').then(m => ({ default: m.MyAssignments })));
+const SubmissionsReview = lazy(() => import('./pages/SubmissionsReview').then(m => ({ default: m.SubmissionsReview })));
 
 // ── Loading spinner ───────────────────────────────────────────────────────
 function LoadingSpinner({ text = 'Loading…' }: { text?: string }) {
@@ -126,6 +134,28 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  // Live stations register for the employee form dropdown — falls back to the
+  // hardcoded list when the DB is unreachable (Phase 27 links the two).
+  const [stationNames, setStationNames] = useState<string[]>([]);
+  useEffect(() => {
+    let active = true;
+    void dbLoadStations().then(({ data }) => {
+      if (active && data && data.length > 0) {
+        setStationNames(data.map(s => s.name).filter(Boolean).sort((a, b) => a.localeCompare(b)));
+      }
+    });
+    return () => { active = false; };
+  }, []);
+  // Live departments register for the employee form + Departments manager —
+  // degrades to an empty list when setup_hierarchy.sql hasn't run (Phase 28).
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    let active = true;
+    void dbLoadDepartments().then(({ data }) => {
+      if (active && data) setDepartments(data.map(d => ({ id: d.id, name: d.name })));
+    });
+    return () => { active = false; };
+  }, []);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showCsvImport, setShowCsvImport] = useState(false);
 
@@ -242,7 +272,7 @@ export default function App() {
   if (view === 'app' && currentPage.startsWith('cms-') && !can('cms.edit')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
-  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres' || currentPage === 'facilitators' || currentPage === 'lga-officers') && !can('settings.manage')) {
+  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres' || currentPage === 'departments' || currentPage === 'facilitators' || currentPage === 'lga-officers') && !can('settings.manage')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
   if (view === 'app' && currentPage === 'partners' && !can('partners.manage')) {
@@ -261,6 +291,15 @@ export default function App() {
     return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
   if (view === 'app' && currentPage === 'partner-home' && !can('centres.manage')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
+  }
+  if (view === 'app' && currentPage === 'form-builder' && !can('forms.manage') && !can('reports.view')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
+  }
+  if (view === 'app' && currentPage === 'my-assignments' && !can('forms.submit')) {
+    return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
+  }
+  if (view === 'app' && currentPage === 'submissions-review' && !can('reports.view')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
 
@@ -285,6 +324,8 @@ export default function App() {
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard employees={employees} onViewEmployee={handleViewEmployee} onNavigate={handleNavigate} />;
+      case 'explore':
+        return <Explore onNavigate={handleNavigate} />;
       case 'employees':
         return (
           <EmployeesPage
@@ -308,6 +349,8 @@ export default function App() {
         return <Appointment employees={employees} onViewEmployee={handleViewEmployee} />;
       case 'stations':
         return <StationsManager onNavigate={handleNavigate} />;
+      case 'departments':
+        return <Departments employees={employees} onNavigate={handleNavigate} />;
       case 'cadres':
         return <CadresManager onNavigate={handleNavigate} />;
       case 'facilitators':
@@ -362,6 +405,12 @@ export default function App() {
         return <ReportsPage isBoard={can('employees.view')} />;
       case 'partner-home':
         return <PartnerPortal />;
+      case 'form-builder':
+        return <FormBuilder canManage={can('forms.manage')} />;
+      case 'my-assignments':
+        return <MyAssignments canSubmit={can('forms.submit')} />;
+      case 'submissions-review':
+        return <SubmissionsReview canReview={can('reports.view')} />;
       default:
         return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={goPortalDashboard} />;
     }
@@ -447,9 +496,10 @@ export default function App() {
           onClose={() => { setShowForm(false); setEditingEmployee(null); }}
           onSave={handleSaveEmployee}
           employee={editingEmployee}
-          stations={[...STATIONS]}
+          stations={stationNames.length > 0 ? stationNames : [...STATIONS]}
           cadres={[...CADRE_NAMES]}
           cadreGrades={CADRE_GRADES}
+          departments={departments}
         />
       </Suspense>
 
