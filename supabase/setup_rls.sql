@@ -68,9 +68,30 @@ as $$
     'super_admin', 'admin', 'meb_officer', 'lga_officer',
     'data_collector', 'staff', 'mne_viewer'
   );
-$$;
+$$;-- ── 2. Enable RLS on all application tables ─────────────────────────────
+-- ⚠️ SECURITY: drop any legacy dashboard-created bypass policies first.
+-- "full_access" (using true, incl. anon) and "Auth users full access"
+-- (any authenticated user) were found live in production masking the real
+-- role policies below — every permissive ALL policy ORs together, so the
+-- staff register was world-readable/writable until these were removed.
+do $drop_bypass$
+declare
+  stmt text;
+begin
+  select string_agg(format('drop policy if exists %I on public.%I', policyname, tablename), '; ')
+    into stmt
+  from pg_policies
+  where schemaname = 'public' and policyname = 'full_access';
+  if stmt is not null then execute stmt; end if;
 
--- ── 2. Enable RLS on all application tables ─────────────────────────────────
+  select string_agg(format('drop policy if exists %I on public.%I', policyname, tablename), '; ')
+    into stmt
+  from pg_policies
+  where schemaname = 'public' and policyname = 'Auth users full access';
+  if stmt is not null then execute stmt; end if;
+end
+$drop_bypass$;
+────
 alter table public.employees      enable row level security;
 alter table public.stations       enable row level security;
 alter table public.cadres         enable row level security;
