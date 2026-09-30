@@ -8,7 +8,7 @@ import { ThemeToggle } from '../ui/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { ROLE_LABELS, type Permission } from '@/lib/roles';
 import {
-  LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
+  LayoutDashboard, Users, MapPin, BarChart3,
   GraduationCap, BookOpen, Building2, Settings, FileText,
   Download, Printer, Plus, LogOut, UserCog, UsersRound, Save,
   Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp, CalendarDays,
@@ -63,10 +63,6 @@ const navSections: NavSection[] = [
     items: [
       { page: 'employees', icon: <Users size={18} />, label: 'Staff Register', badge: true },
       { page: 'departments', icon: <Landmark size={18} />, label: 'Departments', permission: 'settings.manage' },
-      { page: 'station', icon: <MapPin size={18} />, label: 'By Station' },
-      { page: 'lga', icon: <Map size={18} />, label: 'By LGA of Origin' },
-      { page: 'grade', icon: <BarChart3 size={18} />, label: 'By Grade Level' },
-      { page: 'appointment', icon: <Calendar size={18} />, label: 'By Appointment Date' },
       { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
       { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
       { page: 'leaves', icon: <CalendarDays size={18} />, label: 'Leave Management' },

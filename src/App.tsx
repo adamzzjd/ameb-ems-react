@@ -37,8 +37,6 @@ const Explore = lazy(() => import('./pages/Explore').then(m => ({ default: m.Exp
 const EmployeesPage = lazy(() => import('./pages/Employees').then(m => ({ default: m.EmployeesPage })));
 const EmployeeProfile = lazy(() => import('./pages/EmployeeProfile').then(m => ({ default: m.EmployeeProfile })));
 const EmployeeForm = lazy(() => import('./pages/EmployeeForm').then(m => ({ default: m.EmployeeForm })));
-const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
-const Appointment = lazy(() => import('./pages/Appointment').then(m => ({ default: m.Appointment })));
 const StationsManager = lazy(() => import('./pages/StationsManager').then(m => ({ default: m.StationsManager })));
 const CadresManager = lazy(() => import('./pages/CadresManager').then(m => ({ default: m.CadresManager })));
 const Departments = lazy(() => import('./pages/Departments').then(m => ({ default: m.Departments })));
@@ -339,14 +337,6 @@ export default function App() {
             canDelete={can('employees.delete')}
           />
         );
-      case 'station':
-        return <GroupView employees={employees} groupBy="station" title="Present Station" icon="📍" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canEdit={can('employees.edit')} canDelete={can('employees.delete')} />;
-      case 'lga':
-        return <GroupView employees={employees} groupBy="lga" title="LGA of Origin" icon="🗺" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canEdit={can('employees.edit')} canDelete={can('employees.delete')} />;
-      case 'grade':
-        return <GroupView employees={employees} groupBy="grade" title="Grade Level" icon="📋" onViewEmployee={handleViewEmployee} onEditEmployee={handleEditEmployee} onDeleteEmployee={(id) => setShowDeleteConfirm(id)} canEdit={can('employees.edit')} canDelete={can('employees.delete')} />;
-      case 'appointment':
-        return <Appointment employees={employees} onViewEmployee={handleViewEmployee} />;
       case 'stations':
         return <StationsManager onNavigate={handleNavigate} />;
       case 'departments':
