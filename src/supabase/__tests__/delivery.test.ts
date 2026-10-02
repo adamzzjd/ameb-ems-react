@@ -49,7 +49,7 @@ vi.mock('../client', () => {
 import {
   dbSaveProgramme, dbDeleteProgramme,
   dbSaveCohort, dbDeleteCohort,
-  dbSaveLearner, dbDeleteLearner,
+  dbSaveLearner, dbDeleteLearner, dbImportLearners,
   dbSetProgrammeLgaScope,
 } from '../delivery';
 
@@ -226,6 +226,51 @@ describe('dbSaveLearner', () => {
   it('does not audit a failed enrolment', async () => {
     state.result = { data: null, error: { message: 'unique violation' } };
     await dbSaveLearner({ full_name: 'Dup', reference_no: 'R-1' });
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+});
+
+describe('dbImportLearners', () => {
+  it('bulk-inserts every usable row stamped with the caller org', async () => {
+    resolve(null);
+    const { inserted, failed, error } = await dbImportLearners(
+      [{ full_name: 'Aisha Bello' }, { full_name: 'Grace Luka' }],
+      { ownerOrgId: 'org-1' },
+    );
+    expect(error).toBeNull();
+    expect(inserted).toBe(2);
+    expect(failed).toHaveLength(0);
+
+    const payload = state.ops.find(o => o.op === 'insert')?.payload as Record<string, unknown>[];
+    expect(payload).toHaveLength(2);
+    expect(payload.every(r => r.owner_org_id === 'org-1')).toBe(true);
+    expect(payload.every(r => typeof r.id === 'string')).toBe(true);
+    expect(lastAudit()).toMatchObject({ action: 'import', table: 'learners' });
+  });
+
+  it('skips nameless rows instead of failing the whole sheet', async () => {
+    resolve(null);
+    const { inserted, failed } = await dbImportLearners([
+      { full_name: '  ' },
+      { full_name: 'Real Name' },
+    ]);
+    expect(inserted).toBe(1);
+    expect(failed).toEqual([{ row: 1, reason: 'Full name is required.' }]);
+  });
+
+  it('writes nothing when every row is unusable', async () => {
+    resolve(null);
+    const { inserted, error } = await dbImportLearners([{ full_name: '' }]);
+    expect(inserted).toBe(0);
+    expect(error).toBeNull();
+    expect(state.ops.some(o => o.op === 'insert')).toBe(false);
+  });
+
+  it('reports the error and does not audit when the insert fails', async () => {
+    state.result = { data: null, error: { message: 'RLS violation' } };
+    const { inserted, error } = await dbImportLearners([{ full_name: 'Aisha' }], { ownerOrgId: 'org-1' });
+    expect(inserted).toBe(0);
+    expect(error?.message).toBe('RLS violation');
     expect(logAudit).not.toHaveBeenCalled();
   });
 });

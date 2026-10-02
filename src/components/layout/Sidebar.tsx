@@ -85,6 +85,15 @@ const navSections: NavSection[] = [
     ],
   },
   {
+    label: 'My Organisation',
+    items: [
+      { page: 'partner-home', icon: <Landmark size={18} />, label: 'Organisation' },
+      { page: 'partner-centres', icon: <Building2 size={18} />, label: 'My Centres' },
+      { page: 'learners', icon: <GraduationCap size={18} />, label: 'Learners' },
+      { page: 'partner-facilitators', icon: <UsersRound size={18} />, label: 'My Facilitators' },
+    ],
+  },
+  {
     label: 'Data Collection',
     items: [
       { page: 'form-builder', icon: <ClipboardList size={18} />, label: 'Form Builder', permission: 'forms.manage' },
@@ -152,10 +161,14 @@ export function Sidebar({
 
   const visibleSections = navSections
     .filter(s => !s.permission || can(s.permission))
-    .filter(s => !isPartner || s.label === 'Overview' || s.label === 'Data Collection')
+    .filter(s => !isPartner || s.label === 'Overview' || s.label === 'My Organisation' || s.label === 'Data Collection')
     .map(s =>
       isPartner
-        ? { ...s, items: s.items.filter(i => ['explore', 'account', 'my-assignments'].includes(i.page)) }
+        ? {
+            ...s,
+            items: s.items.filter(i =>
+              ['explore', 'account', 'my-assignments', 'partner-home', 'partner-centres', 'partner-facilitators', 'learners'].includes(i.page)),
+          }
         : s,
     )
     .filter(s => s.items.length > 0);

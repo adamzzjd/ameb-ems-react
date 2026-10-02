@@ -13,7 +13,7 @@ import { dbLoadProgrammeLgas } from '../supabase/hierarchy';
 import { dbLoadFacilitators, dbLoadCentreFacilitators } from '../supabase/facilitators';
 import {
   dbLoadPartnerOrganisations, dbLoadCentreOrganisationLinks, dbLoadOrgLgaCoverage,
-  dbLinkCentreToOrg,
+  dbLinkCentreToOrg, dbUpdateMyOrganisation,
 } from '../supabase/partners';
 import type {
   Centre, CentreFacilitator, CentreOrgLink, CohortOverviewRow, Facilitator, Learner,
@@ -25,13 +25,14 @@ interface Props {
   boardView?: boolean;
 }
 
-type Tab = 'overview' | 'lgas' | 'programmes' | 'people';
+type Tab = 'overview' | 'lgas' | 'programmes' | 'people' | 'profile';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'lgas', label: 'LGAs & Centres' },
   { id: 'programmes', label: 'Programmes' },
   { id: 'people', label: 'People' },
+  { id: 'profile', label: 'Organisation' },
 ];
 
 function esc(s: string | null | undefined): string {
@@ -161,6 +162,11 @@ export function OrgPortal({ boardView = false }: Props) {
   const [linkRole, setLinkRole] = useState<'lead' | 'partner' | 'funder' | 'host'>('lead');
   const [linking, setLinking] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
+  // Organisation profile self-service (Phase 30.2) — contact fields only.
+  const [profileForm, setProfileForm] = useState({
+    contact_person: '', phone: '', email: '', address: '', mou_reference: '', remarks: '',
+  });
+  const [savingProfile, setSavingProfile] = useState(false);
   const [openCentres, setOpenCentres] = useState<Set<string>>(new Set());
   // Board directory (boardView without ?org=): all orgs to pick from.
   const [directory, setDirectory] = useState<{
@@ -278,6 +284,28 @@ export function OrgPortal({ boardView = false }: Props) {
   }, [user?.id, boardView, requestedOrgId, reloadKey]);
 
   const byLga = useMemo(() => (world ? groupByLga(world) : []), [world]);
+
+  // Seed the profile form from the loaded organisation (Phase 30.2).
+  useEffect(() => {
+    if (!world?.org) return;
+    setProfileForm({
+      contact_person: world.org.contact_person ?? '',
+      phone: world.org.phone ?? '',
+      email: world.org.email ?? '',
+      address: world.org.address ?? '',
+      mou_reference: world.org.mou_reference ?? '',
+      remarks: world.org.remarks ?? '',
+    });
+  }, [world?.org]);
+
+  const saveProfile = async () => {
+    if (!world) return;
+    setSavingProfile(true);
+    const { error } = await dbUpdateMyOrganisation(world.org.id, profileForm);
+    setSavingProfile(false);
+    if (error) { alert(`Could not save: ${error.message}`); return; }
+    setReloadKey(k => k + 1);
+  };
   // Centres in the LGA being populated that no organisation owns yet — the
   // only ones the Board may register from here.
   const linkedCentreIds = useMemo(
@@ -726,6 +754,47 @@ export function OrgPortal({ boardView = false }: Props) {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Organisation profile — self-service for partners (Phase 30.2) ── */}
+      {tab === 'profile' && (
+        <div className="rounded-xl border p-5 space-y-4" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+          <div>
+            <h3 className="font-heading text-[15px] font-bold">Organisation details</h3>
+            <p className="text-[12px] text-muted-foreground">
+              {boardView
+                ? 'Read-only here — the Board edits registrations on the Organisations page.'
+                : 'Keep your contact details current. Status, type and registration number are maintained by the Board.'}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {([
+              ['contact_person', 'Contact person'],
+              ['phone', 'Phone'],
+              ['email', 'Email'],
+              ['address', 'Address'],
+              ['mou_reference', 'MOU reference'],
+              ['remarks', 'Remarks'],
+            ] as const).map(([key, label]) => (
+              <label key={key} className={`block ${key === 'address' || key === 'remarks' ? 'sm:col-span-2' : ''}`}>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</span>
+                {key === 'address' || key === 'remarks'
+                  ? <textarea rows={2} value={profileForm[key]} readOnly={boardView}
+                      onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}
+                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm disabled:opacity-60" style={{ borderColor: 'var(--color-border)' }} />
+                  : <input value={profileForm[key]} readOnly={boardView}
+                      onChange={e => setProfileForm(f => ({ ...f, [key]: e.target.value }))}
+                      className="mt-1 w-full rounded-md border px-3 py-2 text-sm disabled:opacity-60" style={{ borderColor: 'var(--color-border)' }} />}
+              </label>
+            ))}
+          </div>
+          {!boardView && (
+            <button onClick={saveProfile} disabled={savingProfile}
+              className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">
+              {savingProfile ? 'Saving…' : 'Save details'}
+            </button>
           )}
         </div>
       )}

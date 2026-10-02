@@ -216,3 +216,54 @@ export async function dbDeleteLearner(id: string): Promise<{ error: Error | null
   if (!error) await logAudit({ action: 'delete', table: 'learners', rowId: id });
   return { error };
 }
+
+// ── Learner CSV import (Phase 30.2) ─────────────────────────────────────────
+
+/**
+ * Bulk-create learners from a CSV sheet. Every row is stamped with the
+ * caller's organisation when there is one, so a partner's import lands in
+ * their own world and RLS scopes it there. Returns how many were written and
+ * the rows the database rejected, rather than failing the whole sheet.
+ */
+export async function dbImportLearners(
+  rows: LearnerInput[],
+  opts: { ownerOrgId?: string | null } = {},
+): Promise<{ inserted: number; failed: { row: number; reason: string }[]; error: Error | null }> {
+  const failed: { row: number; reason: string }[] = [];
+  if (rows.length === 0) return { inserted: 0, failed, error: null };
+
+  const now = nowIso();
+  const payload = rows.map((l, i) => {
+    if (!l.full_name?.trim()) {
+      failed.push({ row: i + 1, reason: 'Full name is required.' });
+      return null;
+    }
+    return {
+      id: crypto.randomUUID(),
+      reference_no: l.reference_no?.trim() || null,
+      full_name: l.full_name.trim(),
+      gender: l.gender ?? null,
+      age_group: l.age_group ?? null,
+      phone: l.phone ?? null,
+      lga: l.lga ?? null,
+      community: l.community ?? null,
+      cohort_id: l.cohort_id ?? null,
+      status: l.status ?? 'active',
+      enrolled_on: l.enrolled_on ?? null,
+      notes: l.notes ?? null,
+      owner_org_id: opts.ownerOrgId ?? null,
+      updated_at: now,
+    };
+  }).filter(Boolean) as Record<string, unknown>[];
+
+  if (payload.length === 0) return { inserted: 0, failed, error: null };
+
+  const { error } = await supabase.from('learners').insert(payload);
+  if (error) return { inserted: 0, failed, error };
+
+  await logAudit({
+    action: 'import', table: 'learners', rowId: null,
+    details: { count: payload.length, owner_org_id: opts.ownerOrgId ?? null },
+  });
+  return { inserted: payload.length, failed, error: null };
+}

@@ -9,6 +9,66 @@ import type {
   OrgLgaCoverage,
 } from '../types';
 
+// ── "Which org am I?" (Phase 30.2) ─────────────────────────────────────────
+// Partner pages need the caller's own organisation to stamp ownership on the
+// rows they create (learners, facilitators, centres). Membership is the only
+// trustworthy source — the browser must never send an org id we then trust.
+export async function dbLoadMyOrganisation(): Promise<{
+  data: PartnerOrganisation | null;
+  error: Error | null;
+}> {
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr || !userData?.user) return { data: null, error: userErr };
+  const { data: member, error: memberErr } = await supabase
+    .from('organisation_members')
+    .select('organisation_id')
+    .eq('user_id', userData.user.id)
+    .eq('status', 'active')
+    .maybeSingle();
+  if (memberErr) return { data: null, error: memberErr };
+  const orgId = (member as { organisation_id?: string } | null)?.organisation_id;
+  if (!orgId) return { data: null, error: null };
+  const { data: org, error } = await supabase
+    .from('partner_organisations')
+    .select('*')
+    .eq('id', orgId)
+    .maybeSingle();
+  return { data: (org as PartnerOrganisation) ?? null, error };
+}
+
+/**
+ * Partner self-service profile edit (Phase 30.2). Only contact-facing fields
+ * are sent — status, type and registration_no are Board-only, and the
+ * protect_org_columns trigger enforces that even if a caller tries.
+ */
+export async function dbUpdateMyOrganisation(orgId: string, fields: {
+  contact_person?: string; phone?: string; email?: string; address?: string;
+  mou_reference?: string; logo?: string; remarks?: string;
+}): Promise<{ data: PartnerOrganisation | null; error: Error | null }> {
+  const payload: Record<string, unknown> = { updated_at: nowIso() };
+  if (fields.contact_person !== undefined) payload.contact_person = fields.contact_person || null;
+  if (fields.phone !== undefined) payload.phone = fields.phone || null;
+  if (fields.email !== undefined) payload.email = fields.email || null;
+  if (fields.address !== undefined) payload.address = fields.address || null;
+  if (fields.mou_reference !== undefined) payload.mou_reference = fields.mou_reference || null;
+  if (fields.logo !== undefined) payload.logo = fields.logo || null;
+  if (fields.remarks !== undefined) payload.remarks = fields.remarks || '';
+
+  const { data, error } = await supabase
+    .from('partner_organisations')
+    .update(payload)
+    .eq('id', orgId)
+    .select()
+    .single();
+  if (!error) {
+    await logAudit({
+      action: 'update', table: 'partner_organisations', rowId: orgId,
+      details: { self_service: true },
+    });
+  }
+  return { data: data as PartnerOrganisation | null, error };
+}
+
 // ── Partner organisations ───────────────────────────────────────────────────
 // The tenant registry. Provisioning *users* for an organisation is not done
 // here — it goes through the manage-users edge function (service role), since

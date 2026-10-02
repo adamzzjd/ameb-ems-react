@@ -44,6 +44,8 @@ const CadresManager = lazy(() => import('./pages/CadresManager').then(m => ({ de
 const Departments = lazy(() => import('./pages/Departments').then(m => ({ default: m.Departments })));
 const BoardAssetsPage = lazy(() => import('./pages/BoardAssets').then(m => ({ default: m.BoardAssets })));
 const CorrespondencePage = lazy(() => import('./pages/Correspondence').then(m => ({ default: m.CorrespondenceRegistry })));
+const PartnerCentres = lazy(() => import('./pages/PartnerCentres').then(m => ({ default: m.PartnerCentres })));
+const PartnerFacilitators = lazy(() => import('./pages/PartnerFacilitators').then(m => ({ default: m.PartnerFacilitators })));
 const FacilitatorsManager = lazy(() => import('./pages/FacilitatorsManager').then(m => ({ default: m.FacilitatorsManager })));
 const LgaOfficersManager = lazy(() => import('./pages/LgaOfficersManager').then(m => ({ default: m.LgaOfficersManager })));
 const PartnerOrganisations = lazy(() => import('./pages/PartnerOrganisations').then(m => ({ default: m.PartnerOrganisations })));
@@ -292,7 +294,7 @@ export default function App() {
   // sidebar already hides board pages; this stops a typed/bookmarked URL
   // from reaching one (and keeps new board pages closed by default rather
   // than by remembering to add each one to the sidebar).
-  const PARTNER_PAGES = ['partner-home', 'my-assignments', 'account', 'explore'];
+  const PARTNER_PAGES = ['partner-home', 'partner-centres', 'partner-facilitators', 'learners', 'my-assignments', 'account', 'explore'];
   if (view === 'app' && isPartnerRole(role) && !PARTNER_PAGES.includes(currentPage)) {
     return <NotFound message="This area belongs to the Board." onGoHome={goPartnerPortal} />;
   }
@@ -421,11 +423,15 @@ export default function App() {
       case 'cohorts':
         return <CohortsManager canManage={can('programmes.manage') || can('learners.manage')} />;
       case 'learners':
-        return <LearnersPage canManage={can('learners.manage')} />;
+        return <LearnersPage canManage={can('learners.manage')} partnerMode={isPartnerRole(role)} />;
       case 'reports':
         return <ReportsPage isBoard={can('employees.view')} />;
       case 'partner-home':
         return <OrgPortal boardView={can('employees.view')} />;
+      case 'partner-centres':
+        return <PartnerCentres canManage={can('centres.manage')} />;
+      case 'partner-facilitators':
+        return <PartnerFacilitators canManage={isPartnerRole(role) ? role === 'partner_admin' || role === 'partner_editor' : can('settings.manage')} />;
       case 'form-builder':
         return <FormBuilder canManage={can('forms.manage')} />;
       case 'my-assignments':

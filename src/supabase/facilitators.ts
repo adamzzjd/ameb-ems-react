@@ -12,7 +12,7 @@ export async function dbLoadFacilitators(): Promise<{ data: Facilitator[] | null
 
 export async function dbAddFacilitator(
   name: string,
-  fields: { gender?: string; phone?: string; lga?: string; community?: string; remarks?: string } = {}
+  fields: { gender?: string; phone?: string; lga?: string; community?: string; remarks?: string; ownerOrgId?: string | null } = {}
 ): Promise<{ data: Facilitator | null; error: Error | null }> {
   const { data, error } = await supabase
     .from('facilitators')
@@ -24,6 +24,10 @@ export async function dbAddFacilitator(
       lga: fields.lga || null,
       community: fields.community || null,
       remarks: fields.remarks || null,
+      // Phase 30.2: NULL = the Board's own facilitator. A partner always
+      // stamps its own org; RLS rejects the write if it tries to claim
+      // someone else's.
+      owner_org_id: fields.ownerOrgId ?? null,
     })
     .select()
     .single();
@@ -34,7 +38,7 @@ export async function dbAddFacilitator(
 export async function dbUpdateFacilitator(
   id: string,
   name: string,
-  fields: { gender?: string; phone?: string; lga?: string; community?: string; remarks?: string } = {}
+  fields: { gender?: string; phone?: string; lga?: string; community?: string; remarks?: string; ownerOrgId?: string | null } = {}
 ): Promise<{ data: Facilitator | null; error: Error | null }> {
   const { data, error } = await supabase
     .from('facilitators')
@@ -45,6 +49,7 @@ export async function dbUpdateFacilitator(
       lga: fields.lga || null,
       community: fields.community || null,
       remarks: fields.remarks || null,
+      ...(fields.ownerOrgId !== undefined ? { owner_org_id: fields.ownerOrgId } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
@@ -89,4 +94,34 @@ export async function dbSetCentreFacilitators(
     .insert(facilitatorIds.map(fid => ({ centre_id: centreId, facilitator_id: fid })));
   if (!insErr) await logAudit({ action: 'assign', table: 'centre_facilitators', rowId: centreId, details: { count: facilitatorIds.length } });
   return { error: insErr };
+}
+
+/**
+ * Set the centres one facilitator serves (Phase 30.2 — the partner portal
+ * assigns facilitators at their own centres). The mirror of
+ * dbSetCentreFacilitators, which replaces the facilitator set at one centre.
+ */
+export async function dbSetFacilitatorCentres(
+  facilitatorId: string,
+  centreIds: string[],
+): Promise<{ error: Error | null }> {
+  const { error: delErr } = await supabase
+    .from('centre_facilitators')
+    .delete()
+    .eq('facilitator_id', facilitatorId);
+  if (delErr) return { error: delErr };
+  if (centreIds.length === 0) {
+    await logAudit({ action: 'assign', table: 'centre_facilitators', rowId: facilitatorId, details: { centres: [] } });
+    return { error: null };
+  }
+  const { error } = await supabase
+    .from('centre_facilitators')
+    .insert(centreIds.map(centre_id => ({ centre_id, facilitator_id: facilitatorId })));
+  if (!error) {
+    await logAudit({
+      action: 'assign', table: 'centre_facilitators', rowId: facilitatorId,
+      details: { centres: centreIds },
+    });
+  }
+  return { error };
 }

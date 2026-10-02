@@ -273,6 +273,8 @@ export interface Facilitator {
   lga: string | null;
   community: string | null;
   remarks: string;
+  /** Phase 30.2 — null means the facilitator is the Board's own. */
+  owner_org_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -691,6 +693,8 @@ export type AppPage =
   | 'learners'
   | 'reports'
   | 'partner-home'
+  | 'partner-centres'
+  | 'partner-facilitators'
   | 'form-builder'
   | 'my-assignments'
   | 'submissions-review';

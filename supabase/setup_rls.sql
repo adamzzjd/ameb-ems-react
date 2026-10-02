@@ -207,37 +207,92 @@ create policy "centres_delete" on public.centres
   for delete using (public.auth_role() in ('admin', 'super_admin'));
 
 -- ── 4.5. Facilitators (registry + centre assignments) ───────────────────────
--- Same access model as stations/cadres/centres: any signed-in user reads,
--- admin+ writes. The join table lets a centre have many facilitators and a
--- facilitator serve many centres.
+-- Facilitators are org-owned (Phase 30.2): owner_org_id NULL is the Board's
+-- own; a partner manages only its own organisation's facilitators. The
+-- column itself lives in setup_partner_portal.sql — these policies only apply
+-- once that script has run, and degrade to board-only writes if it hasn't.
 drop policy if exists "facilitators_select" on public.facilitators;
 create policy "facilitators_select" on public.facilitators
-  for select using (public.auth_role() is not null);
+  for select using (
+    public.auth_role() in ('admin', 'super_admin', 'meb_officer', 'lga_officer', 'staff')
+    or owner_org_id in (select public.auth_org_ids())
+  );
 
 drop policy if exists "facilitators_insert" on public.facilitators;
 create policy "facilitators_insert" on public.facilitators
-  for insert with check (public.auth_role() in ('admin', 'super_admin'));
+  for insert with check (
+    public.auth_role() in ('admin', 'super_admin')
+    or (public.auth_role() in ('partner_admin', 'partner_editor')
+        and owner_org_id in (select public.auth_org_ids()))
+  );
 
 drop policy if exists "facilitators_update" on public.facilitators;
 create policy "facilitators_update" on public.facilitators
-  for update using (public.auth_role() in ('admin', 'super_admin'))
-  with check (public.auth_role() in ('admin', 'super_admin'));
+  for update using (
+    public.auth_role() in ('admin', 'super_admin')
+    or (public.auth_role() in ('partner_admin', 'partner_editor')
+        and owner_org_id in (select public.auth_org_ids()))
+  )
+  with check (
+    public.auth_role() in ('admin', 'super_admin')
+    or (public.auth_role() in ('partner_admin', 'partner_editor')
+        and owner_org_id in (select public.auth_org_ids()))
+  );
 
 drop policy if exists "facilitators_delete" on public.facilitators;
 create policy "facilitators_delete" on public.facilitators
-  for delete using (public.auth_role() in ('admin', 'super_admin'));
+  for delete using (
+    public.auth_role() in ('admin', 'super_admin')
+    or (public.auth_role() in ('partner_admin', 'partner_editor')
+        and owner_org_id in (select public.auth_org_ids()))
+  );
 
+-- Centre↔facilitator wiring: board staff manage any; a partner may wire up
+-- facilitators at centres its organisation is linked to (Phase 30.2).
 drop policy if exists "centre_facilitators_select" on public.centre_facilitators;
 create policy "centre_facilitators_select" on public.centre_facilitators
-  for select using (public.auth_role() is not null);
+  for select using (
+    public.auth_role() in ('admin', 'super_admin', 'meb_officer', 'lga_officer', 'staff')
+    or exists (select 1 from public.facilitators f
+                where f.id = facilitator_id
+                  and f.owner_org_id in (select public.auth_org_ids()))
+    or exists (select 1 from public.centre_organisations co
+                where co.centre_id = centre_id
+                  and co.org_id in (select public.auth_org_ids()))
+  );
 
 drop policy if exists "centre_facilitators_insert" on public.centre_facilitators;
 create policy "centre_facilitators_insert" on public.centre_facilitators
-  for insert with check (public.auth_role() in ('admin', 'super_admin'));
+  for insert with check (
+    public.auth_role() in ('admin', 'super_admin')
+    or exists (select 1 from public.centre_organisations co
+                where co.centre_id = centre_id
+                  and co.org_id in (select public.auth_org_ids()))
+  );
+
+drop policy if exists "centre_facilitators_update" on public.centre_facilitators;
+create policy "centre_facilitators_update" on public.centre_facilitators
+  for update using (
+    public.auth_role() in ('admin', 'super_admin')
+    or exists (select 1 from public.centre_organisations co
+                where co.centre_id = centre_id
+                  and co.org_id in (select public.auth_org_ids()))
+  )
+  with check (
+    public.auth_role() in ('admin', 'super_admin')
+    or exists (select 1 from public.centre_organisations co
+                where co.centre_id = centre_id
+                  and co.org_id in (select public.auth_org_ids()))
+  );
 
 drop policy if exists "centre_facilitators_delete" on public.centre_facilitators;
 create policy "centre_facilitators_delete" on public.centre_facilitators
-  for delete using (public.auth_role() in ('admin', 'super_admin'));
+  for delete using (
+    public.auth_role() in ('admin', 'super_admin')
+    or exists (select 1 from public.centre_organisations co
+                where co.centre_id = centre_id
+                  and co.org_id in (select public.auth_org_ids()))
+  );
 
 -- ── 4.6. LGA Area Officers (read for all users, write for admin+) ──────────
 -- Guarded so this file stays safe to re-run before setup_lga_officers.sql.
@@ -351,9 +406,20 @@ begin
       for insert with check (public.auth_role() = 'super_admin');
 
     drop policy if exists "partner_organisations_update" on public.partner_organisations;
+    -- Partners may edit their own organisation (Phase 30.2); the
+    -- protect_org_columns trigger in setup_partner_portal.sql keeps status /
+    -- type / registration_no Board-only, because RLS cannot filter columns.
     create policy "partner_organisations_update" on public.partner_organisations
-      for update using (public.auth_role() = 'super_admin')
-      with check (public.auth_role() = 'super_admin');
+      for update using (
+        public.auth_role() = 'super_admin'
+        or (public.auth_role() in ('partner_admin', 'partner_editor')
+            and id in (select public.auth_org_ids()))
+      )
+      with check (
+        public.auth_role() = 'super_admin'
+        or (public.auth_role() in ('partner_admin', 'partner_editor')
+            and id in (select public.auth_org_ids()))
+      );
 
     drop policy if exists "partner_organisations_delete" on public.partner_organisations;
     create policy "partner_organisations_delete" on public.partner_organisations

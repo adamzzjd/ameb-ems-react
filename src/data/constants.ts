@@ -150,6 +150,8 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   departments:   { title: '🏛 Departments',            subtitle: "The Board's units — staff, assets and correspondence live here" },
   'board-assets':{ title: '📦 Board Assets',           subtitle: 'Property, vehicles, ICT and teaching materials — who holds what, and where' },
+  'partner-centres': { title: '🏫 My Centres',            subtitle: 'The learning centres registered to your organisation' },
+  'partner-facilitators': { title: '🧑‍🏫 My Facilitators',  subtitle: 'Your facilitators, the centres they serve, and their roster printout' },
   correspondence:{ title: '📨 Correspondence',          subtitle: 'Memos, circulars, letters and minutes — the registry of official paper' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
   facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },

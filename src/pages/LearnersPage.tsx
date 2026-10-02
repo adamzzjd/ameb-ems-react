@@ -12,11 +12,18 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Users, Plus, Pencil, Trash2, Search, Download } from 'lucide-react';
+import { Users, Plus, Pencil, Trash2, Search, Download, Upload } from 'lucide-react';
+import { LearnerImportModal } from './LearnerImportModal';
 
 interface Props {
   /** learners.manage — false for read-only viewers. */
   canManage: boolean;
+  /**
+   * Phase 30.2 — partner mode. Resolves the caller's own organisation so every
+   * learner they create or import is stamped with it, and shows the import /
+   * print actions a partner needs. RLS scopes the rows either way.
+   */
+  partnerMode?: boolean;
 }
 
 const AGE_GROUPS = ['Out-of-school child', 'Youth (15–24)', 'Adult (25+)'];
@@ -30,10 +37,13 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 /** The learner register — people enrolled in cohorts (not staff). */
-export function LearnersPage({ canManage }: Props) {
+export function LearnersPage({ canManage, partnerMode = false }: Props) {
   const { toast } = useToast();
   const [learners, setLearners] = useState<Learner[]>([]);
   const [cohorts, setCohorts] = useState<CohortOverviewRow[]>([]);
+  const [orgId, setOrgId] = useState<string | null>(null);
+  const [orgName, setOrgName] = useState<string>('');
+  const [showImport, setShowImport] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -53,8 +63,14 @@ export function LearnersPage({ canManage }: Props) {
     if (learnerRes.error) toast('Failed to load learners.', true);
     else setLearners(learnerRes.data ?? []);
     if (!cohortRes.error) setCohorts(cohortRes.data ?? []);
+    if (partnerMode) {
+      const { dbLoadMyOrganisation } = await import('../supabase/partners');
+      const { data: org } = await dbLoadMyOrganisation();
+      setOrgId(org?.id ?? null);
+      setOrgName(org?.name ?? '');
+    }
     setLoading(false);
-  }, [toast]);
+  }, [toast, partnerMode]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -108,7 +124,10 @@ export function LearnersPage({ canManage }: Props) {
       enrolled_on: form.enrolled_on || null,
       completed_on: form.completed_on || null,
       notes: form.notes || null,
-    });
+      // A partner's new learners belong to their organisation; the board
+      // keeps its own null.
+      owner_org_id: editing?.owner_org_id ?? orgId ?? null,
+    }, { ownerOrgId: orgId });
     setSaving(false);
     if (error) toast(error.message, true);
     else {
@@ -194,6 +213,11 @@ export function LearnersPage({ canManage }: Props) {
           {cohorts.map(c => <option key={c.id} value={c.id}>{c.name || c.programme_title} · {c.centre_name}</option>)}
         </select>
         <Button variant="outline" onClick={handleExport}><Download size={15} className="mr-1.5" /> Export CSV</Button>
+        {canManage && partnerMode && (
+          <Button variant="outline" onClick={() => setShowImport(true)}>
+            <Upload size={15} className="mr-1.5" /> Import CSV
+          </Button>
+        )}
         {canManage && (
           <Button onClick={openAdd}><Plus size={16} className="mr-1.5" /> Enrol Learner</Button>
         )}
@@ -349,6 +373,15 @@ export function LearnersPage({ canManage }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* CSV import (partner self-service) */}
+      <LearnerImportModal
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        ownerOrgId={orgId}
+        orgLabel={orgName}
+        onDone={() => { void load(); }}
+      />
 
       {/* Delete confirmation */}
       <Dialog open={!!deleting} onOpenChange={open => { if (!open) setDeleting(null); }}>
