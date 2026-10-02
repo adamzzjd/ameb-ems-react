@@ -11,6 +11,8 @@ import { dbLoadCentres } from '../supabase/centres';
 import { dbLoadPartnerOrganisations } from '../supabase/partners';
 import { dbLoadAll } from '../supabase/employees';
 import { buildExploreTree } from '../lib/explore';
+import { useAuth } from '../hooks/useAuth';
+import { isPartnerRole } from '../lib/roles';
 import type { ExploreLearner, ExploreCentreNode, ExploreInput } from '../lib/explore';
 
 interface Props {
@@ -158,6 +160,11 @@ interface ExploreState {
 
 /** The Explore navigator — Phase 28's nested, routed, linked hierarchy. */
 export function Explore({ onNavigate }: Props) {
+  const { role } = useAuth();
+  // Partner users get their own world only — never the Board's branch
+  // (Phase 30.1). RLS already returns no board rows for them; this stops the
+  // Board skeleton from rendering at all.
+  const partnerScope = isPartnerRole(role);
   const [state, setState] = useState<ExploreState | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -221,13 +228,40 @@ export function Explore({ onNavigate }: Props) {
     const findOrg = (id: string) => tree.orgs.find(o => o.org.id === id);
     const boardCrumb: Crumb = { label: 'Board', onSelect: () => setSel({ kind: 'board' }) };
     const partnersCrumb: Crumb = {
-      label: 'Partners',
+      label: partnerScope ? 'My organisation' : 'Partners',
       onSelect: () => { if (tree.orgs[0]) setSel({ kind: 'org', orgId: tree.orgs[0].org.id }); },
     };
     const orgCrumb = (orgId: string): Crumb => ({
       label: findOrg(orgId)?.org.name ?? '…',
       onSelect: () => setSel({ kind: 'org', orgId }),
     });
+
+    // Partner users land on their own organisation and can only navigate
+    // inside it — the Board branch is not theirs to see (Phase 30.1).
+    if (partnerScope && sel.kind === 'board') {
+      const own = tree.orgs[0];
+      if (own) {
+        return {
+          crumbs: [orgCrumb(own.org.id)],
+          content: (
+            <EmptyHint text="Your organisation is being prepared — centres, cohorts and learners will appear here once they are registered." />
+          ),
+        };
+      }
+      return {
+        crumbs: [],
+        content: <EmptyHint text="No organisation is linked to your account yet. Ask the Board office to add you under Partner Organisations → members." />,
+      };
+    }
+    // A partner deep-linking into a Board-only selection (department, board
+    // programme) is sent back to their organisation instead of leaking it.
+    if (partnerScope && (sel.kind === 'staff-group' || (sel.kind === 'programme' && !sel.orgId) || (sel.kind === 'lga' && !sel.orgId))) {
+      const own = tree.orgs[0];
+      return {
+        crumbs: own ? [orgCrumb(own.org.id)] : [],
+        content: <EmptyHint text="That view belongs to the Board. Here is your organisation instead." />,
+      };
+    }
 
     switch (sel.kind) {
       // ── BOARD OVERVIEW ─────────────────────────────────────────────
@@ -601,7 +635,9 @@ export function Explore({ onNavigate }: Props) {
             <Network size={20} className="text-gold" /> Explore
           </h2>
           <p className="text-xs text-muted-foreground mt-0.5">
-            The whole platform, nested — Board and partner organisations, down to learners and facilitators.
+            {partnerScope
+              ? 'Your organisation, nested — LGAs, centres, cohorts, learners and facilitators.'
+              : 'The whole platform, nested — Board and partner organisations, down to learners and facilitators.'}
           </p>
         </div>
         <nav className="flex items-center gap-1 text-xs flex-wrap">

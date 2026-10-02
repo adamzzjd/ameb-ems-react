@@ -19,6 +19,7 @@ import { fetchFullBackup, downloadBackup } from './lib/backup';
 import { printEmployees } from './utils/print';
 import { CADRE_NAMES, CADRE_GRADES, STATIONS } from './data/constants';
 import { dbLoadStations } from './supabase/stations';
+import { isPartnerRole, type Role } from './lib/roles';
 import { dbLoadCentres } from './supabase/centres';
 import { dbLoadDepartments } from './supabase/departments';
 
@@ -90,7 +91,7 @@ function LoadingSpinner({ text = 'Loading…' }: { text?: string }) {
 type View = 'landing' | 'login' | 'app' | 'selfservice';
 
 export default function App() {
-  const { user, loading: authLoading, can } = useAuth();
+  const { user, loading: authLoading, can, role } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -178,9 +179,7 @@ export default function App() {
   useEffect(() => {
     if (authLoading || resetMode) return;
     if (user && (path === '/' || path === '/login')) {
-      const isPartner = ['partner_admin', 'partner_editor', 'partner_viewer'].includes(
-        (user.app_metadata?.role as string) ?? '',
- );
+      const isPartner = isPartnerRole(user.app_metadata?.role as Role);
       navigate(isPartner ? '/portal/partner-home' : '/portal', { replace: true });
     }
     if (!user && path.startsWith('/portal')) navigate('/login', { replace: true });
@@ -202,6 +201,7 @@ export default function App() {
     navigate(`/portal/${page}`);
   }, [navigate]);
   const goPortalDashboard = useCallback(() => navigate('/portal', { replace: true }), [navigate]);
+  const goPartnerPortal = useCallback(() => navigate('/portal/partner-home', { replace: true }), [navigate]);
 
   const handleViewEmployee = useCallback((id: string) => {
     const emp = employees.find(e => e.id === id);
@@ -288,6 +288,14 @@ export default function App() {
   // ── Route guards — hide restricted pages even if reached via state ──
   // (only enforced inside the app shell, so landing/login always render)
   const ACCESS_DENIED = 'You do not have permission to view this page.';
+  // Phase 30.1 — partner tenants are confined to their own portal. Their
+  // sidebar already hides board pages; this stops a typed/bookmarked URL
+  // from reaching one (and keeps new board pages closed by default rather
+  // than by remembering to add each one to the sidebar).
+  const PARTNER_PAGES = ['partner-home', 'my-assignments', 'account', 'explore'];
+  if (view === 'app' && isPartnerRole(role) && !PARTNER_PAGES.includes(currentPage)) {
+    return <NotFound message="This area belongs to the Board." onGoHome={goPartnerPortal} />;
+  }
   if (view === 'app' && currentPage.startsWith('cms-') && !can('cms.edit')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={goPortalDashboard} />;
   }
