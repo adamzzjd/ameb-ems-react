@@ -1,5 +1,6 @@
 import { supabase } from './client';
 import { logAudit } from './audit';
+import { dbLoadMyOrganisation } from './partners';
 import type { Facilitator, CentreFacilitator } from '../types';
 
 export async function dbLoadFacilitators(): Promise<{ data: Facilitator[] | null; error: Error | null }> {
@@ -124,4 +125,35 @@ export async function dbSetFacilitatorCentres(
     });
   }
   return { error };
+}
+
+/**
+ * Take ownership of a Board-registered facilitator (Phase 30.2). This must go
+ * through the database function rather than an update: RLS lets a partner edit
+ * only its own facilitators, so a plain update on an unowned one is filtered
+ * out silently. The function moves ownership in one guarded step.
+ */
+export async function dbClaimFacilitator(facilitatorId: string): Promise<{
+  claimed: boolean; error: Error | null;
+}> {
+  const { data: org, error: orgErr } = await dbLoadMyOrganisation();
+  if (orgErr) return { claimed: false, error: orgErr };
+  if (!org) return { claimed: false, error: new Error('No organisation linked to your account.') };
+
+  const { data, error } = await supabase.rpc('claim_facilitator', {
+    facilitator: facilitatorId,
+    org: org.id,
+  });
+  if (error) return { claimed: false, error };
+  if (!data) {
+    return {
+      claimed: false,
+      error: new Error('That facilitator is no longer unowned — refresh and try again.'),
+    };
+  }
+  await logAudit({
+    action: 'assign', table: 'facilitators', rowId: facilitatorId,
+    details: { claimed_by: org.id },
+  });
+  return { claimed: true, error: null };
 }

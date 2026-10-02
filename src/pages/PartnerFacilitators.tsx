@@ -8,6 +8,7 @@ import type { Centre, Facilitator, PartnerOrganisation } from '../types';
 import {
   dbAddFacilitator, dbUpdateFacilitator, dbDeleteFacilitator,
   dbLoadFacilitators, dbLoadCentreFacilitators, dbSetFacilitatorCentres,
+  dbClaimFacilitator,
 } from '../supabase/facilitators';
 import { dbLoadCentres } from '../supabase/centres';
 import { dbLoadMyOrganisation, dbLoadCentreOrganisationLinks } from '../supabase/partners';
@@ -130,7 +131,7 @@ export function PartnerFacilitators({ canManage }: Props) {
   const claim = async (f: Facilitator) => {
     if (!org) return;
     setClaiming(f.id);
-    const { error } = await dbUpdateFacilitator(f.id, f.name, { ownerOrgId: org.id });
+    const { error } = await dbClaimFacilitator(f.id);
     setClaiming(null);
     if (error) { toast(`Could not claim ${f.name}: ${error.message}`, true); return; }
     toast(`${f.name} now belongs to ${org.name}.`);

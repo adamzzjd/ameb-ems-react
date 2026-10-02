@@ -207,6 +207,38 @@ create policy "centres_delete" on public.centres
   for delete using (public.auth_role() in ('admin', 'super_admin'));
 
 -- ── 4.5. Facilitators (registry + centre assignments) ───────────────────────
+-- Facilitator ↔ centre checks used by the policies below. They MUST exist
+-- before those policies are created, and MUST be SECURITY DEFINER: the two
+-- tables' policies reference each other, so a plain subquery inside a policy
+-- makes Postgres raise 42P17 (infinite recursion). Being definer, they read
+-- past RLS without recursing.
+do $fac_helpers$
+begin
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'centre_organisations')
+  then
+    execute $fn$create or replace function public.facilitator_works_for_my_org(facilitator uuid)
+      returns boolean language sql stable security definer set search_path = public as $body$
+        select exists (
+          select 1 from public.centre_facilitators cf
+          join public.centre_organisations co on co.centre_id = cf.centre_id
+          where cf.facilitator_id = facilitator
+            and co.org_id in (select public.auth_org_ids())
+        );
+      $body$ $fn$;
+
+    execute $fn$create or replace function public.centre_belongs_to_my_org(centre uuid)
+      returns boolean language sql stable security definer set search_path = public as $body$
+        select exists (
+          select 1 from public.centre_organisations co
+          where co.centre_id = centre
+            and co.org_id in (select public.auth_org_ids())
+        );
+      $body$ $fn$;
+  end if;
+end
+$fac_helpers$;
+
 -- Facilitators are org-owned (Phase 30.2): owner_org_id NULL is the Board's
 -- own; a partner manages only its own organisation's facilitators. The
 -- column itself lives in setup_partner_portal.sql — these policies only apply
@@ -214,8 +246,14 @@ create policy "centres_delete" on public.centres
 drop policy if exists "facilitators_select" on public.facilitators;
 create policy "facilitators_select" on public.facilitators
   for select using (
-    public.auth_role() in ('admin', 'super_admin', 'meb_officer', 'lga_officer', 'staff')
+    -- every board-side role keeps the read it always had
+    public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer',
+                           'data_collector', 'mne_viewer', 'enumerator', 'staff')
     or owner_org_id in (select public.auth_org_ids())
+    -- plus whoever is already working at one of the org's centres, so a
+    -- partner sees the names on their own roster (and can claim them).
+    -- SECURITY DEFINER helper — see the recursion note above.
+    or public.facilitator_works_for_my_org(facilitators.id)
   );
 
 drop policy if exists "facilitators_insert" on public.facilitators;
@@ -252,46 +290,37 @@ create policy "facilitators_delete" on public.facilitators
 drop policy if exists "centre_facilitators_select" on public.centre_facilitators;
 create policy "centre_facilitators_select" on public.centre_facilitators
   for select using (
-    public.auth_role() in ('admin', 'super_admin', 'meb_officer', 'lga_officer', 'staff')
+    public.auth_role() in ('super_admin', 'admin', 'meb_officer', 'lga_officer',
+                           'data_collector', 'mne_viewer', 'enumerator', 'staff')
+    or public.centre_belongs_to_my_org(centre_facilitators.centre_id)
     or exists (select 1 from public.facilitators f
                 where f.id = facilitator_id
                   and f.owner_org_id in (select public.auth_org_ids()))
-    or exists (select 1 from public.centre_organisations co
-                where co.centre_id = centre_id
-                  and co.org_id in (select public.auth_org_ids()))
   );
 
 drop policy if exists "centre_facilitators_insert" on public.centre_facilitators;
 create policy "centre_facilitators_insert" on public.centre_facilitators
   for insert with check (
     public.auth_role() in ('admin', 'super_admin')
-    or exists (select 1 from public.centre_organisations co
-                where co.centre_id = centre_id
-                  and co.org_id in (select public.auth_org_ids()))
+    or public.centre_belongs_to_my_org(centre_facilitators.centre_id)
   );
 
 drop policy if exists "centre_facilitators_update" on public.centre_facilitators;
 create policy "centre_facilitators_update" on public.centre_facilitators
   for update using (
     public.auth_role() in ('admin', 'super_admin')
-    or exists (select 1 from public.centre_organisations co
-                where co.centre_id = centre_id
-                  and co.org_id in (select public.auth_org_ids()))
+    or public.centre_belongs_to_my_org(centre_facilitators.centre_id)
   )
   with check (
     public.auth_role() in ('admin', 'super_admin')
-    or exists (select 1 from public.centre_organisations co
-                where co.centre_id = centre_id
-                  and co.org_id in (select public.auth_org_ids()))
+    or public.centre_belongs_to_my_org(centre_facilitators.centre_id)
   );
 
 drop policy if exists "centre_facilitators_delete" on public.centre_facilitators;
 create policy "centre_facilitators_delete" on public.centre_facilitators
   for delete using (
     public.auth_role() in ('admin', 'super_admin')
-    or exists (select 1 from public.centre_organisations co
-                where co.centre_id = centre_id
-                  and co.org_id in (select public.auth_org_ids()))
+    or public.centre_belongs_to_my_org(centre_facilitators.centre_id)
   );
 
 -- ── 4.6. LGA Area Officers (read for all users, write for admin+) ──────────
@@ -392,6 +421,9 @@ begin
           and status = 'active'
       );
     $fn$;
+
+    -- facilitator_works_for_my_org() / centre_belongs_to_my_org() are created
+    -- in the block above the facilitator policies (they must exist first).
 
     -- ── Partner organisations ──
     drop policy if exists "partner_organisations_select" on public.partner_organisations;

@@ -51,10 +51,10 @@ begin
   -- that decide an organisation's standing.
   if public.auth_role() is null
      or public.auth_role() not in ('super_admin', 'admin', 'meb_officer') then
+    new.name            := old.name;
     new.type            := old.type;
     new.status          := old.status;
     new.registration_no := old.registration_no;
-    new.created_by      := old.created_by;
     new.created_at      := old.created_at;
   end if;
   return new;
@@ -66,7 +66,46 @@ create trigger protect_org_columns
   before update on public.partner_organisations
   for each row execute function public.protect_org_columns();
 
--- ── 3. Verification ─────────────────────────────────────────────────────────
+-- ── 3. Claiming a Board-registered facilitator ─────────────────────────────
+-- RLS deliberately lets a partner UPDATE only its OWN facilitators, so the
+-- "claim" action cannot be a plain update: a Board facilitator has
+-- owner_org_id NULL and would simply be filtered out. This function does the
+-- one thing a partner is allowed to do to it — take ownership — and only
+-- when the facilitator is unowned and the org is really theirs.
+create or replace function public.claim_facilitator(facilitator uuid, org uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $claim$
+declare
+  current_owner uuid;
+begin
+  if org is null or org not in (select public.auth_org_ids()) then
+    return false;
+  end if;
+  if public.auth_role() not in ('partner_admin', 'partner_editor') then
+    return false;
+  end if;
+
+  select f.owner_org_id into current_owner
+  from public.facilitators f
+  where f.id = facilitator
+  for update;
+
+  -- only an unowned facilitator can be claimed
+  if current_owner is not null then
+    return false;
+  end if;
+
+  update public.facilitators set owner_org_id = org where id = facilitator;
+  return true;
+end
+$claim$;
+
+grant execute on function public.claim_facilitator(uuid, uuid) to authenticated;
+
+-- ── 4. Verification ─────────────────────────────────────────────────────────
 -- §3a. Facilitators by owner (Board = NULL).
 select case when f.owner_org_id is null then 'Board (unclaimed)' else coalesce(o.name, 'unknown org') end as owner,
        count(*) as facilitators
