@@ -11,7 +11,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
-import type { Employee } from './types';
+import type { Employee, Centre, Station } from './types';
 import { dbCheckTable } from './supabase/employees';
 import { CsvImportModal } from './pages/CsvImportModal';
 import { exportEmployeesCSV } from './lib/csv';
@@ -19,6 +19,7 @@ import { fetchFullBackup, downloadBackup } from './lib/backup';
 import { printEmployees } from './utils/print';
 import { CADRE_NAMES, CADRE_GRADES, STATIONS } from './data/constants';
 import { dbLoadStations } from './supabase/stations';
+import { dbLoadCentres } from './supabase/centres';
 import { dbLoadDepartments } from './supabase/departments';
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────
@@ -40,6 +41,8 @@ const EmployeeForm = lazy(() => import('./pages/EmployeeForm').then(m => ({ defa
 const StationsManager = lazy(() => import('./pages/StationsManager').then(m => ({ default: m.StationsManager })));
 const CadresManager = lazy(() => import('./pages/CadresManager').then(m => ({ default: m.CadresManager })));
 const Departments = lazy(() => import('./pages/Departments').then(m => ({ default: m.Departments })));
+const BoardAssetsPage = lazy(() => import('./pages/BoardAssets').then(m => ({ default: m.BoardAssets })));
+const CorrespondencePage = lazy(() => import('./pages/Correspondence').then(m => ({ default: m.CorrespondenceRegistry })));
 const FacilitatorsManager = lazy(() => import('./pages/FacilitatorsManager').then(m => ({ default: m.FacilitatorsManager })));
 const LgaOfficersManager = lazy(() => import('./pages/LgaOfficersManager').then(m => ({ default: m.LgaOfficersManager })));
 const PartnerOrganisations = lazy(() => import('./pages/PartnerOrganisations').then(m => ({ default: m.PartnerOrganisations })));
@@ -134,10 +137,13 @@ export default function App() {
   // Live stations register for the employee form dropdown — falls back to the
   // hardcoded list when the DB is unreachable (Phase 27 links the two).
   const [stationNames, setStationNames] = useState<string[]>([]);
+  // Full station rows for the asset register's location picker (Phase 28.6).
+  const [stations, setStations] = useState<Station[]>([]);
   useEffect(() => {
     let active = true;
     void dbLoadStations().then(({ data }) => {
       if (active && data && data.length > 0) {
+        setStations(data);
         setStationNames(data.map(s => s.name).filter(Boolean).sort((a, b) => a.localeCompare(b)));
       }
     });
@@ -150,6 +156,15 @@ export default function App() {
     let active = true;
     void dbLoadDepartments().then(({ data }) => {
       if (active && data) setDepartments(data.map(d => ({ id: d.id, name: d.name })));
+    });
+    return () => { active = false; };
+  }, []);
+  // Centres register for the Board Assets location picker (Phase 28.6).
+  const [centres, setCentres] = useState<Centre[]>([]);
+  useEffect(() => {
+    let active = true;
+    void dbLoadCentres().then(({ data }) => {
+      if (active && data) setCentres(data);
     });
     return () => { active = false; };
   }, []);
@@ -341,6 +356,10 @@ export default function App() {
         return <StationsManager onNavigate={handleNavigate} />;
       case 'departments':
         return <Departments employees={employees} onNavigate={handleNavigate} />;
+      case 'board-assets':
+        return <BoardAssetsPage employees={employees} centres={centres} stations={stations} departments={departments} canManage={can('settings.manage')} />;
+      case 'correspondence':
+        return <CorrespondencePage departments={departments} canManage={can('settings.manage')} />;
       case 'cadres':
         return <CadresManager onNavigate={handleNavigate} />;
       case 'facilitators':

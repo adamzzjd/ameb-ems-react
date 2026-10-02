@@ -17,7 +17,7 @@ import {
   Handshake,
   CalendarRange,
   ClipboardList, Send, Inbox,
-  Network, Landmark,
+  Network, Landmark, Package, MailOpen,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -62,6 +62,8 @@ const navSections: NavSection[] = [
     items: [
       { page: 'employees', icon: <Users size={18} />, label: 'Staff Register', badge: true },
       { page: 'departments', icon: <Landmark size={18} />, label: 'Departments', permission: 'settings.manage' },
+      { page: 'board-assets', icon: <Package size={18} />, label: 'Board Assets', permission: 'settings.manage' },
+      { page: 'correspondence', icon: <MailOpen size={18} />, label: 'Correspondence', permission: 'settings.manage' },
       { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
       { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
       { page: 'psn-check', icon: <UserPlus size={18} />, label: 'PSN Tools', permission: 'employees.import' },

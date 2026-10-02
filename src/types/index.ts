@@ -354,6 +354,57 @@ export interface OrgLgaCoverage {
   lga: string;
 }
 
+/** A physical asset of the Board — property, vehicles, materials (no money values). */
+export type AssetCategory = 'Furniture' | 'Vehicle' | 'ICT' | 'Teaching Materials' | 'Equipment' | 'Other';
+export type AssetCondition = 'new' | 'good' | 'fair' | 'poor' | 'written_off';
+
+export interface BoardAsset {
+  id: string;
+  /** Human asset tag, unique — e.g. 'AMEB-ICT-001'. */
+  tag: string;
+  name: string;
+  category: AssetCategory | string;
+  quantity: number;
+  condition: AssetCondition | string;
+  /** Where the asset sits — at most one of these is set. */
+  station_id: string | null;
+  department_id: string | null;
+  centre_id: string | null;
+  /** The officer answerable for the asset. */
+  custodian_employee_id: string | null;
+  remarks: string;
+  created_by: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+/** A filed memo, circular, letter or minutes record — the Board's paper trail. */
+export type CorrespondenceKind = 'memo' | 'circular' | 'minutes' | 'letter';
+export type CorrespondenceDirection = 'incoming' | 'outgoing' | 'internal';
+export type CorrespondenceStatus = 'draft' | 'filed' | 'archived';
+
+export interface Correspondence {
+  id: string;
+  /** Registry reference, unique — e.g. 'AMEB/ADM/2026/014'. */
+  ref_no: string;
+  title: string;
+  kind: CorrespondenceKind | string;
+  direction: CorrespondenceDirection | string;
+  department_id: string | null;
+  date_issued: string | null;
+  /** Who the correspondence involves — free text. */
+  parties: string;
+  /** Optional attached document. */
+  file_name: string | null;
+  mime_type: string | null;
+  size_bytes: number | null;
+  url: string | null;
+  status: CorrespondenceStatus | string;
+  created_by: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // ── Employee Documents (document vault) ──────────────────────────────────────
 export interface EmployeeDocument {
   id: string;
@@ -613,6 +664,8 @@ export type AppPage =
   | 'stations'
   | 'cadres'
   | 'departments'
+  | 'board-assets'
+  | 'correspondence'
   | 'facilitators'
   | 'lga-officers'
   | 'partners'

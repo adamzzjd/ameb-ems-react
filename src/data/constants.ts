@@ -149,6 +149,8 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   departments:   { title: '🏛 Departments',            subtitle: "The Board's units — staff, assets and correspondence live here" },
+  'board-assets':{ title: '📦 Board Assets',           subtitle: 'Property, vehicles, ICT and teaching materials — who holds what, and where' },
+  correspondence:{ title: '📨 Correspondence',          subtitle: 'Memos, circulars, letters and minutes — the registry of official paper' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
   facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },
   'lga-officers':{ title: 'LGA Area Officers',       subtitle: 'One area officer per local government — assigned from staff' },
