@@ -16,14 +16,16 @@ interface AppShellProps {
   onExportCsv?: () => void;
   onPrint?: () => void;
   onBackup?: () => void;
+  /** Opens the Add Employee form — only wired up on the Staff Register. */
+  onAddEmployee?: () => void;
   employeeCount: number;
 }
 
 export function AppShell({
   children, currentPage, onNavigate,
-  onImportCsv, onExportCsv, onPrint, onBackup, employeeCount,
+  onImportCsv, onExportCsv, onPrint, onBackup, onAddEmployee, employeeCount,
 }: AppShellProps) {
-  const { signOut } = useAuth();
+  const { signOut, can } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { unread, refresh: refreshUnread } = useUnreadContacts();
 
@@ -62,7 +64,9 @@ export function AppShell({
           currentPage={currentPage}
           onToggleSidebar={toggleSidebar}
           onPrint={onPrint}
-          onAdd={undefined}
+          // "+ Add Employee" belongs on the Staff Register and nowhere else —
+          // App only passes this handler while that page is open.
+          onAdd={currentPage === 'employees' && can('employees.create') ? onAddEmployee : undefined}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-5 lg:p-6 bg-background main-scroll">
           {children}

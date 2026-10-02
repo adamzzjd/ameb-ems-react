@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation } from 'react-router';
 import {
   Building2, GraduationCap, CalendarRange, MapPin, Phone, Mail, ShieldCheck,
@@ -13,10 +13,11 @@ import { dbLoadProgrammeLgas } from '../supabase/hierarchy';
 import { dbLoadFacilitators, dbLoadCentreFacilitators } from '../supabase/facilitators';
 import {
   dbLoadPartnerOrganisations, dbLoadCentreOrganisationLinks, dbLoadOrgLgaCoverage,
+  dbLinkCentreToOrg,
 } from '../supabase/partners';
 import type {
-  Centre, CentreFacilitator, CohortOverviewRow, Facilitator, Learner,
-  OrganisationMember, PartnerOrganisation, Programme, ProgrammeLgaLink,
+  Centre, CentreFacilitator, CentreOrgLink, CohortOverviewRow, Facilitator, Learner,
+  OrganisationMember, OrgLgaCoverage, PartnerOrganisation, Programme, ProgrammeLgaLink,
 } from '../types';
 
 interface Props {
@@ -87,10 +88,17 @@ interface OrgWorld {
   centreLinks: CentreFacilitator[];
   programmes: Programme[];
   programmeLgas: ProgrammeLgaLink[];
+  /** Every centre↔org link — used to resolve which centres belong to this org. */
+  centreOrgLinks: CentreOrgLink[];
+  /** centre_id → the role this org holds there. */
+  centreOrgRoles: Map<string, string>;
+  coverage: OrgLgaCoverage[];
+  /** Every centre, so the Board's "Link a centre" picker can offer unlinked ones. */
+  allCentres: Centre[];
 }
 
 function groupByLga(world: OrgWorld) {
-  const map = new Map<string, { centre: Centre; cohorts: CohortOverviewRow[]; learners: Learner[]; facilitators: Facilitator[] }[]>();
+  const map = new Map<string, { centre: Centre; role: string; cohorts: CohortOverviewRow[]; learners: Learner[]; facilitators: Facilitator[] }[]>();
   const cohortsByCentre = new Map<string, CohortOverviewRow[]>();
   for (const c of world.cohorts) {
     const list = cohortsByCentre.get(c.centre_id) ?? [];
@@ -120,11 +128,18 @@ function groupByLga(world: OrgWorld) {
     const cohorts = cohortsByCentre.get(centre.id) ?? [];
     node.push({
       centre,
+      role: world.centreOrgRoles.get(centre.id) || 'partner',
       cohorts,
       learners: cohorts.flatMap(c => learnersByCohort.get(c.id) ?? []),
       facilitators: facByCentre.get(centre.id) ?? [],
     });
     map.set(lga, node);
+  }
+  // LGAs the organisation says it works in must appear even before it has
+  // registered a centre there — otherwise the tree hides where it intends to
+  // operate. Registered-centre LGAs win the sort position.
+  for (const row of world.coverage.filter(c => c.org_id === world.org.id)) {
+    if (row.lga && !map.has(row.lga)) map.set(row.lga, []);
   }
   return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 }
@@ -140,6 +155,12 @@ export function OrgPortal({ boardView = false }: Props) {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('overview');
   const [openLgas, setOpenLgas] = useState<Set<string>>(new Set());
+  // Board's "Link a centre" picker (boardView only): which LGA is being
+  // populated, and the role to register the centre under.
+  const [linkLga, setLinkLga] = useState<string | null>(null);
+  const [linkRole, setLinkRole] = useState<'lead' | 'partner' | 'funder' | 'host'>('lead');
+  const [linking, setLinking] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [openCentres, setOpenCentres] = useState<Set<string>>(new Set());
   // Board directory (boardView without ?org=): all orgs to pick from.
   const [directory, setDirectory] = useState<{
@@ -207,7 +228,7 @@ export function OrgPortal({ boardView = false }: Props) {
         return;
       }
 
-      const [c, co, l, f, cf, progs, plgas] = await Promise.all([
+      const [c, co, l, f, cf, progs, plgas, links, cov] = await Promise.all([
         dbLoadCentres(),
         dbLoadCohorts(),
         dbLoadLearners(),
@@ -215,6 +236,8 @@ export function OrgPortal({ boardView = false }: Props) {
         dbLoadCentreFacilitators(),
         dbLoadProgrammes(),
         dbLoadProgrammeLgas(),
+        dbLoadCentreOrganisationLinks(),
+        dbLoadOrgLgaCoverage(),
       ]);
       if (!active) return;
       // RLS scopes these to the org for partner users; board viewers filter
@@ -222,26 +245,60 @@ export function OrgPortal({ boardView = false }: Props) {
       const own = <T extends { owner_org_id?: string | null }>(rows: T[]) =>
         boardView ? rows.filter(r => r.owner_org_id === orgRow!.id) : (rows ?? []);
 
+      // A centre belongs to THIS organisation's world only once it has been
+      // registered to it (centre_organisations) — any role counts. Without
+      // this the tree used to show every board centre in every covered LGA.
+      const allLinks = links.data ?? [];
+      const myLinks = allLinks.filter(lk => lk.org_id === orgRow!.id);
+      const centreOrgRoles = new Map<string, string>(myLinks.map(lk => [lk.centre_id, lk.role]));
+      const myCentreIds = new Set(centreOrgRoles.keys());
+      const registered = (c.data ?? []).filter(x => myCentreIds.has(x.id));
+
       setWorld({
         org: orgRow,
         membership,
-        centres: c.data ?? [],
+        centres: registered,
         cohorts: own(co.data ?? []) as CohortOverviewRow[],
         learners: own(l.data ?? []) as Learner[],
         facilitators: f.data ?? [],
         centreLinks: cf.data ?? [],
         programmes: own(progs.data ?? []) as Programme[],
         programmeLgas: plgas ?? [],
+        centreOrgLinks: allLinks,
+        centreOrgRoles,
+        coverage: cov.data ?? [],
+        allCentres: c.data ?? [],
       });
       // Start with every LGA expanded.
-      const lgaKeys = new Set<string>((c.data ?? []).map((x: Centre) => x.lga || 'Unknown LGA'));
+      const lgaKeys = new Set<string>(registered.map((x: Centre) => x.lga || 'Unknown LGA'));
       setOpenLgas(lgaKeys);
       setLoading(false);
     })();
     return () => { active = false; };
-  }, [user?.id, boardView, requestedOrgId]);
+  }, [user?.id, boardView, requestedOrgId, reloadKey]);
 
   const byLga = useMemo(() => (world ? groupByLga(world) : []), [world]);
+  // Centres in the LGA being populated that no organisation owns yet — the
+  // only ones the Board may register from here.
+  const linkedCentreIds = useMemo(
+    () => new Set((world?.centreOrgLinks ?? []).map(l => l.centre_id)),
+    [world],
+  );
+  const awaitingOrg = useCallback((lga: string) =>
+    (world?.allCentres ?? []).filter(
+      x => (x.lga || 'Unknown LGA') === lga && !linkedCentreIds.has(x.id),
+    ), [world, linkedCentreIds]);
+  const pickerLgas = linkLga ? awaitingOrg(linkLga) : [];
+
+  const handleLink = async (centreId: string) => {
+    if (!world) return;
+    setLinking(centreId);
+    const { error } = await dbLinkCentreToOrg(centreId, world.org.id, linkRole);
+    setLinking(null);
+    if (error) { alert(`Could not register the centre: ${error.message}`); return; }
+    setLinkLga(null);
+    setReloadKey(k => k + 1);
+  };
   const activeLearners = world?.learners.filter(l => l.status === 'active').length ?? 0;
   const runningCohorts = world?.cohorts.filter(c => c.cohort_status === 'running').length ?? 0;
   const facilitatorCount = useMemo(() => {
@@ -323,9 +380,11 @@ export function OrgPortal({ boardView = false }: Props) {
     const lgaBlocks = groups.map(([lga, centres]) => `
       <div class="lga">
         <div class="lga-h">📍 ${esc(lga)} — ${centres.length} centre${centres.length !== 1 ? 's' : ''}</div>
-        ${centres.map(({ centre, cohorts, learners, facilitators }) => `
+        ${centres.length === 0 ? '<div style="font-size:11px;color:#8e99b0;margin-bottom:6px;">No centres registered to this organisation in this LGA.</div>' : ''}
+        ${centres.map(({ centre, role, cohorts, learners, facilitators }) => `
           <div class="centre">
             <strong>${esc(centre.name)}</strong>
+            <span class="chip">${esc(role)}</span>
             <span style="color:#8e99b0;"> · ${esc(centre.ward || '')} ${esc(centre.community || '')}</span>
             <div style="margin-top:3px;color:#475569;">
               ${cohorts.length} cohort${cohorts.length !== 1 ? 's' : ''} · ${learners.length} learner${learners.length !== 1 ? 's' : ''}
@@ -494,7 +553,22 @@ export function OrgPortal({ boardView = false }: Props) {
           {byLga.length === 0 ? (
             <div className="rounded-xl border p-10 text-center" style={{ borderColor: 'var(--color-border)' }}>
               <MapPin size={28} className="mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No centres yet — add yours from the Learning Centres page.</p>
+              {boardView ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    No centres are registered to <strong>{world?.org.name}</strong> yet.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Register a centre from the Learning Centres page, or set the organisation's LGA coverage so it
+                    appears here first.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Your organisation has no centres registered yet. The Board office registers each centre to your
+                  organisation — please contact them.
+                </p>
+              )}
             </div>
           ) : byLga.map(([lga, centres]) => (
             <div key={lga} className="rounded-xl border overflow-hidden" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
@@ -511,6 +585,22 @@ export function OrgPortal({ boardView = false }: Props) {
               </button>
               {openLgas.has(lga) && (
                 <div className="p-3 space-y-2">
+                  {centres.length === 0 && (
+                    <div className="rounded-lg border border-dashed p-4 text-center" style={{ borderColor: 'var(--color-border)' }}>
+                      <p className="text-[12px] text-muted-foreground">
+                        No centres registered in {lga} for {org.name} yet.
+                      </p>
+                      {boardView ? (
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          Only centres registered to this organisation appear here.
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground mt-1">
+                          Ask the Board office to register your centres here.
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {centres.map(node => (
                     <div key={node.centre.id} className="rounded-lg border" style={{ borderColor: 'var(--color-border)' }}>
                       <button onClick={() => toggleCentre(node.centre.id)}
@@ -518,6 +608,9 @@ export function OrgPortal({ boardView = false }: Props) {
                         <span className="flex items-center gap-2 text-[13px] font-semibold">
                           {openCentres.has(node.centre.id) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                           {node.centre.name}
+                          <span className="rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-emerald-50 text-emerald-700">
+                            {node.role}
+                          </span>
                         </span>
                         <span className="flex items-center gap-2 text-[11px] text-muted-foreground">
                           {node.learners.length} learners · {node.facilitators.length} facilitators
@@ -570,6 +663,16 @@ export function OrgPortal({ boardView = false }: Props) {
                       )}
                     </div>
                   ))}
+                  {boardView && awaitingOrg(lga).length > 0 && (
+                    <button onClick={() => { setLinkLga(lga); setLinkRole('lead'); }}
+                      className="inline-flex items-center gap-1.5 w-full justify-center text-[12px] font-semibold border border-dashed py-2 rounded-lg hover:bg-muted/50 transition-colors"
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
+                      <Handshake size={13} /> Link a centre in {lga}
+                      <span className="text-[10px] font-normal text-muted-foreground">
+                        ({awaitingOrg(lga).length} not yet registered to any organisation)
+                      </span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -624,6 +727,58 @@ export function OrgPortal({ boardView = false }: Props) {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Link a centre to this organisation (Board only) ── */}
+      {linkLga && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(15,23,42,.45)' }}
+          onClick={() => setLinkLga(null)}>
+          <div className="w-full max-w-lg rounded-xl border bg-white shadow-xl"
+            style={{ borderColor: 'var(--color-border)', background: 'var(--color-surface)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="px-5 py-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--color-border)' }}>
+              <div>
+                <h3 className="font-heading text-[15px] font-bold">Register a centre in {linkLga}</h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Only centres not yet registered to any organisation are listed.
+                </p>
+              </div>
+              <button onClick={() => setLinkLga(null)} className="text-xs font-semibold text-muted-foreground hover:underline">Close</button>
+            </div>
+            <div className="px-5 py-3 flex items-center gap-2 border-b" style={{ borderColor: 'var(--color-border)' }}>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Register as</span>
+              <select value={linkRole} onChange={e => setLinkRole(e.target.value as typeof linkRole)}
+                className="text-[12px] rounded-lg border px-2 py-1" style={{ borderColor: 'var(--color-border)' }}>
+                <option value="lead">Lead — the org owns/operates it</option>
+                <option value="partner">Partner — co-delivers</option>
+                <option value="funder">Funder — sponsors</option>
+                <option value="host">Host — provides the venue</option>
+              </select>
+            </div>
+            <div className="px-5 py-3 max-h-[50vh] overflow-y-auto space-y-1.5">
+              {pickerLgas.length === 0 ? (
+                <p className="text-[12px] text-muted-foreground text-center py-6">
+                  Every centre in {linkLga} is already registered to an organisation.
+                </p>
+              ) : pickerLgas.map(c => (
+                <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border px-3 py-2"
+                  style={{ borderColor: 'var(--color-border)' }}>
+                  <div>
+                    <div className="text-[13px] font-semibold">{c.name}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      {[c.ward, c.community, c.type].filter(Boolean).join(' · ') || '—'}
+                    </div>
+                  </div>
+                  <button onClick={() => handleLink(c.id)} disabled={linking === c.id}
+                    className="shrink-0 rounded-lg bg-emerald-700 px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-emerald-800 disabled:opacity-50">
+                    {linking === c.id ? 'Linking…' : 'Register'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -208,6 +208,12 @@ export default function App() {
     if (emp) { setProfileEmployee(emp); setShowProfile(true); }
   }, [employees]);
 
+  const handleAddEmployee = useCallback(() => {
+    if (!can('employees.create')) { toast('You need editor access to add staff.', true); return; }
+    setEditingEmployee(null);
+    setShowForm(true);
+  }, [can, toast]);
+
   const handleEditEmployee = useCallback((id: string) => {
     if (!can('employees.edit')) { toast('You need editor access to edit records.', true); return; }
     const emp = employees.find(e => e.id === id);
@@ -464,6 +470,7 @@ export default function App() {
           onImportCsv={() => setShowCsvImport(true)}
           onExportCsv={handleExportCSV}
           onPrint={handlePrint}
+          onAddEmployee={handleAddEmployee}
           employeeCount={employees.length}
           onBackup={handleBackup}
         >

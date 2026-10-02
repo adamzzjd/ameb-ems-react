@@ -37,6 +37,7 @@ vi.mock('../client', () => {
 
 import {
   dbSetCentreOrganisations,
+  dbLinkCentreToOrg,
   dbLoadOrgLgaCoverage,
   dbSetOrgLgaCoverage,
 } from '../partners';
@@ -113,6 +114,40 @@ describe('dbLoadOrgLgaCoverage', () => {
     const { data, error } = await dbLoadOrgLgaCoverage();
     expect(data).toBeNull();
     expect(error).not.toBeNull();
+  });
+});
+
+describe('dbLinkCentreToOrg', () => {
+  it('registers one centre to one org without touching other links', async () => {
+    resolve([]);
+    const { error } = await dbLinkCentreToOrg('c1', 'o1', 'partner');
+    expect(error).toBeNull();
+    // Crucially: no delete — a centre that already serves other orgs keeps them.
+    expect(opsOf('centre_organisations', 'delete')).toHaveLength(0);
+    const insert = opsOf('centre_organisations', 'insert')[0];
+    expect(insert?.payload).toMatchObject({ centre_id: 'c1', org_id: 'o1', role: 'partner' });
+    expect(lastAudit()).toMatchObject({ action: 'assign', table: 'centre_organisations' });
+  });
+
+  it('defaults the role to lead', async () => {
+    resolve([]);
+    await dbLinkCentreToOrg('c1', 'o1');
+    expect(opsOf('centre_organisations', 'insert')[0]?.payload).toMatchObject({ role: 'lead' });
+  });
+
+  it('is idempotent — an existing link is a no-op, not a duplicate row', async () => {
+    resolve([{ id: 'existing' }]);
+    const { error } = await dbLinkCentreToOrg('c1', 'o1');
+    expect(error).toBeNull();
+    expect(opsOf('centre_organisations', 'insert')).toHaveLength(0);
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a read error without writing', async () => {
+    resolve(null, new Error('permission denied'));
+    const { error } = await dbLinkCentreToOrg('c1', 'o1');
+    expect(error?.message).toBe('permission denied');
+    expect(opsOf('centre_organisations', 'insert')).toHaveLength(0);
   });
 });
 

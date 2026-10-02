@@ -20,26 +20,31 @@ test.describe('Portal (auth-gated)', () => {
     await page.getByPlaceholder('your@email.com').fill(EMAIL!);
     await page.getByPlaceholder('••••••••').fill(PASSWORD!);
     await page.getByRole('button', { name: /sign in/i }).click();
-    await expect(page).toHaveURL(/#|dashboard|employees/, { timeout: 15_000 });
+    // Phase 29: role-based landing sends every board user to /portal
+    // (partners land on /portal/partner-home).
+    await expect(page).toHaveURL(/\/portal/, { timeout: 15_000 });
   });
 
   test('dashboard loads after login', async ({ page }) => {
-    await expect(page.getByText('Total Officers', { exact: false }).first()).toBeVisible();
+    // The Phase 29 dashboard is organised into work sections (Today / The
+    // Board / Delivery / Partners) rather than a single "Total Officers" tile.
+    await expect(page.getByText('Today', { exact: true }).first()).toBeVisible();
+    await expect(page.getByText('The Board', { exact: true }).first()).toBeVisible();
   });
 
   test('creates, edits, and deletes an employee', async ({ page }) => {
-    // Open the Add Employee form via the sidebar action
-    await page.getByText('Add Employee', { exact: false }).first().click();
+    // "+ Add Employee" lives on the Staff Register only — go there first.
+    await page.getByText('Staff Register', { exact: false }).first().click();
+    await page.getByRole('button', { name: /\+ Add Employee/ }).click();
     await page.getByPlaceholder('Surname Firstname Middlename').fill(testName);
     await page.getByPlaceholder('PS/AM/XXXX').fill(`PS/E2E/${uid}`);
-    // Form selects in order: Gender, Grade, Cadre, LGA, Station
+    // Form selects in order: Gender, Grade, Cadre, LGA, Station, Department
     const selects = page.locator('select');
     await selects.nth(1).selectOption('GL 08');
     await selects.nth(2).selectOption({ label: /Adult Education Officer II/ });
     await page.getByRole('button', { name: '➕ Add Employee' }).click();
 
-    // Search for it in the employee list
-    await page.getByText('All Employees', { exact: false }).first().click();
+    // Search for it in the register
     await page.getByPlaceholder('Name, PSN, phone, station…').fill(testName);
     await expect(page.getByText(testName, { exact: false }).first()).toBeVisible();
 

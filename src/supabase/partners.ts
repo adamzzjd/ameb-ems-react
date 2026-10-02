@@ -125,6 +125,36 @@ export async function dbSetCentreOrganisations(
   return { error: insErr };
 }
 
+/**
+ * Register one centre to one organisation without touching the centre's other
+ * links (the replace-set above is for the full editor). Idempotent: re-linking
+ * the same pair is a no-op rather than a duplicate row.
+ */
+export async function dbLinkCentreToOrg(
+  centreId: string,
+  orgId: string,
+  role: 'lead' | 'partner' | 'funder' | 'host' = 'lead',
+): Promise<{ error: Error | null }> {
+  const { data: existing, error: readErr } = await supabase
+    .from('centre_organisations')
+    .select('id')
+    .eq('centre_id', centreId)
+    .eq('org_id', orgId);
+  if (readErr) return { error: readErr };
+  if (existing && existing.length > 0) return { error: null };
+
+  const { error } = await supabase
+    .from('centre_organisations')
+    .insert({ centre_id: centreId, org_id: orgId, role, id: crypto.randomUUID() });
+  if (!error) {
+    await logAudit({
+      action: 'assign', table: 'centre_organisations', rowId: centreId,
+      details: { org_id: orgId, role },
+    });
+  }
+  return { error };
+}
+
 // ── Organisation ↔ LGA coverage (Phase 28.5) ────────────────────────────────
 /** The LGAs an organisation works in. Degrades to null when the table is missing. */
 export async function dbLoadOrgLgaCoverage(): Promise<{
