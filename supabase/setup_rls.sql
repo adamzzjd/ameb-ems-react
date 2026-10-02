@@ -91,7 +91,30 @@ begin
   if stmt is not null then execute stmt; end if;
 end
 $drop_bypass$;
-────
+
+-- ── 2a. Storage hygiene ───────────────────────────────────────────────────
+-- The app hosts every image and document on Cloudinary; Supabase Storage is
+-- not used at runtime. These dashboard-era policies made the `images` bucket
+-- world-writable by anon (the anon key ships in the app's JS bundle) and the
+-- `gallery` bucket writable by any signed-in user. Drop them on every run and
+-- keep all buckets private — the two stray objects in them are referenced by
+-- nothing (verified: zero DB rows reference *.supabase.co storage URLs).
+do $drop_storage$
+declare
+  stmt text;
+begin
+  select string_agg(format('drop policy if exists %I on storage.objects', policyname), '; ')
+    into stmt
+  from pg_policies
+  where schemaname = 'storage'
+    and policyname in ('images_anon_all', 'gallery_auth_insert', 'gallery_auth_update',
+                       'gallery_auth_delete', 'gallery_public_select');
+  if stmt is not null then execute stmt; end if;
+end
+$drop_storage$;
+
+update storage.buckets set public = false
+where id in ('images', 'gallery', 'logos', 'employee-photos');
 alter table public.employees      enable row level security;
 alter table public.stations       enable row level security;
 alter table public.cadres         enable row level security;
