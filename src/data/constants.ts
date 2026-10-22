@@ -6,6 +6,14 @@ export const LGAs = [
   'Mubi South', 'Numan', 'Shelleng', 'Song', 'Toungo', 'Yola North', 'Yola South',
 ] as const;
 
+/**
+ * The statutory 21 plus any LGA value already stored in the register, so a
+ * filter list never hides a record that holds an out-of-set value.
+ */
+export function mergeLgas(values: readonly (string | null | undefined)[]): string[] {
+  return Array.from(new Set<string>([...LGAs, ...values.filter((v): v is string => !!v)]));
+}
+
 // ── Cadres ────────────────────────────────────────────────────────────────────
 // Actual AMEB (Adamawa State Mass Education Board) staff establishment, aligned
 // with the NMEC/state mass education board cadre structure. Each cadre carries
@@ -87,13 +95,10 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   appointment:   { title: 'By Appointment Date',     subtitle: 'Staff sorted by date of first appointment' },
   retirement:    { title: '🎓 Retirement & Tenure',   subtitle: 'Age 60 / 35 years of service projections' },
   promotions:    { title: '📈 Promotions & Progression', subtitle: 'Due/overdue officers & promotion history' },
-  leaves:        { title: '🗓 Leave Management',         subtitle: 'Requests, approvals & annual balances' },
-  payroll:       { title: '💰 Payroll & Salary',         subtitle: 'Monthly payroll sheet (IPPS-ready)' },
   'psn-check':    { title: '🗂 PSN Tools',               subtitle: 'Check PSNs, register new officers & unlock self-service updates' },
   'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },
-  facilitators:  { title: 'Manage Facilitators',     subtitle: 'Facilitator registry — assign to learning centres' },
   'lga-officers':{ title: 'LGA Area Officers',       subtitle: 'One area officer per local government — assigned from staff' },
   centres:       { title: 'Learning Centres Register', subtitle: 'All AMEB learning centres across 21 LGAs' },
   'cms-dashboard': { title: '📝 Content Manager',      subtitle: 'Manage all website content' },

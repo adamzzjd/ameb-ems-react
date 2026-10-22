@@ -35,7 +35,6 @@ export async function dbSaveCentre(
         status: centre.status || 'Active',
         capacity: centre.capacity != null ? centre.capacity : null,
         phone: centre.phone || null,
-        ngo_partner: centre.ngo_partner || null,
         remarks: centre.remarks || null,
         updated_at: new Date().toISOString(),
       })
@@ -58,7 +57,6 @@ export async function dbSaveCentre(
         status: centre.status || 'Active',
         capacity: centre.capacity != null ? centre.capacity : null,
         phone: centre.phone || null,
-        ngo_partner: centre.ngo_partner || null,
         remarks: centre.remarks || null,
       })
       .select()

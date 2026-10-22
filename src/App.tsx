@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { useLocation, Routes, Route } from 'react-router';
 import { useAuth } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
 import { useEmployees } from './hooks/useEmployees';
@@ -20,6 +21,13 @@ import { CADRE_NAMES, CADRE_GRADES, STATIONS } from './data/constants';
 
 // ── Lazy-loaded pages ─────────────────────────────────────────────────────
 const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Landing })));
+// Public website sub-pages — real URLs, served to visitors and to signed-in
+// staff alike (everything else in the portal keeps its state-driven routing).
+const ProgramsPage = lazy(() => import('./pages/public/ProgramsPage').then(m => ({ default: m.ProgramsPage })));
+const ProgramDetailPage = lazy(() => import('./pages/public/ProgramDetailPage').then(m => ({ default: m.ProgramDetailPage })));
+const CentresPage = lazy(() => import('./pages/public/CentresPage').then(m => ({ default: m.CentresPage })));
+const NewsPage = lazy(() => import('./pages/public/NewsPage').then(m => ({ default: m.NewsPage })));
+const NewsArticlePage = lazy(() => import('./pages/public/NewsArticlePage').then(m => ({ default: m.NewsArticlePage })));
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 const SelfService = lazy(() => import('./pages/SelfService').then(m => ({ default: m.SelfService })));
@@ -31,7 +39,6 @@ const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m
 const Appointment = lazy(() => import('./pages/Appointment').then(m => ({ default: m.Appointment })));
 const StationsManager = lazy(() => import('./pages/StationsManager').then(m => ({ default: m.StationsManager })));
 const CadresManager = lazy(() => import('./pages/CadresManager').then(m => ({ default: m.CadresManager })));
-const FacilitatorsManager = lazy(() => import('./pages/FacilitatorsManager').then(m => ({ default: m.FacilitatorsManager })));
 const LgaOfficersManager = lazy(() => import('./pages/LgaOfficersManager').then(m => ({ default: m.LgaOfficersManager })));
 const CentresManager = lazy(() => import('./pages/CentresManager').then(m => ({ default: m.CentresManager })));
 const CmsDashboard = lazy(() => import('./pages/cms/CmsDashboard').then(m => ({ default: m.CmsDashboard })));
@@ -48,8 +55,6 @@ const AuditLogPage = lazy(() => import('./pages/AuditLog').then(m => ({ default:
 const MyAccountPage = lazy(() => import('./pages/MyAccount').then(m => ({ default: m.MyAccountPage })));
 const RetirementPage = lazy(() => import('./pages/Retirement').then(m => ({ default: m.RetirementPage })));
 const PromotionPage = lazy(() => import('./pages/Promotion').then(m => ({ default: m.PromotionPage })));
-const PayrollPage = lazy(() => import('./pages/Payroll').then(m => ({ default: m.PayrollPage })));
-const LeavePage = lazy(() => import('./pages/Leave').then(m => ({ default: m.LeavePage })));
 const PsnCheckPage = lazy(() => import('./pages/PsnCheck').then(m => ({ default: m.PsnCheckPage })));
 const DataQualityPage = lazy(() => import('./pages/DataQuality').then(m => ({ default: m.DataQualityPage })));
 const NotFound = lazy(() => import('./pages/NotFound').then(m => ({ default: m.NotFound })));
@@ -79,6 +84,19 @@ export default function App() {
   // Password-recovery mode: Supabase emails a link that returns here with a
   // `#/reset` hash carrying the recovery tokens (see ResetPassword).
   const [resetMode, setResetMode] = useState(() => window.location.hash.startsWith('#/reset'));
+
+  // ── Public website routes ─────────────────────────────────────────────────
+  // The site's pages have real URLs; `/` stays with the landing page, and any
+  // other path falls through to the portal's own state-driven navigation.
+  const location = useLocation();
+  const publicPath = location.pathname.replace(/\/+$/, '') || '/';
+  const publicPage =
+    /^\/programs\/.+/.test(publicPath) ? 'program'
+    : publicPath === '/programs' ? 'programs'
+    : publicPath === '/centres' ? 'centres'
+    : /^\/news\/.+/.test(publicPath) ? 'article'
+    : publicPath === '/news' ? 'news'
+    : null;
 
   const {
     employees, loading: empLoading,
@@ -206,16 +224,13 @@ export default function App() {
   if (view === 'app' && currentPage.startsWith('cms-') && !can('cms.edit')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
-  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres' || currentPage === 'facilitators' || currentPage === 'lga-officers') && !can('settings.manage')) {
+  if (view === 'app' && (currentPage === 'stations' || currentPage === 'cadres' || currentPage === 'lga-officers') && !can('settings.manage')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
   if (view === 'app' && currentPage === 'users' && !can('users.manage')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
   if (view === 'app' && currentPage === 'audit-log' && !can('audit.view')) {
-    return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
-  }
-  if (view === 'app' && currentPage === 'payroll' && !can('payroll.manage')) {
     return <NotFound message={ACCESS_DENIED} onGoHome={() => setCurrentPage('dashboard')} />;
   }
   if (view === 'app' && currentPage === 'psn-check' && !can('employees.import')) {
@@ -268,12 +283,10 @@ export default function App() {
         return <StationsManager onNavigate={handleNavigate} />;
       case 'cadres':
         return <CadresManager onNavigate={handleNavigate} />;
-      case 'facilitators':
-        return <FacilitatorsManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'lga-officers':
         return <LgaOfficersManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
       case 'centres':
-        return <CentresManager onNavigate={handleNavigate} canManage={can('settings.manage')} />;
+        return <CentresManager employees={employees} canManage={can('settings.manage')} />;
       case 'cms-dashboard':
         return <CmsDashboard onNavigate={handleNavigate} />;
       case 'cms-content':
@@ -302,10 +315,6 @@ export default function App() {
         return <RetirementPage employees={employees} onViewEmployee={handleViewEmployee} />;
       case 'promotions':
         return <PromotionPage employees={employees} onViewEmployee={handleViewEmployee} />;
-      case 'payroll':
-        return <PayrollPage employees={employees} />;
-      case 'leaves':
-        return <LeavePage employees={employees} />;
       case 'psn-check':
         return <PsnCheckPage />;
       case 'data-quality':
@@ -314,6 +323,24 @@ export default function App() {
         return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={() => setCurrentPage('dashboard')} />;
     }
   };
+
+  if (publicPage) {
+    // Declared as real routes so the detail pages can read their `:slug`
+    // through useParams (the portal itself keeps its state-driven navigation).
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingSpinner />}>
+          <Routes>
+            <Route path="/programs" element={<ProgramsPage />} />
+            <Route path="/programs/:slug" element={<ProgramDetailPage />} />
+            <Route path="/centres" element={<CentresPage />} />
+            <Route path="/news" element={<NewsPage />} />
+            <Route path="/news/:slug" element={<NewsArticlePage />} />
+          </Routes>
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>

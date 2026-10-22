@@ -21,7 +21,7 @@ to the Board, and then to production. Work through the checklist top to bottom.
 
 | # | Task | Where |
 |---|------|-------|
-| 1 | Supabase SQL scripts in order: `setup.sql`, `setup_ems.sql`, `setup_storage.sql`, `setup_facilitators.sql`, `setup_enrolments.sql`, `setup_audit.sql`, **then** `setup_rls.sql` last | Supabase → SQL Editor |
+| 1 | Supabase SQL scripts in order: `setup.sql`, `setup_ems.sql`, `setup_storage.sql`, `setup_centre_staff.sql`, `setup_enrolments.sql`, `setup_audit.sql`, **then** `setup_rls.sql` last | Supabase → SQL Editor |
 | 2 | Promote your account: uncomment the super-admin line in `setup_rls.sql` (or run the UPDATE) | Supabase → SQL Editor |
 | 3 | Create an E2E test account (admin+) if you want portal tests | Supabase → Authentication → Users |
 | 4 | Verify image columns: `npm run diag:images` should show 0 base64 / 0 storage URLs | Local terminal |

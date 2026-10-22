@@ -1,14 +1,9 @@
 /* AMEB EMS — Print utilities
    Professional government document printouts with embedded logo.
-   Salary is intentionally excluded from employee prints (paid by the government).
-   Salary IS included in the payroll sheet print (its sole purpose). */
+   Salary is intentionally excluded from employee prints (paid by the government). */
 
 import type { Employee } from '../types';
-import type { Facilitator } from '../types';
-import type { Centre, CentreFacilitator } from '../types';
 import type { LgaAreaOfficer } from '../types';
-import type { PayrollRow } from '../lib/payroll';
-import { fmtNaira } from '../lib/payroll';
 
 // ── Theme ────────────────────────────────────────────────────────────────────
 const GREEN = '#1A5C38';
@@ -192,112 +187,6 @@ export function printEmployeeProfile(employee: Employee, officerLgas: string[] =
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  FACILITATOR PRINTS
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export function printFacilitators(
-  facilitators: Facilitator[],
-  centres: Centre[],
-  links: CentreFacilitator[],
-  title?: string,
-  subtitle?: string
-) {
-  // Build centre-lookup for showing assigned centres
-  const centreMap = new Map(centres.map(c => [c.id, c.name]));
-  const centresByFac = new Map<string, string[]>();
-  links.forEach(l => {
-    const name = centreMap.get(l.centre_id);
-    if (!name) return;
-    const list = centresByFac.get(l.facilitator_id) || [];
-    list.push(name);
-    centresByFac.set(l.facilitator_id, list);
-  });
-  centresByFac.forEach(list => list.sort((a, b) => a.localeCompare(b)));
-
-  const rows = facilitators.map((f, i) => {
-    const assigned = centresByFac.get(f.id) || [];
-    return `
-    <tr>
-      <td style="text-align:center;color:${SLATE};font-size:10px">${i + 1}</td>
-      <td style="font-weight:600">${esc(f.name)}</td>
-      <td>${esc(f.gender || '—')}</td>
-      <td>${esc(f.phone || '—')}</td>
-      <td>${esc(f.lga || '—')}</td>
-      <td>${esc(f.community || '—')}</td>
-      <td>${assigned.length > 0 ? assigned.map(n => esc(n)).join(', ') : '—'}</td>
-    </tr>`;
-  }).join('');
-
-  const html = `<!DOCTYPE html><html><head><title>AMEB Facilitator Register</title>
-  <style>${BASE_CSS}
-    th:first-child{width:30px;text-align:center;}
-    td:first-child{text-align:center;}
-  </style></head><body>
-    ${buildHeader(`Facilitator Registry — ${facilitators.length} facilitators`)}
-    ${title ? `<h2>${esc(title)}</h2>` : ''}
-    <div class="meta">${esc(subtitle || `${facilitators.length} facilitators`)} · Printed ${today()}</div>
-    <table>
-      <thead><tr>
-        <th style="width:30px;text-align:center">#</th>
-        <th>Name</th><th>Gender</th><th>Phone</th>
-        <th>LGA</th><th>Community</th><th>Assigned Centres</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
-    <div class="foot">
-      <span>© Adamawa State Mass Education Board</span>
-      <span>Federal Republic of Nigeria</span>
-    </div>
-  </body></html>`;
-
-  openAndPrint(html);
-}
-
-export function printFacilitatorProfile(
-  facilitator: Facilitator,
-  centreNames: string[]
-) {
-  const html = `<!DOCTYPE html><html><head><title>${facilitator.name} — AMEB Facilitator</title>
-  <style>${BASE_CSS}</style></head><body>
-    <div class="sheet">
-      <div class="sheet-hdr">
-        <div style="flex-shrink:0">${LOGO_SVG}</div>
-        <div style="flex:1">
-          <div class="sheet-org">Adamawa State Mass Education Board</div>
-          <div class="sheet-name">${esc(facilitator.name)}</div>
-          <div class="sheet-sub">Facilitator — Learning Centres Programme</div>
-          <div class="sheet-badges">
-            ${facilitator.gender ? `<span class="sheet-badge" style="background:${GREEN};color:#fff">${esc(facilitator.gender)}</span>` : ''}
-            ${facilitator.lga ? `<span class="sheet-badge" style="background:rgba(255,255,255,.15);color:#fff">📍 ${esc(facilitator.lga)}</span>` : ''}
-          </div>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;">
-        ${[
-          ['Phone', facilitator.phone],
-          ['Community', facilitator.community],
-        ].map(([l, v]) => `<div class="sheet-field"><div class="sheet-fl">${l}</div><div class="sheet-fv">${v ? esc(v) : '—'}</div></div>`).join('')}
-        <div class="sheet-field" style="grid-column:1/-1;">
-          <div class="sheet-fl">Assigned Centres (${centreNames.length})</div>
-          <div class="sheet-fv" style="margin-top:4px">
-            ${centreNames.length > 0
-              ? centreNames.map(n => `<span style="display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(22,163,74,.1);color:#16a34a;margin:2px 4px 2px 0;">🏫 ${esc(n)}</span>`).join('')
-              : '<span style="color:#94a3b8">Not assigned to any centre yet.</span>'}
-          </div>
-        </div>
-      </div>
-      ${facilitator.remarks ? `<div style="padding:10px 16px;background:#fffbeb;border-top:1px solid #fde68a;font-size:12px;color:#78350f;"><strong>Remarks:</strong> ${esc(facilitator.remarks)}</div>` : ''}
-      <div class="sheet-foot">
-        <span>AMEB — Facilitator Registry</span>
-        <span>Printed: ${today()}</span>
-      </div>
-    </div>
-  </body></html>`;
-
-  openAndPrint(html);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 //  LGA AREA OFFICERS PRINT
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -353,53 +242,6 @@ export function printLgaAreaOfficers(
     <div class="foot">
       <span>© Adamawa State Mass Education Board</span>
       <span>Federal Republic of Nigeria</span>
-    </div>
-  </body></html>`;
-
-  openAndPrint(html);
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-//  PAYROLL PRINT (salary IS included here — this is the payroll sheet)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export function printPayrollSheet(rows: PayrollRow[], title: string) {
-  const body = rows.map(r => `
-    <tr>
-      <td style="font-weight:600">${esc(r.name)}</td>
-      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${GREEN};font-weight:600">${esc(r.psn || '—')}</td>
-      <td>${esc(r.grade || '—')}</td>
-      <td>${esc(r.step || '—')}</td>
-      <td>${esc(r.station || '—')}</td>
-      <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(r.basicSalary)}</td>
-      <td style="text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(r.gross)}</td>
-    </tr>
-  `).join('');
-  const totalBasic = rows.reduce((s, r) => s + r.basicSalary, 0);
-  const totalGross = rows.reduce((s, r) => s + r.gross, 0);
-
-  const html = `<!DOCTYPE html><html><head><title>${esc(title)} — AMEB Payroll</title>
-  <style>${BASE_CSS}
-    td{text-align:right;}
-    td:nth-child(-n+5){text-align:left;}
-    tfoot td{font-weight:800;background:#eef2f0;border-top:2px solid ${GREEN};}
-  </style></head><body>
-    ${buildHeader(`${esc(title)} — ${rows.length} officers`)}
-    <table>
-      <thead><tr>
-        <th>Name</th><th>PSN</th><th>Grade</th><th>Step</th><th>Station</th>
-        <th style="text-align:right">Basic Salary</th><th style="text-align:right">Gross</th>
-      </tr></thead>
-      <tbody>${body}</tbody>
-      <tfoot><tr>
-        <td colspan="5" style="padding:7px 10px">TOTAL (${rows.length} officers)</td>
-        <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(totalBasic)}</td>
-        <td style="padding:7px 10px;text-align:right;font-family:'JetBrains Mono',monospace">${fmtNaira(totalGross)}</td>
-      </tr></tfoot>
-    </table>
-    <div class="foot">
-      <span>© Adamawa State Mass Education Board</span>
-      <span>Printed: ${today()}</span>
     </div>
   </body></html>`;
 

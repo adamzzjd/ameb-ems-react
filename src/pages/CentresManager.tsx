@@ -1,15 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Modal } from '../components/ui/Modal';
 import { LGAs } from '../data/constants';
-import type { Centre, Facilitator, CentreFacilitator } from '../types';
+import type { Centre, CentreStaff, Employee } from '../types';
 import { dbLoadCentres, dbSaveCentre, dbDeleteCentre } from '../supabase/centres';
-import {
-  dbLoadFacilitators, dbLoadCentreFacilitators, dbSetCentreFacilitators, dbAddFacilitator,
-} from '../supabase/facilitators';
+import { dbLoadCentreStaff, dbSetCentreStaff } from '../supabase/centreStaff';
 import { useToast } from '../hooks/useToast';
 
 interface CentresManagerProps {
-  onNavigate?: (page: string) => void;
+  /** The staff register — facilitators are selected from these employees. */
+  employees?: Employee[];
   canManage?: boolean;
 }
 
@@ -51,30 +50,28 @@ function statusBg(s: string | null | undefined): string {
   }
 }
 
-// ── Searchable multi-select picker for assigning facilitators ──────────────
-function FacilitatorPicker({
-  facilitators, selected, onChange, canManage, onQuickAdd, onManageLink,
+// ── Searchable multi-select picker for assigning staff as facilitators ─────
+function StaffPicker({
+  staff, selected, onChange, canManage,
 }: {
-  facilitators: Facilitator[];
+  staff: Employee[];
   selected: string[];
   onChange: (ids: string[]) => void;
   canManage: boolean;
-  onQuickAdd: (name: string) => void;
-  onManageLink?: () => void;
 }) {
   const [query, setQuery] = useState('');
-  const [quickName, setQuickName] = useState('');
   const [showList, setShowList] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase();
-    return facilitators.filter(f =>
+    return staff.filter(e =>
       !q ||
-      (f.name || '').toLowerCase().includes(q) ||
-      (f.lga || '').toLowerCase().includes(q) ||
-      (f.community || '').toLowerCase().includes(q)
+      (e.name || '').toLowerCase().includes(q) ||
+      (e.lga || '').toLowerCase().includes(q) ||
+      (e.station || '').toLowerCase().includes(q) ||
+      (e.psn || '').toLowerCase().includes(q)
     );
-  }, [facilitators, query]);
+  }, [staff, query]);
 
   const toggle = (id: string) => {
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
@@ -87,10 +84,10 @@ function FacilitatorPicker({
       {selected.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
           {selected.map(id => {
-            const f = facilitators.find(x => x.id === id);
+            const e = staff.find(x => x.id === id);
             return (
               <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 9px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'rgba(22,163,74,.1)', color: '#16a34a' }}>
-                {esc(f?.name || '—')}
+                {esc(e?.name || '—')}
                 {canManage && (
                   <span onClick={() => toggle(id)} title="Remove" style={{ cursor: 'pointer', fontWeight: 800, fontSize: 13, lineHeight: 1 }}>×</span>
                 )}
@@ -105,60 +102,39 @@ function FacilitatorPicker({
           value={query}
           onChange={e => { setQuery(e.target.value); setShowList(true); }}
           onFocus={() => setShowList(true)}
-          placeholder="Search facilitators to assign…"
+          placeholder="Search the staff register to assign a facilitator…"
           style={inputStyle}
         />
         {showList && (
           <div style={{ marginTop: 4, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 8, maxHeight: 190, overflowY: 'auto' }}>
             {filtered.length === 0 ? (
               <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--color-text-muted)' }}>
-                No facilitators found. {canManage && 'Add one below.'}
+                No staff match “{query}”. Facilitators are chosen from the staff register.
               </div>
-            ) : filtered.map(f => {
-              const checked = selected.includes(f.id);
+            ) : filtered.slice(0, 50).map(e => {
+              const checked = selected.includes(e.id);
               return (
-                <label key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 13, background: checked ? 'rgba(22,163,74,.06)' : '#fff' }}>
-                  <input type="checkbox" checked={checked} onChange={() => toggle(f.id)} style={{ accentColor: 'var(--color-primary)' }} />
-                  <span style={{ flex: 1, fontWeight: checked ? 700 : 500, color: 'var(--color-text-primary)' }}>{esc(f.name)}</span>
-                  {f.lga && <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{esc(f.lga)}</span>}
+                <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', cursor: 'pointer', fontSize: 13, background: checked ? 'rgba(22,163,74,.06)' : '#fff' }}>
+                  <input type="checkbox" checked={checked} onChange={() => toggle(e.id)} style={{ accentColor: 'var(--color-primary)' }} />
+                  <span style={{ flex: 1, fontWeight: checked ? 700 : 500, color: 'var(--color-text-primary)' }}>
+                    {esc(e.name)}
+                    {e.psn && <span style={{ display: 'block', fontSize: 10, fontWeight: 400, fontFamily: "'JetBrains Mono', monospace", color: 'var(--color-primary)' }}>{esc(e.psn)}</span>}
+                  </span>
+                  {e.station && <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{esc(e.station)}</span>}
                 </label>
               );
             })}
-            {canManage && (
-              <div style={{ borderTop: '1px solid var(--color-border)', padding: '8px 12px', display: 'flex', gap: 6, background: 'var(--color-surface-warm)' }}>
-                <input
-                  value={quickName}
-                  onChange={e => setQuickName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter' && quickName.trim()) { onQuickAdd(quickName.trim()); setQuickName(''); } }}
-                  placeholder="Add new facilitator name…"
-                  style={{ flex: 1, padding: '5px 8px', border: '1px solid var(--color-border)', borderRadius: 6, fontSize: 12, outline: 'none', background: '#fff' }}
-                />
-                <button
-                  onClick={() => { if (quickName.trim()) { onQuickAdd(quickName.trim()); setQuickName(''); } }}
-                  style={{ padding: '5px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: 'var(--color-primary)', color: '#fff' }}
-                >
-                  + Add
-                </button>
-              </div>
-            )}
           </div>
         )}
       </div>
-
-      {onManageLink && (
-        <div style={{ marginTop: 6, fontSize: 12 }}>
-          <span onClick={onManageLink} style={{ color: 'var(--color-primary)', cursor: 'pointer', fontWeight: 600 }}>Manage facilitator registry →</span>
-        </div>
-      )}
     </div>
   );
 }
 
-export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
+export function CentresManager({ employees = [], canManage }: CentresManagerProps) {
   const { toast } = useToast();
   const [centres, setCentres] = useState<Centre[]>([]);
-  const [facilitators, setFacilitators] = useState<Facilitator[]>([]);
-  const [links, setLinks] = useState<CentreFacilitator[]>([]);
+  const [links, setLinks] = useState<CentreStaff[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Filter state
@@ -178,8 +154,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
   const [formStatus, setFormStatus] = useState('Active');
   const [formCapacity, setFormCapacity] = useState('');
   const [formPhone, setFormPhone] = useState('');
-  const [formFacilitatorIds, setFormFacilitatorIds] = useState<string[]>([]);
-  const [formNgo, setFormNgo] = useState('');
+  const [formStaffIds, setFormStaffIds] = useState<string[]>([]);
   const [formRemarks, setFormRemarks] = useState('');
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -193,32 +168,30 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [centreRes, facRes, linkRes] = await Promise.all([
+    const [centreRes, linkRes] = await Promise.all([
       dbLoadCentres(),
-      dbLoadFacilitators(),
-      dbLoadCentreFacilitators(),
+      dbLoadCentreStaff(),
     ]);
     if (!centreRes.error && centreRes.data) setCentres(centreRes.data);
-    if (!facRes.error && facRes.data) setFacilitators(facRes.data);
     if (!linkRes.error && linkRes.data) setLinks(linkRes.data);
     setLoading(false);
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // centreId → assigned facilitators (sorted by name)
-  const facilitatorsByCentre = useMemo(() => {
-    const map = new Map<string, Facilitator[]>();
+  // centreId → assigned staff (sorted by name)
+  const staffByCentre = useMemo(() => {
+    const map = new Map<string, Employee[]>();
     links.forEach(l => {
-      const f = facilitators.find(x => x.id === l.facilitator_id);
-      if (!f) return;
+      const e = employees.find(x => x.id === l.employee_id);
+      if (!e) return;
       const list = map.get(l.centre_id) || [];
-      list.push(f);
+      list.push(e);
       map.set(l.centre_id, list);
     });
     map.forEach(list => list.sort((a, b) => a.name.localeCompare(b.name)));
     return map;
-  }, [links, facilitators]);
+  }, [links, employees]);
 
   // Derived stats
   const stats = useMemo(() => {
@@ -234,10 +207,9 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
       total: centres.length,
       active: byStatus['Active'] || 0,
       lgasCovered: Object.keys(byLGA).length,
-      withNgo: centres.filter(c => c.ngo_partner).length,
-      facilitators: facilitators.length,
+      facilitators: new Set(links.map(l => l.employee_id)).size,
     };
-  }, [centres, facilitators]);
+  }, [centres, links]);
 
   // Filtered centres
   const filtered = useMemo(() => {
@@ -245,13 +217,12 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     return centres.filter(c =>
       (!q || (c.name||'').toLowerCase().includes(q) ||
              (c.community||'').toLowerCase().includes(q) ||
-             (c.ngo_partner||'').toLowerCase().includes(q) ||
-             (facilitatorsByCentre.get(c.id) || []).some(f => (f.name||'').toLowerCase().includes(q)))
+             (staffByCentre.get(c.id) || []).some(f => (f.name||'').toLowerCase().includes(q)))
       && (!filterLGA    || c.lga    === filterLGA)
       && (!filterType   || c.type   === filterType)
       && (!filterStatus || c.status === filterStatus)
     );
-  }, [centres, search, filterLGA, filterType, filterStatus, facilitatorsByCentre]);
+  }, [centres, search, filterLGA, filterType, filterStatus, staffByCentre]);
 
   const clearFilters = () => {
     setSearch('');
@@ -272,8 +243,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     setFormStatus('Active');
     setFormCapacity('');
     setFormPhone('');
-    setFormFacilitatorIds([]);
-    setFormNgo('');
+    setFormStaffIds([]);
     setFormRemarks('');
     setFormError('');
     setShowForm(true);
@@ -289,22 +259,10 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     setFormStatus(c.status || 'Active');
     setFormCapacity(c.capacity != null ? String(c.capacity) : '');
     setFormPhone(c.phone || '');
-    setFormFacilitatorIds((facilitatorsByCentre.get(c.id) || []).map(f => f.id));
-    setFormNgo(c.ngo_partner || '');
+    setFormStaffIds((staffByCentre.get(c.id) || []).map(f => f.id));
     setFormRemarks(c.remarks || '');
     setFormError('');
     setShowForm(true);
-  };
-
-  const handleQuickAddFacilitator = async (name: string) => {
-    if (!canManage) { toast('Admin access required.', true); return; }
-    const { data, error } = await dbAddFacilitator(name);
-    if (error) { toast('Failed to add facilitator: ' + error.message, true); return; }
-    if (data) {
-      setFacilitators(prev => [...prev, data]);
-      setFormFacilitatorIds(prev => prev.includes(data.id) ? prev : [...prev, data.id]);
-      toast(`✓ Facilitator "${name}" added and assigned.`);
-    }
   };
 
   const handleSave = async () => {
@@ -325,7 +283,6 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
       status: formStatus || 'Active',
       capacity: formCapacity ? parseInt(formCapacity) || null : null,
       phone: formPhone.trim(),
-      ngo_partner: formNgo.trim(),
       remarks: formRemarks.trim(),
     };
 
@@ -336,14 +293,14 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
       return;
     }
     if (data) {
-      // Persist facilitator assignments (replace set)
-      const { error: linkErr } = await dbSetCentreFacilitators(data.id, formFacilitatorIds);
+      // Persist staff assignments (replace set)
+      const { error: linkErr } = await dbSetCentreStaff(data.id, formStaffIds);
       if (linkErr) {
         toast('Centre saved, but facilitator assignment failed: ' + linkErr.message, true);
       } else {
         setLinks(prev => [
           ...prev.filter(l => l.centre_id !== data.id),
-          ...formFacilitatorIds.map(fid => ({ centre_id: data.id, facilitator_id: fid })),
+          ...formStaffIds.map(employeeId => ({ centre_id: data.id, employee_id: employeeId })),
         ]);
       }
       if (editing) {
@@ -381,7 +338,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
   const handlePrintCentres = (items: Centre[]) => {
     if (!items.length) { toast('No centres to print.', true); return; }
     const rows = items.map((c, i) => {
-      const facNames = (facilitatorsByCentre.get(c.id) || []).map(f => f.name).join(', ');
+      const facNames = (staffByCentre.get(c.id) || []).map(f => f.name).join(', ');
       return `
       <tr>
         <td>${i + 1}</td>
@@ -391,7 +348,6 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
         <td>${esc(c.community||'—')}</td>
         <td>${esc(c.type||'—')}</td>
         <td>${esc(facNames || '—')}</td>
-        <td>${esc(c.ngo_partner||'—')}</td>
         <td>${esc(c.capacity != null ? String(c.capacity) : '—')}</td>
         <td>${esc(c.status||'—')}</td>
       </tr>`;
@@ -422,7 +378,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
     <p>Total: <strong>${items.length}</strong> centre${items.length !== 1 ? 's' : ''} &middot; Printed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
     <table><thead><tr>
       <th>#</th><th>Centre Name</th><th>LGA</th><th>Ward</th><th>Community</th>
-      <th>Type</th><th>Facilitators</th><th>NGO Partner</th><th>Capacity</th><th>Status</th>
+      <th>Type</th><th>Facilitators</th><th>Capacity</th><th>Status</th>
     </tr></thead><tbody>${rows}</tbody></table>
     <div class="foot"><span>AMEB EMS &middot; Learning Centres Register</span><span>Printed: ${new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>
     <script>window.onload=function(){window.print();}<\/script></body></html>`);
@@ -430,7 +386,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
   };
 
   const handlePrintSingle = (c: Centre) => {
-    const facNames = (facilitatorsByCentre.get(c.id) || []).map(f => f.name).join(', ');
+    const facNames = (staffByCentre.get(c.id) || []).map(f => f.name).join(', ');
     const w = window.open('', '_blank');
     if (!w) return;
     w.document.write(`<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${esc(c.name)}</title>
@@ -462,7 +418,6 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
         <div class="field"><div class="fl">Capacity</div><div class="fv">${c.capacity != null ? c.capacity : '—'}</div></div>
         <div class="field"><div class="fl">Facilitators</div><div class="fv">${esc(facNames || '—')}</div></div>
         <div class="field"><div class="fl">Phone</div><div class="fv">${esc(c.phone||'—')}</div></div>
-        <div class="field"><div class="fl">NGO Partner</div><div class="fv">${esc(c.ngo_partner||'—')}</div></div>
         <div class="field"><div class="fl">Status</div><div class="fv">${esc(c.status||'—')}</div></div>
       </div>
       ${c.remarks ? `<div class="rem"><strong>Remarks:</strong> ${esc(c.remarks)}</div>` : ''}
@@ -503,12 +458,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
         <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px' }}>Facilitators</div>
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)', marginTop: 2 }}>{stats.facilitators}</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>In the registry</div>
-        </div>
-        <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px' }}>With NGO Partner</div>
-          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)', marginTop: 2 }}>{stats.withNgo}</div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Supported centres</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Assigned to centres</div>
         </div>
       </div>
 
@@ -588,7 +538,6 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                 <th style={thStyle}>Community</th>
                 <th style={thStyle}>Type</th>
                 <th style={thStyle}>Facilitators</th>
-                <th style={thStyle}>NGO Partner</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Actions</th>
               </tr>
@@ -596,7 +545,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} style={{ textAlign: 'center', padding: 44 }}>
+                  <td colSpan={8} style={{ textAlign: 'center', padding: 44 }}>
                     <div style={{ fontSize: 38, marginBottom: 10 }}>🏫</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 5 }}>
                       {centres.length > 0 ? 'No centres match your filters.' : 'No centres yet.'}
@@ -609,7 +558,7 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                   </td>
                 </tr>
               ) : filtered.map((c, i) => {
-                const assigned = facilitatorsByCentre.get(c.id) || [];
+                const assigned = staffByCentre.get(c.id) || [];
                 return (
                   <tr key={c.id} style={{ borderBottom: '1px solid var(--color-border)', background: i % 2 === 0 ? 'var(--color-surface)' : 'var(--color-surface-warm)' }}>
                     <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--color-text-primary)', cursor: 'pointer' }}
@@ -638,7 +587,6 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                         </div>
                       )}
                     </td>
-                    <td style={{ ...tdStyle, fontSize: 12 }}>{esc(c.ngo_partner || '—')}</td>
                     <td style={tdStyle}>
                       <span style={{
                         display: 'inline-block', padding: '2px 9px', borderRadius: 20,
@@ -745,21 +693,14 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>
-              Assigned Facilitators <span style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>({formFacilitatorIds.length} selected — you can assign more than one)</span>
+              Assigned Facilitators <span style={{ fontWeight: 500, color: 'var(--color-text-muted)' }}>({formStaffIds.length} selected from the staff register)</span>
             </label>
-            <FacilitatorPicker
-              facilitators={facilitators}
-              selected={formFacilitatorIds}
-              onChange={setFormFacilitatorIds}
+            <StaffPicker
+              staff={employees}
+              selected={formStaffIds}
+              onChange={setFormStaffIds}
               canManage={!!canManage}
-              onQuickAdd={handleQuickAddFacilitator}
-              onManageLink={() => { setShowForm(false); if (onNavigate) onNavigate('facilitators'); }}
             />
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--color-text-secondary)' }}>NGO Partner</label>
-            <input value={formNgo} onChange={e => setFormNgo(e.target.value)} placeholder="e.g. UNICEF, Save the Children" style={inputStyle} />
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -812,11 +753,6 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                 <span style={{ background: 'rgba(255,255,255,.15)', color: '#fff', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
                   📍 {esc(viewCentre.lga || '—')}
                 </span>
-                {viewCentre.ngo_partner && (
-                  <span style={{ background: 'rgba(225,245,238,.15)', color: '#e1f5ee', padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700 }}>
-                    🤝 {esc(viewCentre.ngo_partner)}
-                  </span>
-                )}
               </div>
             </div>
 
@@ -828,7 +764,6 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
                 ['Community', viewCentre.community],
                 ['Capacity', viewCentre.capacity != null ? String(viewCentre.capacity) : null],
                 ['Phone', viewCentre.phone],
-                ['NGO Partner', viewCentre.ngo_partner],
                 ['Status', viewCentre.status],
               ].map(([label, val]) => (
                 <div key={String(label)} style={{ padding: '9px 14px', borderBottom: '1px solid var(--color-border)', borderRight: label === 'LGA' || label === 'Community' || label === 'Phone' || label === 'Status' ? '1px solid var(--color-border)' : 'none' }}>
@@ -841,13 +776,13 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
             {/* Facilitators */}
             <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--color-border)' }}>
               <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px', marginBottom: 7 }}>
-                Facilitators ({facilitatorsByCentre.get(viewCentre.id)?.length || 0})
+                Facilitators ({staffByCentre.get(viewCentre.id)?.length || 0})
               </div>
-              {(facilitatorsByCentre.get(viewCentre.id) || []).length === 0 ? (
+              {(staffByCentre.get(viewCentre.id) || []).length === 0 ? (
                 <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>No facilitators assigned to this centre.</div>
               ) : (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {(facilitatorsByCentre.get(viewCentre.id) || []).map(f => (
+                  {(staffByCentre.get(viewCentre.id) || []).map(f => (
                     <span key={f.id} style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, background: 'rgba(22,163,74,.1)', color: '#16a34a' }}>
                       🧑‍🏫 {esc(f.name)}{f.lga ? ` · ${esc(f.lga)}` : ''}
                     </span>
@@ -893,10 +828,10 @@ export function CentresManager({ onNavigate, canManage }: CentresManagerProps) {
           </div>
           <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
             This will permanently remove the centre from the register.
-            {(facilitatorsByCentre.get(showDelete?.id || '') || []).length > 0 && (
+            {(staffByCentre.get(showDelete?.id || '') || []).length > 0 && (
               <>
                 <br />
-                It is assigned {facilitatorsByCentre.get(showDelete?.id || '')!.length} facilitator{(facilitatorsByCentre.get(showDelete?.id || '') || []).length !== 1 ? 's' : ''} — they will be unlinked.
+                It is assigned {staffByCentre.get(showDelete?.id || '')!.length} facilitator{(staffByCentre.get(showDelete?.id || '') || []).length !== 1 ? 's' : ''} — they will be unlinked.
               </>
             )}
           </div>

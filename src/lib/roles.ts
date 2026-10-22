@@ -35,9 +35,7 @@ export type Permission =
   | 'settings.manage'
   | 'cms.edit'
   | 'users.manage'
-  | 'audit.view'
-  | 'payroll.manage'
-  | 'leave.approve';
+  | 'audit.view';
 
 // ── Permission matrix ───────────────────────────────────────────────────────
 //    super_admin  → everything, including user management
@@ -56,8 +54,6 @@ const PERMISSIONS: Record<Role, readonly Permission[]> = {
     'cms.edit',
     'users.manage',
     'audit.view',
-    'payroll.manage',
-    'leave.approve',
   ],
   admin: [
     'employees.view',
@@ -68,8 +64,6 @@ const PERMISSIONS: Record<Role, readonly Permission[]> = {
     'employees.export',
     'settings.manage',
     'cms.edit',
-    'payroll.manage',
-    'leave.approve',
   ],
   data_collector: [
     'employees.view',

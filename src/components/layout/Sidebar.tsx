@@ -10,8 +10,8 @@ import { ROLE_LABELS, type Permission } from '@/lib/roles';
 import {
   LayoutDashboard, Users, MapPin, Map, BarChart3, Calendar,
   GraduationCap, BookOpen, Building2, Settings, FileText,
-  Download, Printer, Plus, LogOut, UserCog, UsersRound, Save,
-  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp, Wallet, CalendarDays,
+  Download, Printer, Plus, LogOut, UserCog, Save,
+  Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp,
   MapPinned,
   UserPlus,
 } from 'lucide-react';
@@ -64,7 +64,6 @@ const navSections: NavSection[] = [
       { page: 'appointment', icon: <Calendar size={18} />, label: 'Appointment Date' },
       { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
       { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
-      { page: 'leaves', icon: <CalendarDays size={18} />, label: 'Leave Management' },
       { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
       { page: 'centres', icon: <GraduationCap size={18} />, label: 'Learning Centres' },
       { page: 'lga-officers', icon: <MapPinned size={18} />, label: 'LGA Area Officers', permission: 'settings.manage' },
@@ -76,8 +75,6 @@ const navSections: NavSection[] = [
     items: [
       { page: 'stations', icon: <Building2 size={18} />, label: 'Manage Stations' },
       { page: 'cadres', icon: <BookOpen size={18} />, label: 'Manage Cadres' },
-      { page: 'facilitators', icon: <UsersRound size={18} />, label: 'Manage Facilitators' },
-      { page: 'payroll', icon: <Wallet size={18} />, label: 'Payroll & Salary', permission: 'payroll.manage' },
       { page: 'users', icon: <UserCog size={18} />, label: 'User Management', permission: 'users.manage' },
       { page: 'audit-log', icon: <FileText size={18} />, label: 'Audit Log', permission: 'audit.view' },
     ],

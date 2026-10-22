@@ -65,7 +65,7 @@ const { logAudit } = vi.hoisted(() => ({ logAudit: vi.fn() }));
 vi.mock('../audit', () => ({ logAudit, dbLoadAuditLog: vi.fn() }));
 
 import { dbSaveCentre, dbDeleteCentre } from '../centres';
-import { dbAddFacilitator, dbUpdateFacilitator, dbDeleteFacilitator, dbSetCentreFacilitators } from '../facilitators';
+import { dbLoadCentreStaff, dbSetCentreStaff } from '../centreStaff';
 import { dbLoadEnrolmentStats, dbSaveEnrolmentStat, dbDeleteEnrolmentStat } from '../enrolments';
 import { dbLoadLgaAreaOfficers, dbSetLgaAreaOfficer, dbRemoveLgaAreaOfficer } from '../lgaOfficers';
 
@@ -133,62 +133,47 @@ describe('centres service', () => {
   });
 });
 
-describe('facilitators service', () => {
-  it('dbAddFacilitator inserts and audits a create', async () => {
-    resolve({ id: 'f-1', name: 'Aisha Bello' });
-    const { data, error } = await dbAddFacilitator('Aisha Bello', { lga: 'Yola North' });
+describe('centre staff service', () => {
+  it('dbLoadCentreStaff reads every centre↔staff link', async () => {
+    resolve([{ centre_id: 'c-1', employee_id: 'e-1' }]);
+    const { data, error } = await dbLoadCentreStaff();
 
     expect(error).toBeNull();
-    expect(data?.id).toBe('f-1');
-    const insert = opsOf('facilitators', 'insert')[0].payload as Record<string, unknown>;
-    expect(insert.name).toBe('Aisha Bello');
-    expect(insert.lga).toBe('Yola North');
-    expect(insert.gender).toBeNull();
-    expect(logAudit).toHaveBeenCalledWith({
-      action: 'create', table: 'facilitators', rowId: 'f-1', details: { name: 'Aisha Bello' },
-    });
+    expect(data).toHaveLength(1);
+    expect(data?.[0].employee_id).toBe('e-1');
   });
 
-  it('dbUpdateFacilitator updates and audits', async () => {
-    resolve({ id: 'f-1', name: 'Aisha Bello' });
-    const { error } = await dbUpdateFacilitator('f-1', 'Aisha Bello', { community: 'Jambutu' });
-    expect(error).toBeNull();
-    expect(opsOf('facilitators', 'update')).toHaveLength(1);
-    expect(opsOf('facilitators', 'eq')[0]).toMatchObject({ col: 'id', val: 'f-1' });
-    expect(logAudit).toHaveBeenCalledWith({
-      action: 'update', table: 'facilitators', rowId: 'f-1', details: { name: 'Aisha Bello' },
-    });
-  });
-
-  it('dbDeleteFacilitator deletes and audits', async () => {
+  it('dbSetCentreStaff replaces assignments and audits the count', async () => {
     resolve(null);
-    const { error } = await dbDeleteFacilitator('f-1');
-    expect(error).toBeNull();
-    expect(opsOf('facilitators', 'delete')).toHaveLength(1);
-    expect(logAudit).toHaveBeenCalledWith({ action: 'delete', table: 'facilitators', rowId: 'f-1' });
-  });
-
-  it('dbSetCentreFacilitators replaces assignments and audits the count', async () => {
-    resolve(null);
-    const { error } = await dbSetCentreFacilitators('c-1', ['f-1', 'f-2']);
+    const { error } = await dbSetCentreStaff('c-1', ['e-1', 'e-2']);
 
     expect(error).toBeNull();
     // delete of old links + insert of the new set
-    expect(opsOf('centre_facilitators', 'delete')).toHaveLength(1);
-    const insert = opsOf('centre_facilitators', 'insert')[0].payload as { centre_id: string; facilitator_id: string }[];
+    expect(opsOf('centre_staff', 'delete')).toHaveLength(1);
+    const insert = opsOf('centre_staff', 'insert')[0].payload as { centre_id: string; employee_id: string }[];
     expect(insert).toHaveLength(2);
-    expect(insert[1]).toEqual({ centre_id: 'c-1', facilitator_id: 'f-2' });
+    expect(insert[1]).toEqual({ centre_id: 'c-1', employee_id: 'e-2' });
     expect(logAudit).toHaveBeenCalledWith({
-      action: 'assign', table: 'centre_facilitators', rowId: 'c-1', details: { count: 2 },
+      action: 'assign', table: 'centre_staff', rowId: 'c-1', details: { count: 2 },
     });
   });
 
-  it('dbSetCentreFacilitators does not insert when the delete fails', async () => {
+  it('dbSetCentreStaff does not insert when the delete fails', async () => {
     // First op (delete) fails → no insert, no audit
     resolve(null, new Error('no permission'));
-    const { error } = await dbSetCentreFacilitators('c-1', ['f-1']);
+    const { error } = await dbSetCentreStaff('c-1', ['e-1']);
     expect(error).toBeTruthy();
-    expect(opsOf('centre_facilitators', 'insert')).toHaveLength(0);
+    expect(opsOf('centre_staff', 'insert')).toHaveLength(0);
+    expect(logAudit).not.toHaveBeenCalled();
+  });
+
+  it('dbSetCentreStaff clears every link without inserting anything', async () => {
+    resolve(null);
+    const { error } = await dbSetCentreStaff('c-1', []);
+
+    expect(error).toBeNull();
+    expect(opsOf('centre_staff', 'delete')).toHaveLength(1);
+    expect(opsOf('centre_staff', 'insert')).toHaveLength(0);
     expect(logAudit).not.toHaveBeenCalled();
   });
 });

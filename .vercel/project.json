@@ -1,0 +1,16 @@
+{
+  "projectId": "prj_2yF61EXVKilIqEbM2p22WFMoy3wb",
+  "orgId": "team_WIiwhk3Vu18UdHMzD1n2h0QB",
+  "projectName": "ameb-ems-react",
+  "settings": {
+    "createdAt": 1792499157865,
+    "framework": "vite",
+    "devCommand": null,
+    "installCommand": "npm install",
+    "buildCommand": "npm run build",
+    "outputDirectory": "dist",
+    "rootDirectory": null,
+    "directoryListing": false,
+    "nodeVersion": "24.x"
+  }
+}

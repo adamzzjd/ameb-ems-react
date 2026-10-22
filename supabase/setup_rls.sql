@@ -2,7 +2,7 @@
 -- AMEB EMS — Row Level Security (RLS) Setup
 -- ----------------------------------------------------------------------------
 -- Enforces the role system in the database. Run this AFTER setup.sql,
--- setup_ems.sql, setup_storage.sql, setup_facilitators.sql and
+-- setup_ems.sql, setup_storage.sql, setup_centre_staff.sql and
 -- setup_lga_officers.sql, in the Supabase
 -- dashboard SQL Editor. Safe to run multiple times (drops and recreates policies).
 --
@@ -14,7 +14,7 @@
 --   employees        : any signed-in user (any role) can read; data_collector+
 --                      can insert/update; admin+ can delete.
 --   stations/cadres/centres: any signed-in user can read; admin+ can write.
---   facilitators/centre_facilitators: any signed-in user can read; admin+ can write.
+--   centre_staff: any signed-in user can read; admin+ can write.
 --   lga_area_officers: any signed-in user can read; admin+ can write (one area
 --                      officer per LGA, drawn from the staff register).
 --   CMS content      : public read (anon — the Landing page needs it); admin+ write.
@@ -36,8 +36,6 @@ alter table public.employees      enable row level security;
 alter table public.stations       enable row level security;
 alter table public.cadres         enable row level security;
 alter table public.centres        enable row level security;
-alter table public.facilitators       enable row level security;
-alter table public.centre_facilitators enable row level security;
 alter table public.site_content   enable row level security;
 alter table public.cms_programs   enable row level security;
 alter table public.cms_news       enable row level security;
@@ -120,38 +118,25 @@ drop policy if exists "centres_delete" on public.centres;
 create policy "centres_delete" on public.centres
   for delete using (public.auth_role() in ('admin', 'super_admin'));
 
--- ── 4.5. Facilitators (registry + centre assignments) ───────────────────────
+-- ── 4.5. Centre Staff (facilitators, drawn from the staff register) ────────
 -- Same access model as stations/cadres/centres: any signed-in user reads,
--- admin+ writes. The join table lets a centre have many facilitators and a
--- facilitator serve many centres.
-drop policy if exists "facilitators_select" on public.facilitators;
-create policy "facilitators_select" on public.facilitators
-  for select using (public.auth_role() is not null);
+-- admin+ writes. A centre has many facilitators; a staff member can serve many
+-- centres. Guarded so this file stays safe to re-run before
+-- setup_centre_staff.sql has been applied.
+do $$
+begin
+  if exists (select 1 from information_schema.tables
+             where table_schema = 'public' and table_name = 'centre_staff') then
+    execute 'drop policy if exists "centre_staff_select" on public.centre_staff';
+    execute 'create policy "centre_staff_select" on public.centre_staff for select using (public.auth_role() is not null)';
 
-drop policy if exists "facilitators_insert" on public.facilitators;
-create policy "facilitators_insert" on public.facilitators
-  for insert with check (public.auth_role() in ('admin', 'super_admin'));
+    execute 'drop policy if exists "centre_staff_insert" on public.centre_staff';
+    execute 'create policy "centre_staff_insert" on public.centre_staff for insert with check (public.auth_role() in (''admin'', ''super_admin''))';
 
-drop policy if exists "facilitators_update" on public.facilitators;
-create policy "facilitators_update" on public.facilitators
-  for update using (public.auth_role() in ('admin', 'super_admin'))
-  with check (public.auth_role() in ('admin', 'super_admin'));
-
-drop policy if exists "facilitators_delete" on public.facilitators;
-create policy "facilitators_delete" on public.facilitators
-  for delete using (public.auth_role() in ('admin', 'super_admin'));
-
-drop policy if exists "centre_facilitators_select" on public.centre_facilitators;
-create policy "centre_facilitators_select" on public.centre_facilitators
-  for select using (public.auth_role() is not null);
-
-drop policy if exists "centre_facilitators_insert" on public.centre_facilitators;
-create policy "centre_facilitators_insert" on public.centre_facilitators
-  for insert with check (public.auth_role() in ('admin', 'super_admin'));
-
-drop policy if exists "centre_facilitators_delete" on public.centre_facilitators;
-create policy "centre_facilitators_delete" on public.centre_facilitators
-  for delete using (public.auth_role() in ('admin', 'super_admin'));
+    execute 'drop policy if exists "centre_staff_delete" on public.centre_staff';
+    execute 'create policy "centre_staff_delete" on public.centre_staff for delete using (public.auth_role() in (''admin'', ''super_admin''))';
+  end if;
+end $$;
 
 -- ── 4.6. LGA Area Officers (read for all users, write for admin+) ──────────
 -- Guarded so this file stays safe to re-run before setup_lga_officers.sql.

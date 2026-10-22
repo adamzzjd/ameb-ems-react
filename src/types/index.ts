@@ -13,7 +13,6 @@ export interface Employee {
   psn: string | null;
   station: string | null;
   photo: string | null;
-  basic_salary: number | null;
   step: string | null;
   address: string | null;
   remarks: string;
@@ -36,7 +35,6 @@ export interface EmployeeFormData {
   psn: string;
   station: string;
   photo: string;
-  basic_salary: number | null;
   step: string | null;
   remarks: string;
 }
@@ -178,29 +176,17 @@ export interface Centre {
   status: string;
   capacity: number | null;
   phone: string;
-  ngo_partner: string;
   remarks: string;
   created_at?: string;
   updated_at?: string;
 }
 
-export interface Facilitator {
-  id: string;
-  name: string;
-  gender: string | null;
-  phone: string | null;
-  lga: string | null;
-  community: string | null;
-  remarks: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Many-to-many: a centre can have many facilitators, and a facilitator can
-// serve many centres.
-export interface CentreFacilitator {
+// Centre ↔ Staff (many-to-many): a centre's facilitators are drawn from the
+// staff register, so one person is one record everywhere and removing somebody
+// from the register removes them as a facilitator too.
+export interface CentreStaff {
   centre_id: string;
-  facilitator_id: string;
+  employee_id: string;
   created_at?: string;
 }
 
@@ -216,8 +202,9 @@ export interface LgaAreaOfficer {
   updated_at?: string;
 }
 
-// Public projection of a centre (the `public_centres` view) — safe fields +
-// facilitator names only, never internal remarks.
+// Public projection of a centre (the `public_centres` view, built by
+// setup_centre_staff.sql) — approved centres only, safe fields plus facilitator
+// names drawn from the staff register, never internal remarks.
 export interface PublicCentre {
   id: string;
   name: string;
@@ -228,7 +215,9 @@ export interface PublicCentre {
   status: string;
   capacity: number | null;
   phone: string | null;
-  ngo_partner: string | null;
+  owner_type: string;
+  centre_code: string | null;
+  partner_name: string | null;
   facilitators: string[];
 }
 
@@ -255,23 +244,6 @@ export const DOCUMENT_CATEGORIES = [
   'Other',
 ] as const;
 
-
-// ── Leave Requests ───────────────────────────────────────────────────────────
-export interface LeaveRecord {
-  id: string;
-  employee_id: string;
-  leave_type: string;
-  start_date: string;
-  end_date: string;
-  days: number;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  decided_by: string | null;
-  decided_at: string | null;
-  decided_note: string | null;
-  created_by: string | null;
-  created_at?: string;
-}
 
 // ── Promotion History ─────────────────────────────────────────────────────────
 export interface PromotionRecord {
@@ -353,7 +325,6 @@ export type AppPage =
   | 'appointment'
   | 'stations'
   | 'cadres'
-  | 'facilitators'
   | 'lga-officers'
   | 'centres'
   | 'cms-dashboard'
@@ -370,7 +341,5 @@ export type AppPage =
   | 'account'
   | 'retirement'
   | 'promotions'
-  | 'leaves'
-  | 'payroll'
   | 'psn-check'
   | 'data-quality';

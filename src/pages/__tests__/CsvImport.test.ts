@@ -64,13 +64,14 @@ describe('mapRowToEmployee', () => {
     expect(emp.photo).toBeNull();
   });
 
-  it('maps salary, step and address headers', () => {
+  it('maps step and address headers, and ignores salary columns', () => {
     const sysToCSV = buildColumnMapping(['Full Name', 'Basic Salary', 'Step', 'Residential Address']);
     const emp = mapRowToEmployee(
       { 'Full Name': 'Aisha Bello', 'Basic Salary': '485200', Step: '3', 'Residential Address': '15 Ahmadu Bello Way, Yola' },
       Object.fromEntries(Object.entries(sysToCSV).map(([k, v]) => [v!, k]))
     );
-    expect(emp.basic_salary).toBe(485200);
+    // Pay is out of scope for this system, so a salary column is not imported.
+    expect(emp).not.toHaveProperty('basic_salary');
     expect(emp.step).toBe('3');
     expect(emp.address).toBe('15 Ahmadu Bello Way, Yola');
   });

@@ -1,76 +1,36 @@
 -- ============================================================================
--- AMEB EMS — Enrolment Statistics + Public Learning Centre Directory
+-- AMEB EMS — Enrolment Statistics & Public Centre Directory
 -- ----------------------------------------------------------------------------
--- Adds:
---   enrolment_stats   (per-year learner figures: enrolled, certified, dropped
---                      out, did-not-write-exam, and NGOs involved that year)
---   public_centres    (view — safe public projection of the centres register
---                      with facilitator names; used by the public "Find a
---                      Learning Center" directory on the Landing page)
+--   enrolment_stats   per-year learner outcomes (managed from the CMS, shown
+--                     live on the public site hero stats)
+--   public_centres    safe public projection of the centres register with
+--                     facilitator names; used by the public "Find a Learning
+--                     Centre" directory
 --
 -- HOW TO RUN:
---   1. Open your Supabase project dashboard → SQL Editor → New query
---   2. Paste this entire file and click "Run"
---   3. (Safe to run multiple times — uses IF NOT EXISTS / CREATE OR REPLACE)
---   4. Run setup_rls.sql afterwards (it adds the RLS policies for the new
---      table) — or just re-run setup_rls.sql, it is idempotent.
+--   Supabase dashboard → SQL Editor → New query → paste → Run
+--   Then re-run `setup_rls.sql` so enrolment_stats gets its policies.
+--   Safe to run multiple times (IF NOT EXISTS / CREATE OR REPLACE).
 -- ============================================================================
 
--- ── Enrolment stats (per-year record) ───────────────────────────────────────
--- One row per year. `ngos` holds the names of NGOs that supported programmes
--- in that year (Postgres text array).
+-- ── Enrolment statistics ────────────────────────────────────────────────────
 create table if not exists public.enrolment_stats (
-  id                uuid primary key,
-  year              integer not null unique,
-  learners_enrolled integer not null default 0,   -- total learners enrolled that year
-  certified         integer not null default 0,   -- learners issued certificates
-  dropped_out       integer not null default 0,   -- learners who withdrew
-  no_exam           integer not null default 0,   -- learners who did not sit the exam
-  ngos              text[] not null default '{}', -- NGOs involved that year
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
+  id               uuid primary key default gen_random_uuid(),
+  year             integer not null unique,
+  learners_enrolled integer not null default 0,
+  certified        integer not null default 0,
+  dropped_out      integer not null default 0,
+  no_exam          integer not null default 0,
+  ngos             text[]  not null default '{}',
+  created_at       timestamptz not null default now(),
+  updated_at       timestamptz not null default now()
 );
 
--- Enable RLS immediately (deny-all until setup_rls.sql adds the policies), so
--- the table is never writable by anon keys even if setup_rls.sql hasn't been
--- re-run yet.
+-- No public policies yet — runs deny-all until setup_rls.sql is re-run yet.
 alter table public.enrolment_stats enable row level security;
 
 -- ── Public centre directory view ────────────────────────────────────────────
--- Exposes only public-facing centre fields plus facilitator names (never
--- remarks or other internal columns). Because views run with the owner's
--- privileges, anon/authenticated users can read this projection even though
--- RLS protects the underlying centres/facilitators tables.
--- Guarded: requires the Phase 9 facilitator tables (centre_facilitators +
--- facilitators from setup_facilitators.sql) to exist.
-do $$
-begin
-  if exists (select 1 from information_schema.tables
-             where table_schema = 'public'
-               and table_name in ('centre_facilitators', 'facilitators'))
-  then
-    create or replace view public.public_centres as
-    select
-      c.id,
-      c.name,
-      c.lga,
-      c.ward,
-      c.community,
-      c.type,
-      c.status,
-      c.capacity,
-      c.phone,
-      c.ngo_partner,
-      coalesce(
-        array_agg(f.name order by f.name) filter (where f.name is not null),
-        '{}'::text[]
-      ) as facilitators
-    from public.centres c
-    left join public.centre_facilitators cf on cf.centre_id = c.id
-    left join public.facilitators f on f.id = cf.facilitator_id
-    group by c.id;
-
-    -- Allow the public (anon key) and any signed-in user to read the view.
-    grant select on public.public_centres to anon, authenticated, service_role;
-  end if;
-end $$;
+-- The view is now owned by `setup_centre_staff.sql`, which rebuilds it against
+-- centre_staff → employees after dropping the facilitator registry. It is not
+-- defined here, so the two scripts cannot drift apart — this file only creates
+-- the enrolment statistics table.
