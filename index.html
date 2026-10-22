@@ -17,7 +17,9 @@
     <script>
       (function() {
         try {
-          var saved = localStorage.getItem('theme');
+          // Must match STORAGE_KEY in src/hooks/useTheme.tsx, or a saved choice
+          // is ignored here and the page flashes the wrong theme on every load.
+          var saved = localStorage.getItem('ameb-theme');
           var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
           if (saved === 'dark' || (!saved && prefersDark)) {
             document.documentElement.classList.add('dark');
