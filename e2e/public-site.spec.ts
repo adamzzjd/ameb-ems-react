@@ -8,9 +8,10 @@ test.describe('Public site', () => {
     await page.goto('/');
     await expect(page).toHaveTitle(/Adamawa State Mass Education Board/);
 
-    // Header brand + Staff Portal login button
-    await expect(page.getByText('Adamawa MEB', { exact: false }).first()).toBeVisible();
-    await expect(page.getByText('Staff Portal', { exact: false }).first()).toBeVisible();
+    // Header brand + Staff Portal login button. Generous timeout: the landing
+    // page is a lazy chunk, and the first visit compiles it under parallel load.
+    await expect(page.getByText('Adamawa MEB', { exact: false }).first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText('Staff Portal', { exact: false }).first()).toBeVisible({ timeout: 20_000 });
 
     // Key sections (mirrors the site navigation)
     for (const id of ['home', 'about', 'programs', 'news', 'enroll', 'gallery', 'contact']) {

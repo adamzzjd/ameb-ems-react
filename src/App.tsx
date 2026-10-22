@@ -105,6 +105,10 @@ export default function App() {
     publicPath === '/login' ? 'login'
     : publicPath === '/self-service' ? 'selfservice'
     : null;
+  // The portal's screens are addressable too: /portal/<page>. Keeps the address
+  // bar honest after sign-in (it used to stay on /login) and makes screens
+  // bookmarkable.
+  const portalPage = /^\/portal\/([a-z-]+)$/.exec(publicPath)?.[1] ?? null;
 
   const {
     employees, loading: empLoading,
@@ -128,8 +132,28 @@ export default function App() {
   }, [user, authLoading, resetMode]);
 
   useEffect(() => {
-    if (view === 'app' && !user && !authLoading) setView('login');
-  }, [view, user, authLoading]);
+    if (view === 'app' && !user && !authLoading) {
+      setView('login');
+      // Leave the portal URL behind when the session ends.
+      if (portalPage) navigate('/login', { replace: true });
+    }
+  }, [view, user, authLoading, portalPage, navigate]);
+
+  // A portal URL (or the browser's back/forward buttons) selects the screen.
+  useEffect(() => {
+    if (!portalPage || authLoading || !user) return;
+    setCurrentPage(portalPage);
+    setView('app');
+  }, [portalPage, user, authLoading]);
+
+  // Signing in from /login or /self-service moves the address bar into the
+  // portal, so it never sits on the login screen while the app is open.
+  useEffect(() => {
+    if (authLoading || !user || resetMode) return;
+    if (publicPath === '/login' || publicPath === '/self-service') {
+      navigate(`/portal/${portalPage || currentPage}`, { replace: true });
+    }
+  }, [user, authLoading, resetMode, publicPath, portalPage, currentPage, navigate]);
 
   useEffect(() => {
     if (view === 'app') {
@@ -143,7 +167,10 @@ export default function App() {
     setSelfServicePsn(psn || '');
     navigate('/self-service');
   }, [navigate]);
-  const handleNavigate = useCallback((page: string) => setCurrentPage(page), []);
+  const handleNavigate = useCallback((page: string) => {
+    setCurrentPage(page);
+    if (user) navigate(`/portal/${page}`);
+  }, [user, navigate]);
 
   const handleViewEmployee = useCallback((id: string) => {
     const emp = employees.find(e => e.id === id);
@@ -352,13 +379,13 @@ export default function App() {
 
   // Direct visits and header links to the portal entry screens render from the
   // URL. Once signed in the app takes over (the auth effect sets view 'app').
-  if (!user && !resetMode && portalEntry) {
+  if (!user && !resetMode && (portalEntry || portalPage)) {
     return (
       <ErrorBoundary>
         <Suspense fallback={<LoadingSpinner />}>
-          {portalEntry === 'login'
-            ? <Login onBackToSite={handleBackToSite} onSelfService={handleGoToSelfService} />
-            : <SelfService onBack={handleBackToSite} initialPsn={selfServicePsn} />}
+          {portalEntry === 'selfservice'
+            ? <SelfService onBack={handleBackToSite} initialPsn={selfServicePsn} />
+            : <Login onBackToSite={handleBackToSite} onSelfService={handleGoToSelfService} />}
         </Suspense>
       </ErrorBoundary>
     );
