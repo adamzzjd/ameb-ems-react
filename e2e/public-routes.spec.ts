@@ -21,7 +21,9 @@ test.describe('Public routes', () => {
 
   test('programme detail page shows a friendly empty state for unknown slugs', async ({ page }) => {
     await page.goto('/programs/does-not-exist');
-    await expect(page.getByText('Programme not found')).toBeVisible();
+    // Generous timeout: the page resolves the CMS data before it can know the
+    // slug is unknown, and the suite runs in parallel against a live database.
+    await expect(page.getByText('Programme not found')).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole('link', { name: /browse all programmes/i })).toBeVisible();
   });
 
@@ -48,6 +50,37 @@ test.describe('Public routes', () => {
   test('deep links survive a hard refresh (SPA fallback)', async ({ page }) => {
     // A direct server hit (no client-side navigation) must still render the app.
     await page.goto('/programs/does-not-exist');
-    await expect(page.getByText('Programme not found')).toBeVisible();
+    await expect(page.getByText('Programme not found')).toBeVisible({ timeout: 15_000 });
+  });
+});
+
+test.describe('Portal entry points', () => {
+  // The header on every public page links to these two screens. They must open
+  // the screen itself, not bounce the visitor back to the landing page.
+  test('Staff Portal link opens the login form from a public sub-page', async ({ page }) => {
+    await page.goto('/programs');
+    await page.locator('a[href="/login"]').first().click();
+
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(page.getByPlaceholder('your@email.com')).toBeVisible();
+    await expect(page.getByRole('button', { name: /sign in/i })).toBeVisible();
+  });
+
+  test('/login is a real URL (survives a hard refresh)', async ({ page }) => {
+    await page.goto('/login');
+    await expect(page.getByPlaceholder('your@email.com')).toBeVisible();
+  });
+
+  test('Staff PSN link opens self-service from a public sub-page', async ({ page }) => {
+    await page.goto('/centres');
+    await page.locator('a[href="/self-service"]').first().click();
+
+    await expect(page).toHaveURL(/\/self-service$/);
+    await expect(page.getByPlaceholder('e.g. PS/AM/0123')).toBeVisible();
+  });
+
+  test('/self-service is a real URL (survives a hard refresh)', async ({ page }) => {
+    await page.goto('/self-service');
+    await expect(page.getByPlaceholder('e.g. PS/AM/0123')).toBeVisible();
   });
 });

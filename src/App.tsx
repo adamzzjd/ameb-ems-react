@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { useLocation, Routes, Route } from 'react-router';
+import { useLocation, useNavigate, Routes, Route } from 'react-router';
 import { useAuth } from './hooks/useAuth';
 import { useToast } from './hooks/useToast';
 import { useEmployees } from './hooks/useEmployees';
@@ -89,6 +89,7 @@ export default function App() {
   // The site's pages have real URLs; `/` stays with the landing page, and any
   // other path falls through to the portal's own state-driven navigation.
   const location = useLocation();
+  const navigate = useNavigate();
   const publicPath = location.pathname.replace(/\/+$/, '') || '/';
   const publicPage =
     /^\/programs\/.+/.test(publicPath) ? 'program'
@@ -96,6 +97,13 @@ export default function App() {
     : publicPath === '/centres' ? 'centres'
     : /^\/news\/.+/.test(publicPath) ? 'article'
     : publicPath === '/news' ? 'news'
+    : null;
+  // The two portal entry screens also live at real URLs — they are linked from
+  // the header of every public page, so a link must work from anywhere and a
+  // refresh must land on the same screen.
+  const portalEntry: 'login' | 'selfservice' | null =
+    publicPath === '/login' ? 'login'
+    : publicPath === '/self-service' ? 'selfservice'
     : null;
 
   const {
@@ -129,12 +137,12 @@ export default function App() {
     }
   }, [view]);
 
-  const handleGoToLogin = () => setView('login');
-  const handleBackToSite = () => setView('landing');
+  const handleGoToLogin = () => navigate('/login');
+  const handleBackToSite = () => { setView('landing'); navigate('/'); };
   const handleGoToSelfService = useCallback((psn?: string) => {
     setSelfServicePsn(psn || '');
-    setView('selfservice');
-  }, []);
+    navigate('/self-service');
+  }, [navigate]);
   const handleNavigate = useCallback((page: string) => setCurrentPage(page), []);
 
   const handleViewEmployee = useCallback((id: string) => {
@@ -337,6 +345,20 @@ export default function App() {
             <Route path="/news" element={<NewsPage />} />
             <Route path="/news/:slug" element={<NewsArticlePage />} />
           </Routes>
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
+
+  // Direct visits and header links to the portal entry screens render from the
+  // URL. Once signed in the app takes over (the auth effect sets view 'app').
+  if (!user && !resetMode && portalEntry) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingSpinner />}>
+          {portalEntry === 'login'
+            ? <Login onBackToSite={handleBackToSite} onSelfService={handleGoToSelfService} />
+            : <SelfService onBack={handleBackToSite} initialPsn={selfServicePsn} />}
         </Suspense>
       </ErrorBoundary>
     );
