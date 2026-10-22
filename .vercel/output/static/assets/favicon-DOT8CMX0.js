@@ -1,1 +1,0 @@
-var e=null;function t(t){let n=t&&t.trim()?t.trim():`/favicon.svg`;if(n===e)return;e=n;let r=document.querySelector(`link[rel='icon']`);r||(r=document.createElement(`link`),r.rel=`icon`,document.head.appendChild(r)),r.href=n}export{t};
