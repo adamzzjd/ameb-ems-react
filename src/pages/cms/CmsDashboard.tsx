@@ -36,7 +36,7 @@ export function CmsDashboard({ onNavigate }: CmsDashboardProps) {
       toast(`📊 Loaded ${total} CMS items`);
     }
     load();
-  }, []);
+  }, [toast]);
 
   const sections = [
     { page: 'cms-content', icon: '⚙️', title: 'Site Content', sub: 'Hero, About, Mission, Vision, contact details', action: 'Edit →' },

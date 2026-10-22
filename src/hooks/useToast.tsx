@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react';
 import { toast as sonnerToast } from 'sonner';
 
 interface ToastContextValue {
@@ -9,16 +9,20 @@ interface ToastContextValue {
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const toast = (message: string, isError = false) => {
+  // Stable identity: components list `toast` in effect dependencies, and a
+  // fresh function on every render would re-run those effects in a loop.
+  const toast = useCallback((message: string, isError = false) => {
     if (isError) {
       sonnerToast.error(message);
     } else {
       sonnerToast.success(message);
     }
-  };
+  }, []);
+
+  const value = useMemo(() => ({ toasts: [] as never[], toast }), [toast]);
 
   return (
-    <ToastContext.Provider value={{ toasts: [], toast }}>
+    <ToastContext.Provider value={value}>
       {children}
     </ToastContext.Provider>
   );

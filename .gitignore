@@ -45,3 +45,6 @@ docs/
 
 # Vercel build output + project link (never commit build artifacts)
 .vercel
+
+# Test coverage output
+coverage
