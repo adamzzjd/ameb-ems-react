@@ -103,6 +103,20 @@ test.describe('Portal URLs', () => {
     await expect(page.getByRole('button', { name: 'Present Station' })).toBeVisible();
   });
 
+  test('the learners register opens from its URL', async ({ page }) => {
+    await stubAuth(page);
+    await signIn(page);
+    await expect(page).toHaveURL(/\/portal\/dashboard$/, { timeout: 15_000 });
+
+    await page.goto('/portal/learners');
+    await expect(page.getByText('Learners Register').first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: /add learner/i })).toBeVisible();
+
+    // The sidebar entry points at the same screen.
+    await page.getByRole('button', { name: 'Learners', exact: true }).first().click();
+    await expect(page).toHaveURL(/\/portal\/learners$/);
+  });
+
   test('a portal URL shows the login form to a signed-out visitor', async ({ page }) => {
     await page.goto('/portal/dashboard');
     await expect(page.getByPlaceholder('your@email.com')).toBeVisible();

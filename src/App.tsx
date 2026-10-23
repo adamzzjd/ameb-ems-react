@@ -34,6 +34,7 @@ const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ de
 const SelfService = lazy(() => import('./pages/SelfService').then(m => ({ default: m.SelfService })));
 const Dashboard = lazy(() => import('./pages/Dashboard').then(m => ({ default: m.Dashboard })));
 const EmployeesPage = lazy(() => import('./pages/Employees').then(m => ({ default: m.EmployeesPage })));
+const LearnersPage = lazy(() => import('./pages/Learners').then(m => ({ default: m.LearnersPage })));
 const EmployeeProfile = lazy(() => import('./pages/EmployeeProfile').then(m => ({ default: m.EmployeeProfile })));
 const EmployeeForm = lazy(() => import('./pages/EmployeeForm').then(m => ({ default: m.EmployeeForm })));
 const GroupView = lazy(() => import('./pages/GroupView').then(m => ({ default: m.GroupView })));
@@ -306,6 +307,19 @@ export default function App() {
             onPrint={handlePrint}
             canEdit={can('employees.edit')}
             canDelete={can('employees.delete')}
+          />
+        );
+      case 'learners':
+        // Learners use the same role gates as the staff register: the DB
+        // policies for `learners` cover exactly the roles that can read/write
+        // employees (staff read-only, data collectors add/edit).
+        return (
+          <LearnersPage
+            canCreate={can('employees.create')}
+            canEdit={can('employees.edit')}
+            canDelete={can('employees.delete')}
+            canImport={can('employees.import')}
+            canExport={can('employees.export')}
           />
         );
       case 'station':

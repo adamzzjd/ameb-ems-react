@@ -4,6 +4,7 @@ import { LGAs } from '../data/constants';
 import type { Centre, CentreStaff, Employee } from '../types';
 import { dbLoadCentres, dbSaveCentre, dbDeleteCentre } from '../supabase/centres';
 import { dbLoadCentreStaff, dbSetCentreStaff } from '../supabase/centreStaff';
+import { dbLoadLearnerCentreIds } from '../supabase/learners';
 import { useToast } from '../hooks/useToast';
 
 interface CentresManagerProps {
@@ -135,6 +136,7 @@ export function CentresManager({ employees = [], canManage }: CentresManagerProp
   const { toast } = useToast();
   const [centres, setCentres] = useState<Centre[]>([]);
   const [links, setLinks] = useState<CentreStaff[]>([]);
+  const [learnerCounts, setLearnerCounts] = useState<Map<string, number>>(new Map());
   const [loading, setLoading] = useState(true);
 
   // Filter state
@@ -168,12 +170,20 @@ export function CentresManager({ employees = [], canManage }: CentresManagerProp
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [centreRes, linkRes] = await Promise.all([
+    const [centreRes, linkRes, learnerRes] = await Promise.all([
       dbLoadCentres(),
       dbLoadCentreStaff(),
+      dbLoadLearnerCentreIds(),
     ]);
     if (!centreRes.error && centreRes.data) setCentres(centreRes.data);
     if (!linkRes.error && linkRes.data) setLinks(linkRes.data);
+    if (!learnerRes.error && learnerRes.data) {
+      const counts = new Map<string, number>();
+      learnerRes.data.forEach(r => {
+        if (r.centre_id) counts.set(r.centre_id, (counts.get(r.centre_id) || 0) + 1);
+      });
+      setLearnerCounts(counts);
+    }
     setLoading(false);
   }, []);
 
@@ -208,8 +218,9 @@ export function CentresManager({ employees = [], canManage }: CentresManagerProp
       active: byStatus['Active'] || 0,
       lgasCovered: Object.keys(byLGA).length,
       facilitators: new Set(links.map(l => l.employee_id)).size,
+      learners: [...learnerCounts.values()].reduce((sum, n) => sum + n, 0),
     };
-  }, [centres, links]);
+  }, [centres, links, learnerCounts]);
 
   // Filtered centres
   const filtered = useMemo(() => {
@@ -460,6 +471,11 @@ export function CentresManager({ employees = [], canManage }: CentresManagerProp
           <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)', marginTop: 2 }}>{stats.facilitators}</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Assigned to centres</div>
         </div>
+        <div style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 10, padding: '14px 16px' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '.4px' }}>Learners</div>
+          <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--color-primary)', marginTop: 2 }}>{stats.learners}</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>Enrolled at centres</div>
+        </div>
       </div>
 
       {/* ── Filter Bar ── */}
@@ -538,6 +554,7 @@ export function CentresManager({ employees = [], canManage }: CentresManagerProp
                 <th style={thStyle}>Community</th>
                 <th style={thStyle}>Type</th>
                 <th style={thStyle}>Facilitators</th>
+                <th style={thStyle}>Learners</th>
                 <th style={thStyle}>Status</th>
                 <th style={thStyle}>Actions</th>
               </tr>
@@ -545,7 +562,7 @@ export function CentresManager({ employees = [], canManage }: CentresManagerProp
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ textAlign: 'center', padding: 44 }}>
+                  <td colSpan={9} style={{ textAlign: 'center', padding: 44 }}>
                     <div style={{ fontSize: 38, marginBottom: 10 }}>🏫</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 5 }}>
                       {centres.length > 0 ? 'No centres match your filters.' : 'No centres yet.'}
@@ -586,6 +603,20 @@ export function CentresManager({ employees = [], canManage }: CentresManagerProp
                           )}
                         </div>
                       )}
+                    </td>
+                    <td style={tdStyle}>
+                      <button
+                        onClick={() => openView(c.id)}
+                        title="Learners at this centre"
+                        style={{
+                          display: 'inline-block', padding: '2px 9px', borderRadius: 20, border: 'none', cursor: 'pointer',
+                          fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap',
+                          background: learnerCounts.get(c.id) ? 'rgba(26,92,56,.1)' : 'var(--color-surface-warm)',
+                          color: learnerCounts.get(c.id) ? '#1a5c38' : 'var(--color-text-muted)',
+                        }}
+                      >
+                        {learnerCounts.get(c.id) || 0}
+                      </button>
                     </td>
                     <td style={tdStyle}>
                       <span style={{

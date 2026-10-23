@@ -89,6 +89,7 @@ export const STATIONS = [
 export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   dashboard:     { title: 'Dashboard',              subtitle: 'Overview' },
   employees:     { title: 'All Employees',           subtitle: 'Permanent & Pensionable Officers' },
+  learners:      { title: 'Learners Register',       subtitle: 'Everyone enrolled at a learning centre' },
   station:       { title: 'By Station',              subtitle: 'Staff grouped by present posting' },
   lga:           { title: 'By LGA of Origin',        subtitle: 'Staff grouped by local government' },
   grade:         { title: 'By Grade Level',          subtitle: 'Staff grouped by grade' },

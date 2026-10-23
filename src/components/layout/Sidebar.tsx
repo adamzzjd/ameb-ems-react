@@ -64,6 +64,7 @@ const navSections: NavSection[] = [
           { page: 'appointment', icon: <Calendar size={15} />, label: 'Appointment Date' },
         ],
       },
+      { page: 'learners', icon: <GraduationCap size={18} />, label: 'Learners' },
       { page: 'account', icon: <UserCog size={18} />, label: 'My Account' },
       { page: 'psn-check', icon: <UserPlus size={18} />, label: 'PSN Tools', permission: 'employees.import' },
     ],

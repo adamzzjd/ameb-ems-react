@@ -39,6 +39,33 @@ export interface EmployeeFormData {
   remarks: string;
 }
 
+// ── Learner Types ─────────────────────────────────────────────────────────────
+export interface Learner {
+  id: string;
+  reference_no: string | null;
+  full_name: string;
+  gender: string | null;
+  age_group: string | null;
+  phone: string | null;
+  lga: string | null;
+  community: string | null;
+  /** The learning centre the learner attends (null = not yet assigned). */
+  centre_id: string | null;
+  cohort_id: string | null;
+  status: string;
+  enrolled_on: string | null;
+  completed_on: string | null;
+  notes: string | null;
+  created_at?: string;
+  updated_at?: string;
+  /** Joined from `centres(name)` when the register is loaded. */
+  centres?: { name: string } | null;
+}
+
+export const LEARNER_STATUSES = ['active', 'completed', 'dropped out', 'transferred'] as const;
+
+export const AGE_GROUPS = ['Under 15', '15–19', '20–29', '30–39', '40–49', '50–59', '60+'] as const;
+
 // ── CMS Types ──────────────────────────────────────────────────────────────────
 export interface CmsProgram {
   id: string;
@@ -319,6 +346,7 @@ export interface PageTitle {
 export type AppPage =
   | 'dashboard'
   | 'employees'
+  | 'learners'
   | 'station'
   | 'lga'
   | 'grade'

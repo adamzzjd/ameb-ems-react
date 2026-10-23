@@ -2,7 +2,7 @@
    Professional government document printouts with embedded logo.
    Salary is intentionally excluded from employee prints (paid by the government). */
 
-import type { Employee } from '../types';
+import type { Employee, Learner } from '../types';
 import type { LgaAreaOfficer } from '../types';
 
 // ── Theme ────────────────────────────────────────────────────────────────────
@@ -180,6 +180,55 @@ export function printEmployeeProfile(employee: Employee, officerLgas: string[] =
         <span>AMEB — Permanent & Pensionable Officers Register</span>
         <span>Printed: ${today()}</span>
       </div>
+    </div>
+  </body></html>`;
+
+  openAndPrint(html);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  LEARNERS PRINT
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function printLearners(
+  learners: Learner[],
+  centreNames: Record<string, string> = {},
+  title?: string,
+  subtitle?: string
+) {
+  const rows = learners.map((l, i) => `
+    <tr>
+      <td style="text-align:center;color:${SLATE};font-size:10px">${i + 1}</td>
+      <td style="font-weight:600">${esc(l.full_name)}</td>
+      <td style="font-family:'JetBrains Mono',monospace;font-size:10px;color:${GREEN};font-weight:600">${esc(l.reference_no || '—')}</td>
+      <td>${esc(l.gender || '—')}</td>
+      <td>${esc(l.age_group || '—')}</td>
+      <td>${esc(l.lga || '—')}</td>
+      <td>${esc(l.centres?.name || (l.centre_id ? centreNames[l.centre_id] : '') || '—')}</td>
+      <td>${esc(l.status)}</td>
+      <td style="font-size:10px">${fmtDate(l.enrolled_on)}</td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html><html><head><title>AMEB Learners Register</title>
+  <style>${BASE_CSS}
+    th:first-child{width:30px;text-align:center;}
+    td:first-child{text-align:center;}
+  </style></head><body>
+    ${buildHeader(`Learners Register — ${learners.length} learner${learners.length === 1 ? '' : 's'}`)}
+    ${title ? `<h2>${esc(title)}</h2>` : ''}
+    <div class="meta">${esc(subtitle || `${learners.length} learners`)} · Printed ${today()}</div>
+    <table>
+      <thead><tr>
+        <th style="width:30px;text-align:center">#</th>
+        <th>Learner</th><th>Reference</th><th>Gender</th><th>Age</th>
+        <th>LGA</th><th>Learning Centre</th><th>Status</th><th>Enrolled</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="foot">
+      <span>© Adamawa State Mass Education Board</span>
+      <span>Federal Republic of Nigeria</span>
     </div>
   </body></html>`;
 
