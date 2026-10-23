@@ -14,6 +14,7 @@ import {
   Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp,
   MapPinned,
   UserPlus,
+  ChevronDown,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -37,6 +38,8 @@ interface NavItem {
   label: string;
   badge?: boolean;
   permission?: Permission;
+  /** Nested views, rendered as a submenu under this item. */
+  children?: NavItem[];
 }
 
 interface NavSection {
@@ -50,18 +53,24 @@ const navSections: NavSection[] = [
     label: 'Overview',
     items: [
       { page: 'dashboard', icon: <LayoutDashboard size={18} />, label: 'Dashboard' },
-      { page: 'employees', icon: <Users size={18} />, label: 'All Employees', badge: true },
+      {
+        page: 'employees', icon: <Users size={18} />, label: 'All Employees', badge: true,
+        // The ways of browsing the register live here rather than in their own
+        // sidebar section, so "All Employees" is the single entry point.
+        children: [
+          { page: 'station', icon: <MapPin size={15} />, label: 'Present Station' },
+          { page: 'lga', icon: <Map size={15} />, label: 'LGA of Origin' },
+          { page: 'grade', icon: <BarChart3 size={15} />, label: 'Grade Level' },
+          { page: 'appointment', icon: <Calendar size={15} />, label: 'Appointment Date' },
+        ],
+      },
       { page: 'account', icon: <UserCog size={18} />, label: 'My Account' },
       { page: 'psn-check', icon: <UserPlus size={18} />, label: 'PSN Tools', permission: 'employees.import' },
     ],
   },
   {
-    label: 'Browse By',
+    label: 'Registers',
     items: [
-      { page: 'station', icon: <MapPin size={18} />, label: 'Present Station' },
-      { page: 'lga', icon: <Map size={18} />, label: 'LGA of Origin' },
-      { page: 'grade', icon: <BarChart3 size={18} />, label: 'Grade Level' },
-      { page: 'appointment', icon: <Calendar size={18} />, label: 'Appointment Date' },
       { page: 'retirement', icon: <CalendarClock size={18} />, label: 'Retirement & Tenure' },
       { page: 'promotions', icon: <TrendingUp size={18} />, label: 'Promotions & Progression' },
       { page: 'data-quality', icon: <SearchCheck size={18} />, label: 'Data Quality' },
@@ -112,6 +121,9 @@ export function Sidebar({
 }: SidebarProps) {
   const { user, role, can } = useAuth();
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  // Open state per parent item. Unset means "follow the active page", so a
+  // child view (e.g. Present Station) still reveals itself when it is current.
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
 
   // Show the board's actual logo (from CMS) in the sidebar when one is set.
   useEffect(() => {
@@ -177,44 +189,85 @@ export function Sidebar({
             {section.items.map((item) => {
               // Items can carry their own permission (e.g. User Management)
               if (item.permission && !can(item.permission)) return null;
+              const children = (item.children ?? []).filter(c => !c.permission || can(c.permission));
+              const childActive = children.some(c => c.page === currentPage);
+              const expanded = openMenus[item.page] ?? childActive;
               return (
-                <button
-                  key={item.page}
-                  onClick={() => handleNav(item.page)}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 border-none cursor-pointer',
-                    currentPage === item.page
-                      ? 'bg-sidebar-accent text-sidebar-primary border-l-[3px] border-gold pl-[13px]'
-                      : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
-                  )}
-                >
-                  <span className={cn(
-                    'w-5 h-5 flex items-center justify-center shrink-0',
-                    currentPage === item.page ? 'text-gold' : 'opacity-70'
-                  )}>
-                    {item.icon}
-                  </span>
-                  <span className="flex-1 min-w-0 truncate">{item.label}</span>
-                  {item.page === 'cms-inbox' && unreadContactCount > 0 && (
-                    <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center text-white"
-                      style={{ background: 'var(--color-error)' }}
-                      title={`${unreadContactCount} unread message${unreadContactCount !== 1 ? 's' : ''}`}
-                    >
-                      {unreadContactCount > 99 ? '99+' : unreadContactCount}
-                    </span>
-                  )}
-                  {item.badge && (
-                    <span className={cn(
-                      'text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center',
+                <div key={item.page}>
+                  <button
+                    onClick={() => {
+                      if (children.length > 0) {
+                        setOpenMenus(o => ({ ...o, [item.page]: !expanded }));
+                      }
+                      handleNav(item.page);
+                    }}
+                    aria-expanded={children.length > 0 ? expanded : undefined}
+                    className={cn(
+                      'flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg text-sm font-medium w-[calc(100%-16px)] text-left transition-all duration-150 border-none cursor-pointer',
                       currentPage === item.page
-                        ? 'bg-gold text-primary-dark'
-                        : 'bg-sidebar-accent text-sidebar-foreground/70'
+                        ? 'bg-sidebar-accent text-sidebar-primary border-l-[3px] border-gold pl-[13px]'
+                        : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                    )}
+                  >
+                    <span className={cn(
+                      'w-5 h-5 flex items-center justify-center shrink-0',
+                      currentPage === item.page ? 'text-gold' : 'opacity-70'
                     )}>
-                      {employeeCount === 0 ? '—' : employeeCount}
+                      {item.icon}
                     </span>
+                    <span className="flex-1 min-w-0 truncate">{item.label}</span>
+                    {item.page === 'cms-inbox' && unreadContactCount > 0 && (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center text-white"
+                        style={{ background: 'var(--color-error)' }}
+                        title={`${unreadContactCount} unread message${unreadContactCount !== 1 ? 's' : ''}`}
+                      >
+                        {unreadContactCount > 99 ? '99+' : unreadContactCount}
+                      </span>
+                    )}
+                    {item.badge && (
+                      <span className={cn(
+                        'text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center',
+                        currentPage === item.page
+                          ? 'bg-gold text-primary-dark'
+                          : 'bg-sidebar-accent text-sidebar-foreground/70'
+                      )}>
+                        {employeeCount === 0 ? '—' : employeeCount}
+                      </span>
+                    )}
+                    {children.length > 0 && (
+                      <ChevronDown
+                        size={14}
+                        className={cn('shrink-0 opacity-60 transition-transform', expanded && 'rotate-180')}
+                      />
+                    )}
+                  </button>
+
+                  {children.length > 0 && expanded && (
+                    <div className="ml-6 mb-1 border-l border-sidebar-border">
+                      {children.map(child => (
+                        <button
+                          key={child.page}
+                          onClick={() => handleNav(child.page)}
+                          className={cn(
+                            'flex items-center gap-2.5 pl-4 pr-2 py-2 mr-2 rounded-r-lg text-[13px] font-medium w-[calc(100%-8px)] text-left transition-all duration-150 border-none cursor-pointer',
+                            currentPage === child.page
+                              ? 'bg-sidebar-accent text-sidebar-primary'
+                              : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                          )}
+                        >
+                          <span className={cn(
+                            'w-4 h-4 flex items-center justify-center shrink-0',
+                            currentPage === child.page ? 'text-gold' : 'opacity-60'
+                          )}>
+                            {child.icon}
+                          </span>
+                          <span className="truncate">{child.label}</span>
+                        </button>
+                      ))}
+                    </div>
                   )}
-                </button>
+                </div>
               );
             })}
           </div>

@@ -82,6 +82,27 @@ test.describe('Portal URLs', () => {
     await expect(page.getByText('Overview', { exact: false }).first()).toBeVisible();
   });
 
+  test('browse views are nested under All Employees, not their own section', async ({ page }) => {
+    await stubAuth(page);
+    await signIn(page);
+    await expect(page).toHaveURL(/\/portal\/dashboard$/, { timeout: 15_000 });
+
+    // The old sidebar section is gone...
+    await expect(page.getByText('Browse By')).toHaveCount(0);
+
+    // ...and its views open as a submenu of All Employees.
+    const allEmployees = page.getByRole('button', { name: /All Employees/ }).first();
+    await expect(allEmployees).toHaveAttribute('aria-expanded', 'false');
+    await allEmployees.click();
+
+    await expect(page).toHaveURL(/\/portal\/employees$/);
+    await expect(allEmployees).toHaveAttribute('aria-expanded', 'true');
+
+    await page.getByRole('button', { name: 'Present Station' }).click();
+    await expect(page).toHaveURL(/\/portal\/station$/);
+    await expect(page.getByRole('button', { name: 'Present Station' })).toBeVisible();
+  });
+
   test('a portal URL shows the login form to a signed-out visitor', async ({ page }) => {
     await page.goto('/portal/dashboard');
     await expect(page.getByPlaceholder('your@email.com')).toBeVisible();
