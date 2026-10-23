@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router';
 import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell } from '@/components/layout/PublicShell';
 import { dbLoadPublicCentres } from '@/supabase/enrolments';
 import { mergeLgas } from '@/data/constants';
 import type { PublicCentre } from '@/types';
-import { MapPin, Phone, Search, Users } from 'lucide-react';
+import { ChevronRight, MapPin, Phone, Search, Users } from 'lucide-react';
+import { paths, slugify } from '@/lib/slug';
 import { useEffect } from 'react';
 
 /** Public centre directory — a standalone page version of the Landing directory. */
@@ -117,7 +119,7 @@ export function CentresPage() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                 {filtered.map(centre => (
-                  <div key={centre.id}
+                  <Link key={centre.id} to={paths.centre(slugify(centre.name))}
                     className="rounded-2xl border p-6 card-hover flex flex-col"
                     style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                     <div className="flex items-start justify-between gap-3 mb-3">
@@ -175,7 +177,11 @@ export function CentresPage() {
                         </span>
                       )}
                     </div>
-                  </div>
+                    <span className="inline-flex items-center gap-1 mt-3 text-[11px] font-bold uppercase tracking-[1px]"
+                      style={{ color: 'var(--color-primary)' }}>
+                      View centre <ChevronRight size={12} />
+                    </span>
+                  </Link>
                 ))}
               </div>
             </>

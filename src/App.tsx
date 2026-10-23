@@ -26,6 +26,7 @@ const Landing = lazy(() => import('./pages/Landing').then(m => ({ default: m.Lan
 const ProgramsPage = lazy(() => import('./pages/public/ProgramsPage').then(m => ({ default: m.ProgramsPage })));
 const ProgramDetailPage = lazy(() => import('./pages/public/ProgramDetailPage').then(m => ({ default: m.ProgramDetailPage })));
 const CentresPage = lazy(() => import('./pages/public/CentresPage').then(m => ({ default: m.CentresPage })));
+const CentreDetailPage = lazy(() => import('./pages/public/CentreDetailPage').then(m => ({ default: m.CentreDetailPage })));
 const NewsPage = lazy(() => import('./pages/public/NewsPage').then(m => ({ default: m.NewsPage })));
 const NewsArticlePage = lazy(() => import('./pages/public/NewsArticlePage').then(m => ({ default: m.NewsArticlePage })));
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
@@ -94,6 +95,7 @@ export default function App() {
   const publicPage =
     /^\/programs\/.+/.test(publicPath) ? 'program'
     : publicPath === '/programs' ? 'programs'
+    : /^\/centres\/.+/.test(publicPath) ? 'centre'
     : publicPath === '/centres' ? 'centres'
     : /^\/news\/.+/.test(publicPath) ? 'article'
     : publicPath === '/news' ? 'news'
@@ -369,6 +371,7 @@ export default function App() {
             <Route path="/programs" element={<ProgramsPage />} />
             <Route path="/programs/:slug" element={<ProgramDetailPage />} />
             <Route path="/centres" element={<CentresPage />} />
+            <Route path="/centres/:slug" element={<CentreDetailPage />} />
             <Route path="/news" element={<NewsPage />} />
             <Route path="/news/:slug" element={<NewsArticlePage />} />
           </Routes>

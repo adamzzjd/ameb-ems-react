@@ -25,6 +25,7 @@ export const paths = {
   programs: '/programs',
   program: (slug: string) => `/programs/${slug}`,
   centres: '/centres',
+  centre: (slug: string) => `/centres/${slug}`,
   news: '/news',
   newsArticle: (slug: string) => `/news/${slug}`,
   login: '/login',

@@ -47,6 +47,35 @@ test.describe('Public routes', () => {
     await expect(page.getByRole('button', { name: 'All LGAs' })).toBeVisible();
   });
 
+  test('centre cards link to shareable detail pages', async ({ page }) => {
+    await page.goto('/centres');
+
+    // Only assert the detail page when the directory actually has centres
+    // (a fresh DB or an unconfigured build renders the empty state instead).
+    const firstCard = page.locator('a[href^="/centres/"]').first();
+    if (!(await firstCard.isVisible().catch(() => false))) return;
+
+    const href = await firstCard.getAttribute('href');
+    await firstCard.click();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
+    await expect(page.getByRole('heading', { name: /facilitators/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /all learning centres/i })).toBeVisible();
+
+    // The URL is a real route: a cold reload stays on the same centre.
+    await page.reload();
+    await expect(page).toHaveURL(new RegExp(`${href}$`));
+    await expect(page.getByRole('heading', { name: /facilitators/i })).toBeVisible();
+  });
+
+  test('centre detail page handles unknown slugs', async ({ page }) => {
+    await page.goto('/centres/does-not-exist');
+    // Either the centre is unknown, or the directory could not be reached at
+    // all (CI without secrets) — both are friendly states, never a blank page.
+    await expect(page.getByText(/centre not found|centre directory unavailable/i))
+      .toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('link', { name: /all learning centres/i })).toBeVisible();
+  });
+
   test('deep links survive a hard refresh (SPA fallback)', async ({ page }) => {
     // A direct server hit (no client-side navigation) must still render the app.
     await page.goto('/programs/does-not-exist');
