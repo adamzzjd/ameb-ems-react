@@ -293,7 +293,15 @@ function LogoMark({ url, size = 36 }: { url?: string | null; size?: number }) {
         className="rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
         style={{ width: size, height: size, background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
       >
-        <img src={url} alt="AMEB logo" className="w-full h-full object-contain" style={{ padding: 3 }} />
+        <img
+          src={cdnImage(url, Math.round(size * 2))}
+          alt="AMEB logo"
+          width={size}
+          height={size}
+          decoding="async"
+          className="w-full h-full object-contain"
+          style={{ padding: 3 }}
+        />
       </div>
     );
   }

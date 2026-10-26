@@ -34,7 +34,15 @@ export function cdnImage(
   if (height) parts.push(`h_${Math.round(height)}`);
   parts.push('f_auto', 'q_' + quality, 'dpr_auto');
 
-  return src.replace(UPLOAD_PATH, match => `${match}${parts.join(',')}/`);
+  // The CMS stores URLs with `f_auto,q_auto` already in them. Leaving that in
+  // place makes Cloudinary run two transformation groups back to back for the
+  // same effect, so it is dropped rather than stacked behind ours.
+  const cleaned = src.replace(
+    /(image\/upload\/)(?:f_auto,q_auto,?|q_auto,f_auto,?|f_auto,?)+\//gi,
+    '$1',
+  );
+
+  return cleaned.replace(UPLOAD_PATH, match => `${match}${parts.join(',')}/`);
 }
 
 /**
