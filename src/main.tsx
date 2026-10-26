@@ -24,7 +24,9 @@ if (PLAUSIBLE_DOMAIN) {
   document.head.appendChild(s);
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const container = document.getElementById('root')!;
+
+const tree = (
   <React.StrictMode>
     <BrowserRouter>
       <ThemeProvider>
@@ -37,5 +39,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
-  </React.StrictMode>,
+  </React.StrictMode>
 );
+
+// The public pages are pre-rendered at build time (scripts/prerender-public.mjs),
+// so the container already holds the real markup in the first response — that is
+// what a crawler and a visitor with JavaScript blocked see. Adopt it by
+// hydrating rather than mounting: createRoot empties the container on its first
+// commit, which would blank a painted page for a few frames.
+if (container.hasChildNodes()) {
+  ReactDOM.hydrateRoot(container, tree);
+} else {
+  ReactDOM.createRoot(container).render(tree);
+}
