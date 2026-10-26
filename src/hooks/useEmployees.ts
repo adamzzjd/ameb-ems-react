@@ -30,9 +30,17 @@ const defaultFilter: FilterState = {
   page: 1,
 };
 
-export function useEmployees(): UseEmployeesReturn {
+/**
+ * The staff register for the portal.
+ *
+ * `enabled` is false on the public website: every public page is rendered by the
+ * same App component, so without this gate a visitor to the landing page
+ * downloads the whole 236-row register before the hero image can paint. The
+ * register is only needed once somebody is signed in.
+ */
+export function useEmployees(enabled = true): UseEmployeesReturn {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilterState] = useState<FilterState>(defaultFilter);
 
@@ -49,7 +57,7 @@ export function useEmployees(): UseEmployeesReturn {
     setLoading(false);
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { if (enabled) void loadData(); }, [loadData, enabled]);
 
   const setFilter = useCallback((f: Partial<FilterState>) => {
     setFilterState(prev => ({ ...prev, ...f, page: f.page ?? 1 }));

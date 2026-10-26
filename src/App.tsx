@@ -124,7 +124,9 @@ export default function App() {
     filtered, paginated, filter, totalPages,
     setFilter, clearFilters,
     saveEmployee, deleteEmployee, bulkImport,
-  } = useEmployees();
+    // Only signed-in staff need the register. Leaving this on for the public
+    // website made every visitor download it before the hero could render.
+  } = useEmployees(Boolean(user));
 
   const [profileEmployee, setProfileEmployee] = useState<Employee | null>(null);
   const [showProfile, setShowProfile] = useState(false);
