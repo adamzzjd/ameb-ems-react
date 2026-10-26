@@ -3,6 +3,8 @@ import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell, RichText } from '@/components/layout/PublicShell';
 import { paths, slugify, findBySlug } from '@/lib/slug';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { cdnImage, cdnSrcSet } from '@/lib/image';
+import { programmeJsonLd, breadcrumbJsonLd, jsonLdGraph } from '@/lib/seo';
 import { BookOpen, ChevronLeft, ChevronRight, MapPin, GraduationCap } from 'lucide-react';
 
 /** Public programme detail page — one shareable URL per programme. */
@@ -17,6 +19,21 @@ export function ProgramDetailPage() {
     image: program?.image,
     type: 'article',
     path: paths.program(slug),
+    jsonLd: program
+      ? jsonLdGraph(
+          programmeJsonLd({
+            title: program.title,
+            description: program.description,
+            path: paths.program(slug),
+            image: program.image,
+          }),
+          breadcrumbJsonLd([
+            { name: 'Home', path: paths.home },
+            { name: 'Programmes', path: paths.programs },
+            { name: program.title, path: paths.program(slug) },
+          ]),
+        )
+      : undefined,
   });
 
   if (!loading && !program) {
@@ -59,7 +76,15 @@ export function ProgramDetailPage() {
       {program.image && (
         <section className="max-w-[1200px] mx-auto px-6 pt-10">
           <div className="rounded-2xl overflow-hidden border max-h-[380px]" style={{ borderColor: 'var(--color-border)' }}>
-            <img src={program.image} alt={program.title} className="w-full max-h-[380px] object-cover" />
+            <img
+              src={cdnImage(program.image, 1200)}
+              srcSet={cdnSrcSet(program.image, [640, 960, 1200])}
+              sizes="(max-width: 900px) 100vw, 900px"
+              alt={program.title}
+              fetchPriority="high"
+              decoding="async"
+              className="w-full max-h-[380px] object-cover"
+            />
           </div>
         </section>
       )}
@@ -115,7 +140,7 @@ export function ProgramDetailPage() {
                     className="rounded-xl overflow-hidden border transition-all card-hover block"
                     style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                     {p.image ? (
-                      <img src={p.image} alt={p.title} className="w-full h-28 object-cover" />
+                      <img src={cdnImage(p.image, 400)} alt={p.title} loading="lazy" decoding="async" className="w-full h-28 object-cover" />
                     ) : (
                       <div className="px-5 pt-5 text-2xl" style={{ color: 'var(--color-primary)' }}>
                         {p.icon || <BookOpen size={22} />}

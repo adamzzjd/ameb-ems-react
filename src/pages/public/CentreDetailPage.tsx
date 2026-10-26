@@ -4,6 +4,8 @@ import { PublicPageHeader, PublicShell } from '@/components/layout/PublicShell';
 import { dbLoadPublicCentres } from '@/supabase/enrolments';
 import { paths, slugify, findBySlug } from '@/lib/slug';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { telHref } from '@/lib/contact';
+import { centreJsonLd, breadcrumbJsonLd, jsonLdGraph } from '@/lib/seo';
 import type { PublicCentre } from '@/types';
 import {
   Building2, ChevronLeft, ChevronRight, MapPin, Phone, UserCheck, Users,
@@ -44,6 +46,22 @@ export function CentreDetailPage() {
       ? `${centre.name} — a learning centre in ${[centre.ward, centre.community, centre.lga].filter(Boolean).join(', ')} under the Adamawa State Mass Education Board.`
       : 'Find a learning centre in Adamawa State.',
     path: paths.centre(slug),
+    jsonLd: centre
+      ? jsonLdGraph(
+          centreJsonLd({
+            name: centre.name,
+            path: paths.centre(slug),
+            lga: centre.lga,
+            ward: centre.ward,
+            phone: centre.phone,
+          }),
+          breadcrumbJsonLd([
+            { name: 'Home', path: paths.home },
+            { name: 'Learning Centres', path: paths.centres },
+            { name: centre.name, path: paths.centre(slug) },
+          ]),
+        )
+      : undefined,
   });
 
   if (loading) {
@@ -127,7 +145,12 @@ export function CentreDetailPage() {
                 value={centre.capacity != null && centre.capacity > 0
                   ? `${centre.capacity.toLocaleString()} learners`
                   : 'Not specified'} />
-              {centre.phone && <DetailRow icon={<Phone size={15} />} label="Phone" value={centre.phone} />}
+              {centre.phone && (
+                <DetailRow icon={<Phone size={15} />} label="Phone"
+                  value={telHref(centre.phone)
+                    ? <a href={telHref(centre.phone)!} className="underline-offset-2 hover:underline" style={{ color: 'var(--color-primary)' }}>{centre.phone}</a>
+                    : centre.phone} />
+              )}
               <DetailRow icon={<Building2 size={15} />} label="Operated by"
                 value={[humaniseOwner(centre.owner_type), centre.partner_name ? `with ${centre.partner_name}` : null]
                   .filter(Boolean).join(' ') || 'Not specified'} />
@@ -201,7 +224,7 @@ export function CentreDetailPage() {
   );
 }
 
-function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function DetailRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-start gap-2.5 text-[13px]">
       <span className="shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }}>{icon}</span>

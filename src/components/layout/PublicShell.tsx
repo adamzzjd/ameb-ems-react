@@ -5,6 +5,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useCmsData } from '@/hooks/useCmsData';
 import { syncFaviconFromLogo } from '@/lib/favicon';
+import { cdnImage } from '@/lib/image';
+import { telHref, mailtoHref, cleanAddress } from '@/lib/contact';
 import { paths } from '@/lib/slug';
 import { GraduationCap, MapPin, Phone, Mail, Lock, Menu, X, ArrowLeft } from 'lucide-react';
 
@@ -54,7 +56,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
         <div className="max-w-[1200px] mx-auto px-6 h-[68px] flex items-center justify-between gap-4">
           <Link to={paths.home} className="flex items-center gap-3 min-w-0">
             {site_content.logo_url ? (
-              <img src={site_content.logo_url} alt="AMEB logo" className="w-10 h-10 object-contain shrink-0" />
+              <img src={cdnImage(site_content.logo_url, 80)} alt="AMEB logo" width={40} height={40} decoding="async" className="w-10 h-10 object-contain shrink-0" />
             ) : (
               <span className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
                 style={{ background: 'var(--color-gold)' }}>
@@ -129,9 +131,19 @@ export function PublicShell({ children }: { children: ReactNode }) {
           <div>
             <div className="text-[11px] font-bold uppercase tracking-widest text-white/50 mb-3">Contact</div>
             <ul className="space-y-2 text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
-              <li className="flex gap-2"><MapPin size={13} className="shrink-0 mt-0.5" /> {site_content.address}</li>
-              <li className="flex gap-2"><Phone size={13} className="shrink-0 mt-0.5" /> {site_content.phone}</li>
-              <li className="flex gap-2"><Mail size={13} className="shrink-0 mt-0.5" /> {site_content.email}</li>
+              <li className="flex gap-2"><MapPin size={13} className="shrink-0 mt-0.5" /> {cleanAddress(site_content.address)}</li>
+              <li className="flex gap-2">
+                <Phone size={13} className="shrink-0 mt-0.5" />
+                {telHref(site_content.phone)
+                  ? <a href={telHref(site_content.phone)!} className="underline-offset-2 hover:underline">{site_content.phone}</a>
+                  : site_content.phone}
+              </li>
+              <li className="flex gap-2">
+                <Mail size={13} className="shrink-0 mt-0.5" />
+                {mailtoHref(site_content.email)
+                  ? <a href={mailtoHref(site_content.email)!} className="underline-offset-2 hover:underline">{site_content.email}</a>
+                  : site_content.email}
+              </li>
             </ul>
           </div>
           <div>

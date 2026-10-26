@@ -3,6 +3,8 @@ import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell, RichText } from '@/components/layout/PublicShell';
 import { paths, slugify, findBySlug } from '@/lib/slug';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { cdnImage, cdnSrcSet } from '@/lib/image';
+import { articleJsonLd, breadcrumbJsonLd, jsonLdGraph } from '@/lib/seo';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -25,6 +27,24 @@ export function NewsArticlePage() {
     image: article?.image,
     type: 'article',
     path: paths.newsArticle(slug),
+    // Help search engines treat this as a dated announcement from the Board
+    // rather than an anonymous page.
+    jsonLd: article
+      ? jsonLdGraph(
+          articleJsonLd({
+            title: article.title,
+            description: article.excerpt,
+            path: paths.newsArticle(slug),
+            image: article.image,
+            date: article.date,
+          }),
+          breadcrumbJsonLd([
+            { name: 'Home', path: paths.home },
+            { name: 'News', path: paths.news },
+            { name: article.title, path: paths.newsArticle(slug) },
+          ]),
+        )
+      : undefined,
   });
 
   if (!loading && !article) {
@@ -89,7 +109,15 @@ export function NewsArticlePage() {
 
             {article.image && (
               <div className="rounded-xl overflow-hidden my-7 border" style={{ borderColor: 'var(--color-border)' }}>
-                <img src={article.image} alt={article.title} className="w-full max-h-[380px] object-cover" />
+                <img
+                  src={cdnImage(article.image, 1200)}
+                  srcSet={cdnSrcSet(article.image, [640, 960, 1200])}
+                  sizes="(max-width: 900px) 100vw, 900px"
+                  alt={article.title}
+                  fetchPriority="high"
+                  decoding="async"
+                  className="w-full max-h-[380px] object-cover"
+                />
               </div>
             )}
 

@@ -18,6 +18,8 @@ import { Link } from 'react-router';
 import { paths, slugify } from '@/lib/slug';
 import { usePageMeta } from '@/hooks/usePageMeta';
 import { organisationJsonLd } from '@/lib/seo';
+import { cdnImage, cdnSrcSet } from '@/lib/image';
+import { telHref, mailtoHref, cleanAddress } from '@/lib/contact';
 import { Modal } from '@/components/ui/Modal';
 import { supabase } from '@/supabase/client';
 import { dbLoadEnrolmentStats, dbLoadPublicCentres } from '@/supabase/enrolments';
@@ -208,8 +210,12 @@ function GallerySlideshow({ items }: { items: { image?: string; label: string }[
             {item.image ? (
               // Ken Burns: slow zoom-out on the active image for a cinematic feel.
               <motion.img
-                src={item.image}
+                src={cdnImage(item.image, 1200)}
+                srcSet={cdnSrcSet(item.image, [480, 800, 1200])}
+                sizes="(max-width: 768px) 100vw, 1200px"
                 alt={item.label}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover"
                 initial={{ scale: 1.08 }}
                 animate={{ scale: 1 }}
@@ -364,6 +370,9 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
   const [cfSending, setCfSending] = useState(false);
   const [cfSent, setCfSent] = useState(false);
   const [cfError, setCfError] = useState('');
+  // Honeypot: hidden from people (and from screen readers), irresistible to
+  // naive bots. A filled field means nothing is sent and nothing is emailed.
+  const [cfTrap, setCfTrap] = useState('');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Centre enquiry form
@@ -376,10 +385,12 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
   const [ceSending, setCeSending] = useState(false);
   const [ceSent, setCeSent] = useState(false);
   const [ceError, setCeError] = useState('');
+  const [ceTrap, setCeTrap] = useState('');
   const [ceModalOpen, setCeModalOpen] = useState(false);
 
   const handleContactSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (cfTrap) { setCfSent(true); return; }
     if (!cfName.trim() || !cfEmail.trim() || !cfMessage.trim()) return;
     setCfSending(true);
     setCfError('');
@@ -398,6 +409,7 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
 
   const handleCentreEnquirySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (ceTrap) { setCeSent(true); return; }
     if (!ceName.trim() || !cePhone.trim() || !ceEmail.trim()) return;
     const lga = ceLga.trim() || 'Not sure yet';
     setCeSending(true);
@@ -586,7 +598,16 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
         style={{ paddingTop: 120, paddingBottom: 90, background: isDark ? 'var(--color-bg)' : 'var(--color-primary-dark)' }}>
         {site_content.hero_image && (
           <>
-            <div className="absolute inset-0" style={{ backgroundImage: `url("${site_content.hero_image}")`, backgroundSize: 'cover', backgroundPosition: 'center' }} />
+            <img
+              src={cdnImage(site_content.hero_image, 1600)}
+              srcSet={cdnSrcSet(site_content.hero_image, [640, 960, 1280, 1600])}
+              sizes="100vw"
+              alt=""
+              aria-hidden="true"
+              fetchPriority="high"
+              decoding="async"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
             <div className="absolute inset-0" style={{ background: 'var(--color-overlay)' }} />
           </>
         )}
@@ -696,7 +717,15 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
           {site_content.about_image && (
             <FadeIn>
               <div className="rounded-2xl overflow-hidden mb-9 border max-w-[900px] mx-auto" style={{ borderColor: 'var(--color-border)' }}>
-                <img src={site_content.about_image} alt="About AMEB" className="w-full max-h-[420px] object-cover" />
+                <img
+                  src={cdnImage(site_content.about_image, 900)}
+                  srcSet={cdnSrcSet(site_content.about_image, [480, 700, 900])}
+                  sizes="(max-width: 768px) 100vw, 900px"
+                  alt="About AMEB"
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full max-h-[420px] object-cover"
+                />
               </div>
             </FadeIn>
           )}
@@ -735,7 +764,7 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                       style={{ background: 'var(--color-surface-warm)', borderColor: 'var(--color-border)' }}>
                       <div className="w-10 h-10 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold text-white"
                         style={{ background: `var(--color-${['primary', 'gold', 'terracotta', 'success'][i % 4]})` }}>
-                        {leader.photo ? <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" /> : leader.initials}
+                        {leader.photo ? <img src={cdnImage(leader.photo, 80)} alt={leader.name} loading="lazy" decoding="async" className="w-full h-full object-cover" /> : leader.initials}
                       </div>
                       <div className="min-w-0">
                         <div className="text-[13px] font-bold truncate" style={{ color: 'var(--color-text-primary)' }}>{leader.name}</div>
@@ -762,7 +791,15 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                   <div className="rounded-2xl overflow-hidden h-full border relative card-hover" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                     {program.image ? (
                       <div className="h-[150px] relative flex items-center justify-center overflow-hidden">
-                        <img src={program.image} alt={program.title} className="w-full h-full object-cover" />
+                        <img
+                          src={cdnImage(program.image, 600)}
+                          srcSet={cdnSrcSet(program.image, [320, 480, 600])}
+                          sizes="(max-width: 768px) 100vw, 380px"
+                          alt={program.title}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
                         <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)' }} />
                       </div>
                     ) : (
@@ -867,7 +904,15 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                   <div className="h-[140px] relative flex items-center justify-center"
                     style={{ background: `var(--color-${['primary', 'gold', 'terracotta'][i % 3]})` }}>
                     {article.image ? (
-                      <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
+                      <img
+                        src={cdnImage(article.image, 600)}
+                        srcSet={cdnSrcSet(article.image, [320, 480, 600])}
+                        sizes="(max-width: 768px) 100vw, 380px"
+                        alt={article.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <span className="text-4xl">{article.icon}</span>
                     )}
@@ -922,7 +967,20 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                   </div>
                   <div className="text-sm leading-relaxed" style={{ color: 'rgba(255,255,255,0.8)' }}>
                     <strong className="block mb-0.5 text-[13px] text-white">{contact.label}</strong>
-                    {contact.value.split('\n').map((line, i) => <div key={i}>{line}</div>)}
+                    {contact.value.split('\n').map((line, i) => {
+                      const text = contact.label === 'Head Office' ? cleanAddress(line) : line.trim();
+                      if (!text) return null;
+                      const href = contact.label === 'Phone' ? telHref(text)
+                        : contact.label === 'Email' ? mailtoHref(text)
+                        : null;
+                      return (
+                        <div key={i}>
+                          {href
+                            ? <a href={href} className="underline-offset-2 hover:underline" style={{ color: 'rgba(255,255,255,0.92)' }}>{text}</a>
+                            : text}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ))}
@@ -939,6 +997,9 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                 </div>
               ) : (
                 <form onSubmit={handleContactSubmit} className="flex flex-col gap-3.5">
+                  <input type="text" name="company" value={cfTrap} onChange={e => setCfTrap(e.target.value)}
+                    tabIndex={-1} autoComplete="off" aria-hidden="true"
+                    style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }} />
                   {cfError && <div className="px-3.5 py-2.5 rounded-lg text-[13px]" style={{ background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.25)', color: 'var(--color-error)' }}>{cfError}</div>}
                   <input placeholder="Your Full Name" required value={cfName} onChange={e => setCfName(e.target.value)}
                     className="h-11 px-4 rounded-lg border text-sm outline-none transition-colors focus:ring-2 focus:ring-ring"
@@ -1002,9 +1063,23 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
             <div>
               <h4 className="text-[10px] font-bold uppercase tracking-[2px] mb-4" style={{ color: 'var(--color-gold)' }}>Contact</h4>
               <div className="space-y-2.5 text-[13px]" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                <p>{site_content.address}</p>
-                <p>{site_content.phone}{site_content.phone_2 ? ` · ${site_content.phone_2}` : ''}</p>
-                <p>{site_content.email}</p>
+                <p>{cleanAddress(site_content.address)}</p>
+                <p className="flex flex-wrap items-center gap-x-1.5">
+                  {telHref(site_content.phone)
+                    ? <a href={telHref(site_content.phone)!} className="underline-offset-2 hover:underline" style={{ color: 'rgba(255,255,255,0.75)' }}>{site_content.phone}</a>
+                    : site_content.phone}
+                  {site_content.phone_2 && telHref(site_content.phone_2) && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <a href={telHref(site_content.phone_2)!} className="underline-offset-2 hover:underline" style={{ color: 'rgba(255,255,255,0.75)' }}>{site_content.phone_2}</a>
+                    </>
+                  )}
+                </p>
+                <p>
+                  {mailtoHref(site_content.email)
+                    ? <a href={mailtoHref(site_content.email)!} className="underline-offset-2 hover:underline" style={{ color: 'rgba(255,255,255,0.75)' }}>{site_content.email}</a>
+                    : site_content.email}
+                </p>
                 <p className="text-[12px] mt-2" style={{ color: 'rgba(255,255,255,0.5)' }}>{site_content.hours}{site_content.hours_sat ? ` · ${site_content.hours_sat}` : ''}</p>
               </div>
             </div>
@@ -1045,6 +1120,9 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
           </div>
         ) : (
           <form onSubmit={handleCentreEnquirySubmit} className="flex flex-col gap-4">
+            <input type="text" name="company" value={ceTrap} onChange={e => setCeTrap(e.target.value)}
+              tabIndex={-1} autoComplete="off" aria-hidden="true"
+              style={{ position: 'absolute', left: '-9999px', width: 1, height: 1, opacity: 0 }} />
             {ceError && (
               <div className="px-3.5 py-2.5 rounded-lg text-[13px]"
                 style={{ background: 'rgba(192,57,43,0.06)', border: '1px solid rgba(192,57,43,0.25)', color: 'var(--color-error)' }}>

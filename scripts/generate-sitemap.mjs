@@ -40,9 +40,18 @@ const env = { ...loadEnv(), ...process.env };
 const url = env.VITE_SUPABASE_URL?.replace(/\/+$/, '');
 const key = env.VITE_SUPABASE_ANON_KEY;
 
-const paths = new Set(['/', '/programs', '/centres', '/news']);
+// path → lastmod. Every page used to claim `lastmod` = today, which tells
+// crawlers the whole site changed on every deploy and teaches them to ignore
+// the field. A news article now reports its own publication date.
+const today = new Date().toISOString().slice(0, 10);
+const paths = new Map([
+  ['/', today],
+  ['/programs', today],
+  ['/centres', today],
+  ['/news', today],
+]);
 
-async function collect(table, select, toPath) {
+async function collect(table, select, toPath, toLastmod) {
   if (!url || !key) return;
   const res = await fetch(`${url}/rest/v1/${table}?select=${select}`, {
     headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -51,21 +60,23 @@ async function collect(table, select, toPath) {
   const rows = await res.json();
   for (const row of rows) {
     const p = toPath(row);
-    if (p) paths.add(p);
+    if (!p) continue;
+    const lastmod = toLastmod?.(row);
+    paths.set(p, lastmod && /^\d{4}-\d{2}-\d{2}/.test(lastmod) ? lastmod.slice(0, 10) : today);
   }
 }
 
+// cms_news stores its date as free text (YYYY-MM-DD), hence the guard above.
 try {
   await collect('cms_programs', 'title', r => `/programs/${slugify(r.title)}`);
-  await collect('cms_news', 'title', r => `/news/${slugify(r.title)}`);
+  await collect('cms_news', 'title,date', r => `/news/${slugify(r.title)}`, r => r.date);
   await collect('public_centres', 'name', r => `/centres/${slugify(r.name)}`);
 } catch (err) {
   console.warn(`sitemap: using static routes only (${err.message})`);
 }
 
-const today = new Date().toISOString().slice(0, 10);
 const body = [...paths]
-  .map(p => `  <url>\n    <loc>${SITE}${p}</loc>\n    <lastmod>${today}</lastmod>\n    <changefreq>${p === '/' ? 'weekly' : 'monthly'}</changefreq>\n  </url>`)
+  .map(([p, lastmod]) => `  <url>\n    <loc>${SITE}${p}</loc>\n    <lastmod>${lastmod}</lastmod>\n    <changefreq>${p === '/' ? 'weekly' : 'monthly'}</changefreq>\n  </url>`)
   .join('\n');
 
 writeFileSync('public/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${body}\n</urlset>\n`);

@@ -93,6 +93,107 @@ export function applyPageMeta(meta: PageMeta = {}) {
   }
 }
 
+export interface Crumb {
+  name: string;
+  path: string;
+}
+
+/** Breadcrumb trail, so search results can show Home › News › <title>. */
+export function breadcrumbJsonLd(crumbs: Crumb[]): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: crumbs.map((crumb, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: crumb.name,
+      item: absolute(crumb.path),
+    })),
+  };
+}
+
+/** Structured data for a news announcement. */
+export function articleJsonLd(article: {
+  title: string;
+  description?: string;
+  path: string;
+  image?: string;
+  /** ISO date (YYYY-MM-DD) as stored in the CMS. */
+  date?: string;
+}): Record<string, unknown> {
+  const published = article.date && /^\d{4}-\d{2}-\d{2}/.test(article.date)
+    ? article.date.slice(0, 10)
+    : undefined;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'NewsArticle',
+    headline: article.title,
+    ...(article.description ? { description: article.description } : {}),
+    ...(published ? { datePublished: published, dateModified: published } : {}),
+    ...(article.image ? { image: [absolute(article.image)] } : {}),
+    mainEntityOfPage: { '@type': 'WebPage', '@id': absolute(article.path) },
+    author: { '@type': 'GovernmentOrganization', name: SITE_NAME },
+    publisher: {
+      '@type': 'GovernmentOrganization',
+      name: SITE_NAME,
+      ...(absolute(DEFAULT_IMAGE) ? { logo: { '@type': 'ImageObject', url: absolute(DEFAULT_IMAGE) } } : {}),
+    },
+    inLanguage: 'en-NG',
+  };
+}
+
+/** Structured data for a programme page. */
+export function programmeJsonLd(programme: {
+  title: string;
+  description?: string;
+  path: string;
+  image?: string;
+}): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Course',
+    name: programme.title,
+    ...(programme.description ? { description: programme.description } : {}),
+    ...(programme.image ? { image: absolute(programme.image) } : {}),
+    url: absolute(programme.path),
+    provider: { '@type': 'GovernmentOrganization', name: SITE_NAME, sameAs: SITE_URL },
+    inLanguage: 'en-NG',
+  };
+}
+
+/** Structured data for a learning centre. */
+export function centreJsonLd(centre: {
+  name: string;
+  path: string;
+  lga?: string | null;
+  ward?: string | null;
+  phone?: string | null;
+}): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'EducationalOrganization',
+    name: centre.name,
+    url: absolute(centre.path),
+    ...(centre.phone ? { telephone: centre.phone } : {}),
+    address: {
+      '@type': 'PostalAddress',
+      ...(centre.ward ? { addressLocality: centre.ward } : {}),
+      ...(centre.lga ? { addressRegion: centre.lga } : {}),
+      addressCountry: 'NG',
+    },
+    parentOrganization: { '@type': 'GovernmentOrganization', name: SITE_NAME, sameAs: SITE_URL },
+  };
+}
+
+/** Several JSON-LD nodes on one page, in a single `@graph`. */
+export function jsonLdGraph(...nodes: Record<string, unknown>[]): Record<string, unknown> {
+  return {
+    '@context': 'https://schema.org',
+    '@graph': nodes.map(({ '@context': _ctx, ...rest }) => rest),
+  };
+}
+
 /** Structured data for the board itself (landing page). */
 export function organisationJsonLd(contact: {
   address?: string;

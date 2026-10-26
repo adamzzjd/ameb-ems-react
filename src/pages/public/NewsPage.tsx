@@ -3,6 +3,7 @@ import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell } from '@/components/layout/PublicShell';
 import { paths, slugify } from '@/lib/slug';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { cdnImage, cdnSrcSet } from '@/lib/image';
 import { ChevronRight } from 'lucide-react';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -47,7 +48,15 @@ export function NewsPage() {
                   <div className="h-[140px] relative flex items-center justify-center"
                     style={{ background: `var(--color-${['primary', 'gold', 'terracotta'][i % 3]})` }}>
                     {article.image ? (
-                      <img src={article.image} alt={article.title} className="w-full h-full object-cover" />
+                      <img
+                        src={cdnImage(article.image, 600)}
+                        srcSet={cdnSrcSet(article.image, [320, 480, 600])}
+                        sizes="(max-width: 768px) 100vw, 380px"
+                        alt={article.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <span className="text-4xl">{article.icon}</span>
                     )}

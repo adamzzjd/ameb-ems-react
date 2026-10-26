@@ -3,6 +3,7 @@ import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell } from '@/components/layout/PublicShell';
 import { paths, slugify } from '@/lib/slug';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { cdnImage, cdnSrcSet } from '@/lib/image';
 import { BookOpen, ChevronRight, MapPin } from 'lucide-react';
 
 /** Public programme catalogue — every programme links to its own shareable page. */
@@ -41,7 +42,15 @@ export function ProgramsPage() {
                   style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
                   {program.image ? (
                     <div className="h-[150px] relative overflow-hidden">
-                      <img src={program.image} alt={program.title} className="w-full h-full object-cover" />
+                      <img
+                        src={cdnImage(program.image, 600)}
+                        srcSet={cdnSrcSet(program.image, [320, 480, 600])}
+                        sizes="(max-width: 768px) 100vw, 380px"
+                        alt={program.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="w-full h-full object-cover"
+                      />
                       <div className="absolute inset-0" style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.25), transparent)' }} />
                     </div>
                   ) : (

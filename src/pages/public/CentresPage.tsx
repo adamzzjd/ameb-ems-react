@@ -8,6 +8,7 @@ import type { PublicCentre } from '@/types';
 import { ChevronRight, MapPin, Phone, Search, Users } from 'lucide-react';
 import { paths, slugify } from '@/lib/slug';
 import { usePageMeta } from '@/hooks/usePageMeta';
+import { telHref } from '@/lib/contact';
 import { useEffect } from 'react';
 
 /** Public centre directory — a standalone page version of the Landing directory. */
@@ -148,7 +149,9 @@ export function CentresPage() {
                       {centre.phone && (
                         <div className="flex items-center gap-2">
                           <Phone size={14} className="shrink-0" style={{ color: 'var(--color-primary)' }} />
-                          <span>{centre.phone}</span>
+                          {telHref(centre.phone)
+                            ? <a href={telHref(centre.phone)!} className="underline-offset-2 hover:underline" style={{ color: 'var(--color-primary)' }}>{centre.phone}</a>
+                            : <span>{centre.phone}</span>}
                         </div>
                       )}
                       {centre.capacity != null && centre.capacity > 0 && (
@@ -209,7 +212,9 @@ export function CentresPage() {
               <MapPin size={16} /> Start an Enquiry
             </a>
             <p className="text-[12px] mt-3" style={{ color: 'var(--color-text-muted)' }}>
-              {site_content.phone ? `Questions? Call us on ${site_content.phone}` : ''}
+              {site_content.phone && telHref(site_content.phone)
+                ? <>Questions? Call us on <a href={telHref(site_content.phone)!} className="font-semibold underline-offset-2 hover:underline" style={{ color: 'var(--color-primary)' }}>{site_content.phone}</a></>
+                : null}
             </p>
           </div>
         </div>
