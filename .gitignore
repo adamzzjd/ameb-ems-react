@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Generated at build time from the CMS (npm run prebuild)
+public/sitemap.xml
+
 # Playwright output
 playwright-report
 test-results

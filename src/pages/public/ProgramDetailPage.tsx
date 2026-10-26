@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router';
 import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell, RichText } from '@/components/layout/PublicShell';
 import { paths, slugify, findBySlug } from '@/lib/slug';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { BookOpen, ChevronLeft, ChevronRight, MapPin, GraduationCap } from 'lucide-react';
 
 /** Public programme detail page — one shareable URL per programme. */
@@ -9,6 +10,14 @@ export function ProgramDetailPage() {
   const { slug = '' } = useParams();
   const { programs, loading } = useCmsData();
   const program = findBySlug(programs, slug, p => p.title);
+
+  usePageMeta({
+    title: program?.title ?? 'Programme',
+    description: program?.description,
+    image: program?.image,
+    type: 'article',
+    path: paths.program(slug),
+  });
 
   if (!loading && !program) {
     return (
@@ -22,7 +31,7 @@ export function ProgramDetailPage() {
             The programme you're looking for may have been renamed or removed.
           </p>
           <Link to={paths.programs}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-white"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-on-primary"
             style={{ background: 'var(--color-primary)' }}>
             <ChevronLeft size={15} /> Browse all programmes
           </Link>
@@ -60,7 +69,7 @@ export function ProgramDetailPage() {
           <div className="rounded-2xl border p-8 md:p-10" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
             <div className="flex items-start gap-4 mb-6">
               {program.image ? null : (
-                <span className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white"
+                <span className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-on-primary"
                   style={{ background: 'var(--color-primary)' }}>
                   {program.icon ? <span className="text-xl">{program.icon}</span> : <GraduationCap size={22} />}
                 </span>
@@ -82,7 +91,7 @@ export function ProgramDetailPage() {
 
             <div className="mt-8 pt-6 border-t flex flex-wrap gap-3" style={{ borderColor: 'var(--color-border)' }}>
               <Link to={paths.programs}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-on-primary transition-all hover:-translate-y-0.5"
                 style={{ background: 'var(--color-primary)' }}>
                 <ChevronLeft size={15} /> All Programmes
               </Link>

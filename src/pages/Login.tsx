@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabase/client';
 import { syncFaviconFromLogo } from '../lib/favicon';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { GraduationCap, Shield } from 'lucide-react';
 
 interface LoginProps {
@@ -14,6 +15,9 @@ interface LoginProps {
 }
 
 export function Login({ onBackToSite, onSelfService }: LoginProps) {
+  // Staff entry screen — never index it.
+  usePageMeta({ title: 'Staff Login', path: '/login', noindex: true });
+
   // PSN entered here goes straight into the self-service portal.
   const [selfPsn, setSelfPsn] = useState('');
   const { signIn, loading: authLoading } = useAuth();
@@ -104,17 +108,17 @@ export function Login({ onBackToSite, onSelfService }: LoginProps) {
             {logoUrl ? (
               <img src={logoUrl} alt="AMEB logo" className="w-full h-full object-contain p-1.5" />
             ) : (
-              <GraduationCap size={28} className="text-white" />
+              <GraduationCap size={28} className="text-on-primary" />
             )}
           </div>
           <div className="text-[10px] font-bold uppercase tracking-[2.5px] mb-1.5"
             style={{ color: 'var(--color-primary)' }}>
             Adamawa State Government
           </div>
-          <div className="font-heading text-xl font-bold tracking-tight"
+          <h1 className="font-heading text-xl font-bold tracking-tight"
             style={{ color: 'var(--color-text-primary)' }}>
             AMEB — Staff Register
-          </div>
+          </h1>
           <div className="text-[13px] mt-1" style={{ color: 'var(--color-text-muted)' }}>
             Employee Management System
           </div>
@@ -153,7 +157,7 @@ export function Login({ onBackToSite, onSelfService }: LoginProps) {
           </div>
 
           <button type="submit" disabled={submitting || authLoading}
-            className="w-full h-12 rounded-lg text-[15px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="w-full h-12 rounded-lg text-[15px] font-bold text-on-primary transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
             style={{ background: 'var(--color-primary)', letterSpacing: '0.3px' }}>
             {submitting ? 'Signing in…' : 'Sign In'}
           </button>
@@ -181,7 +185,7 @@ export function Login({ onBackToSite, onSelfService }: LoginProps) {
                 className="flex-1 h-11 px-4 rounded-lg border text-[14px] outline-none transition-colors focus:ring-2 focus:ring-ring"
                 style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
               <button type="submit"
-                className="h-11 px-4 rounded-lg text-[13px] font-bold text-white border-none cursor-pointer"
+                className="h-11 px-4 rounded-lg text-[13px] font-bold text-on-primary border-none cursor-pointer"
                 style={{ background: 'var(--color-primary)' }}>Update</button>
             </form>
           </div>
@@ -212,7 +216,7 @@ export function Login({ onBackToSite, onSelfService }: LoginProps) {
                   className="w-full h-12 px-4 rounded-lg border text-[15px] outline-none transition-colors focus:ring-2 focus:ring-ring mb-4"
                   style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
                 <button type="submit" disabled={submitting}
-                  className="w-full h-12 rounded-lg text-[15px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="w-full h-12 rounded-lg text-[15px] font-bold text-on-primary transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                   style={{ background: 'var(--color-primary)', letterSpacing: '0.3px' }}>
                   {submitting ? 'Sending…' : 'Send Reset Link'}
                 </button>

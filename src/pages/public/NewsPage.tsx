@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell } from '@/components/layout/PublicShell';
 import { paths, slugify } from '@/lib/slug';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { ChevronRight } from 'lucide-react';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -17,6 +18,12 @@ function formatDate(iso: string): string {
 export function NewsPage() {
   const { news, site_content } = useCmsData();
   const sorted = [...news].sort((a, b) => b.sort_order - a.sort_order || b.date.localeCompare(a.date));
+
+  usePageMeta({
+    title: 'News & Announcements',
+    description: 'Official news, announcements and updates from the Adamawa State Mass Education Board.',
+    path: paths.news,
+  });
 
   return (
     <PublicShell>
@@ -44,8 +51,8 @@ export function NewsPage() {
                     ) : (
                       <span className="text-4xl">{article.icon}</span>
                     )}
-                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white text-primary text-[10px] font-bold tracking-wider border"
-                      style={{ borderColor: 'var(--color-border)' }}>{formatDate(article.date)}</span>
+                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white text-[10px] font-bold tracking-wider border"
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-footer)' }}>{formatDate(article.date)}</span>
                   </div>
                   <div className="p-6 flex-1 flex flex-col">
                     <h2 className="font-heading text-[15px] font-bold mb-2 leading-snug" style={{ color: 'var(--color-text-primary)' }}>

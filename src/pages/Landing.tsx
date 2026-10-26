@@ -16,6 +16,8 @@ import { syncFaviconFromLogo } from '@/lib/favicon';
 import { mergeLgas } from '@/data/constants';
 import { Link } from 'react-router';
 import { paths, slugify } from '@/lib/slug';
+import { usePageMeta } from '@/hooks/usePageMeta';
+import { organisationJsonLd } from '@/lib/seo';
 import { Modal } from '@/components/ui/Modal';
 import { supabase } from '@/supabase/client';
 import { dbLoadEnrolmentStats, dbLoadPublicCentres } from '@/supabase/enrolments';
@@ -23,8 +25,8 @@ import type { EnrolmentStat, PublicCentre } from '@/types';
 import {
   GraduationCap, BookOpen, Users, Star, Heart, Wrench,
   MapPin, ClipboardList, Rocket, ChevronRight, ChevronLeft,
-  Sun, Moon, Menu, X, Phone, Mail, Clock, Facebook,
-  Twitter, Youtube, Shield, Award, Globe, ArrowDown, Search,
+  Sun, Moon, Menu, X, Phone, Mail, Clock,
+  Shield, Award, Globe, ArrowDown, Search,
 } from 'lucide-react';
 
 interface LandingProps {
@@ -257,8 +259,11 @@ function GallerySlideshow({ items }: { items: { image?: string; label: string }[
       {count > 1 && (
         <div className="flex justify-center gap-2 mt-4">
           {items.map((_, i) => (
-            <button key={i} onClick={() => { setDirection(i > current ? 1 : -1); setIndex(i); }} aria-label={`Slide ${i + 1}`}
-              className={`h-2.5 rounded-full transition-all duration-300 hover:scale-110 ${i === current ? 'w-7 bg-primary' : 'w-2.5 bg-border hover:bg-primary/40'}`} />
+            <button key={i} onClick={() => { setDirection(i > current ? 1 : -1); setIndex(i); }}
+              aria-label={`Slide ${i + 1}`} aria-current={i === current ? 'true' : undefined}
+              className="h-6 px-1 flex items-center justify-center">
+              <span className={`block h-2.5 rounded-full transition-all duration-300 ${i === current ? 'w-7 bg-primary' : 'w-2.5 bg-border hover:bg-primary/40'}`} />
+            </button>
           ))}
         </div>
       )}
@@ -308,6 +313,18 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
     onGoToSelfService(v);
   };
   const { site_content, programs, news, team, gallery, loading } = useCmsData();
+
+  // Landing keeps the site-wide title/description; the JSON-LD tells search
+  // engines who the board is.
+  usePageMeta({
+    path: '/',
+    jsonLd: organisationJsonLd({
+      address: site_content.address,
+      phone: site_content.phone,
+      email: site_content.email,
+      logo: site_content.logo_url,
+    }),
+  });
   const { theme, toggleTheme } = useTheme();
   const isDark = theme === 'dark';
   // The board's logo (from CMS) — used in the header/footer and as the favicon.
@@ -511,7 +528,7 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
               aria-label={isDark ? 'Light mode' : 'Dark mode'}>
               {isDark ? <Sun size={16} className="text-gold" /> : <Moon size={16} />}
             </button>
-            <button onClick={onGoToLogin} className="ml-2 px-5 py-2.5 rounded-lg text-[13px] font-semibold text-white transition-all hover:opacity-90"
+            <button onClick={onGoToLogin} className="ml-2 px-5 py-2.5 rounded-lg text-[13px] font-semibold text-on-primary transition-all hover:opacity-90"
               style={{ background: 'var(--color-primary)' }}>
               🔒 Staff Portal
             </button>
@@ -519,6 +536,8 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
 
           {/* Mobile Hamburger */}
           <button onClick={() => setMobileNavOpen(!mobileNavOpen)}
+            aria-label={mobileNavOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobileNavOpen}
             className="md:hidden w-10 h-10 rounded-lg flex items-center justify-center border"
             style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
             {mobileNavOpen ? <X size={20} /> : <Menu size={20} />}
@@ -547,11 +566,11 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                   placeholder="Enter your staff PSN…" aria-label="Staff number (PSN)"
                   className="flex-1 px-4 py-3 rounded-xl text-sm font-bold border outline-none"
                   style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', background: 'var(--color-surface-warm)' }} />
-                <button type="submit" className="h-11 px-4 rounded-xl text-sm font-bold text-white border-none cursor-pointer"
+                <button type="submit" className="h-11 px-4 rounded-xl text-sm font-bold text-on-primary border-none cursor-pointer"
                   style={{ background: 'var(--color-primary)' }}>Update</button>
               </form>
               <button onClick={() => { onGoToLogin(); setMobileNavOpen(false); }}
-                className="mt-3 px-5 py-4 rounded-xl text-base font-bold text-white border-none"
+                className="mt-3 px-5 py-4 rounded-xl text-base font-bold text-on-primary border-none"
                 style={{ background: 'var(--color-primary)' }}>🔒 Staff Portal</button>
               <button onClick={toggleTheme} className="mt-3 w-full px-4 py-3 rounded-xl text-sm font-bold border"
                 style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
@@ -706,6 +725,11 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                 <div className="w-12 h-12 rounded-xl bg-surface-warm flex items-center justify-center mb-4 text-xl"><Users size={22} style={{ color: 'var(--color-primary)' }} /></div>
                 <h3 className="font-heading text-lg font-bold mb-5" style={{ color: 'var(--color-text-primary)' }}>Board Leadership</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {sortedTeam.length === 0 && (
+                    <p className="text-[13px] leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
+                      Leadership profiles will appear here once they are published.
+                    </p>
+                  )}
                   {sortedTeam.map((leader, i) => (
                     <div key={leader.name} className="flex items-center gap-3 p-3 rounded-xl border transition-colors hover:border-primary"
                       style={{ background: 'var(--color-surface-warm)', borderColor: 'var(--color-border)' }}>
@@ -812,6 +836,30 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
       <section id="news" className="scroll-mt-[112px] py-16 md:py-24 px-6" style={{ background: 'var(--color-bg)' }}>
         <div className="max-w-[1200px] mx-auto">
           <SectionHeading tag={site_content.news_tag} title={site_content.news_title} sub={site_content.news_sub} />
+          {sortedNews.length === 0 && (
+            <div className="rounded-2xl border p-8 md:p-10 text-center"
+              style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
+              <h3 className="font-heading text-lg font-bold mb-2" style={{ color: 'var(--color-text-primary)' }}>
+                No announcements yet
+              </h3>
+              <p className="text-[13px] md:text-sm max-w-[520px] mx-auto mb-6" style={{ color: 'var(--color-text-secondary)' }}>
+                Board announcements, programme updates and enrolment notices will be published here.
+                In the meantime, explore our programmes and learning centres.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link to={paths.programs}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-on-primary"
+                  style={{ background: 'var(--color-primary)' }}>
+                  Our programmes <ChevronRight size={15} />
+                </Link>
+                <Link to={paths.centres}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold"
+                  style={{ background: 'var(--color-gold)', color: 'var(--color-gold-fg)' }}>
+                  <MapPin size={15} /> Find a learning centre
+                </Link>
+              </div>
+            </div>
+          )}
           <motion.div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" variants={listContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: '-70px' }}>
             {sortedNews.map((article, i) => (
               <motion.div key={article.title} variants={listItem}>
@@ -823,8 +871,8 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                     ) : (
                       <span className="text-4xl">{article.icon}</span>
                     )}
-                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white text-primary text-[10px] font-bold tracking-wider border"
-                      style={{ borderColor: 'var(--color-border)' }}>{article.date}</span>
+                    <span className="absolute top-3 left-3 px-2.5 py-1 rounded-full bg-white text-[10px] font-bold tracking-wider border"
+                      style={{ borderColor: 'var(--color-border)', color: 'var(--color-footer)' }}>{article.date}</span>
                   </div>
                   <div className="p-5 md:p-6">
                     <Link to={paths.newsArticle(slugify(article.title))}
@@ -905,7 +953,7 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                     className="px-4 py-3 rounded-lg border text-sm outline-none resize-y min-h-[100px] transition-colors focus:ring-2 focus:ring-ring"
                     style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
                   <button type="submit" disabled={cfSending}
-                    className="self-start px-7 py-3.5 rounded-lg text-sm font-bold text-white transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="self-start px-7 py-3.5 rounded-lg text-sm font-bold text-on-primary transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
                     style={{ background: 'var(--color-primary)' }}>
                     {cfSending ? 'Sending…' : 'Send Message →'}
                   </button>
@@ -930,14 +978,7 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
               <p className="text-[13px] leading-relaxed max-w-[300px]" style={{ color: 'rgba(255,255,255,0.6)' }}>
                 An agency of the Adamawa State Government, Federal Republic of Nigeria. Providing quality mass education services to all citizens across 21 LGAs.
               </p>
-              <div className="flex gap-2 mt-4">
-                {[Facebook, Twitter, Youtube].map((Icon, i) => (
-                  <a key={i} href="#" className="w-8 h-8 rounded-lg flex items-center justify-center transition-colors"
-                    style={{ background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)' }}>
-                    <Icon size={14} />
-                  </a>
-                ))}
-              </div>
+
             </div>
             {/* Quick Links */}
             <div>
@@ -996,7 +1037,7 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                 Submit another enquiry
               </button>
               <button onClick={() => { setCeModalOpen(false); setCeSent(false); setCeError(''); }}
-                className="px-6 py-2.5 rounded-lg text-[13px] font-bold text-white transition-colors"
+                className="px-6 py-2.5 rounded-lg text-[13px] font-bold text-on-primary transition-colors"
                 style={{ background: 'var(--color-primary)' }}>
                 Close
               </button>
@@ -1060,7 +1101,7 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
             </div>
             <div className="flex flex-wrap gap-3 mt-1">
               <button type="submit" disabled={ceSending}
-                className="px-8 py-3.5 rounded-lg text-sm font-bold text-white transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="px-8 py-3.5 rounded-lg text-sm font-bold text-on-primary transition-all hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{ background: 'var(--color-primary)' }}>
                 {ceSending ? 'Submitting…' : 'Submit Enquiry →'}
               </button>

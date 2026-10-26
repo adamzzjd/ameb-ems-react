@@ -48,6 +48,39 @@ test.describe('Public site', () => {
     }
   });
 
+  test('each public page sets its own title and social card', async ({ page }) => {
+    await page.goto('/news');
+
+    // Before this work every page kept the landing page's title, so a shared
+    // sub-page link showed no page-specific headline anywhere.
+    await expect(page).toHaveTitle(/News & Announcements — Adamawa State Mass Education Board/);
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/news$/);
+    await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', /News & Announcements/);
+    await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute('content', 'summary_large_image');
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'index, follow');
+  });
+
+  test('unknown paths show the public 404 instead of the landing page', async ({ page }) => {
+    await page.goto('/this-page-does-not-exist');
+
+    await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible();
+    await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', 'noindex, nofollow');
+
+    await page.getByRole('link', { name: /back to home/i }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.locator('#home')).toBeAttached();
+  });
+
+  test('robots.txt and sitemap.xml are served', async ({ request }) => {
+    const robots = await request.get('/robots.txt');
+    expect(robots.ok()).toBeTruthy();
+    expect(await robots.text()).toContain('Sitemap:');
+
+    const sitemap = await request.get('/sitemap.xml');
+    expect(sitemap.ok()).toBeTruthy();
+    expect(await sitemap.text()).toContain('<urlset');
+  });
+
   test('Staff Portal opens the login page and returns to the site', async ({ page }) => {
     await page.goto('/');
     await page.getByText('Staff Portal', { exact: false }).first().click();

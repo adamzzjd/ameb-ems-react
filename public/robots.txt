@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /portal/
+Disallow: /login
+Disallow: /self-service
+
+Sitemap: https://asmeb.vercel.app/sitemap.xml

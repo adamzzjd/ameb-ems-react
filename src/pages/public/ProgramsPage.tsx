@@ -2,12 +2,19 @@ import { Link } from 'react-router';
 import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell } from '@/components/layout/PublicShell';
 import { paths, slugify } from '@/lib/slug';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { BookOpen, ChevronRight, MapPin } from 'lucide-react';
 
 /** Public programme catalogue — every programme links to its own shareable page. */
 export function ProgramsPage() {
   const { programs, site_content } = useCmsData();
   const sorted = [...programs].sort((a, b) => a.sort_order - b.sort_order);
+
+  usePageMeta({
+    title: 'Programmes',
+    description: 'Adult literacy, vocational skills, non-formal education and women\'s empowerment programmes run by the Adamawa State Mass Education Board.',
+    path: paths.programs,
+  });
 
   return (
     <PublicShell>
@@ -40,7 +47,7 @@ export function ProgramsPage() {
                   ) : (
                     <div className="px-7 pt-7">
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4"
-                        style={{ background: 'var(--color-primary)', color: '#fff' }}>
+                        style={{ background: 'var(--color-primary)', color: 'var(--color-on-primary)' }}>
                         {program.icon ? <span className="text-xl">{program.icon}</span> : <BookOpen size={20} />}
                       </div>
                     </div>

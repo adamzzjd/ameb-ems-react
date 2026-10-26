@@ -25,8 +25,15 @@
   --color-surface-raised: #F0EDE8;
   --color-text-primary:   #1A1A1A;
   --color-text-secondary: #4A5568;
-  --color-text-muted:     #718096;
+  /* Darkened from #718096 so muted copy clears 4.5:1 on white and on the warm
+     surface (#EEF5F1) — it is used for small print across the public site. */
+  --color-text-muted:     #57697C;
   --color-text-inverse:   #FFFFFF;
+  /* Text/icons sitting on a `--color-primary` background. In dark mode the
+     primary green is light, so white-on-green would only reach 2.7:1. */
+  --color-on-primary:     #FFFFFF;
+  /* Footer + government bar: dark green in both themes. */
+  --color-footer:         #0F3D25;
   --color-border:         #D1D9D4;
   --color-border-focus:   #1A5C38;
   --color-success:        #1A7A45;
@@ -108,8 +115,10 @@
   --color-surface-raised: #234D36;
   --color-text-primary:   #F0F4F2;
   --color-text-secondary: #A8BFB3;
-  --color-text-muted:     #6B8F7E;
+  --color-text-muted:     #8FB3A2;
   --color-text-inverse:   #0A1F14;
+  --color-on-primary:     #06170F;
+  --color-footer:         #112B1C;
   --color-border:         #2A5C3F;
   --color-border-focus:   #4CAF7D;
   --color-success:        #4CAF7D;
@@ -217,6 +226,8 @@
   --color-text-primary: var(--color-text-primary);
   --color-text-secondary: var(--color-text-secondary);
   --color-text-muted: var(--color-text-muted);
+  --color-on-primary: var(--color-on-primary);
+  --color-footer: var(--color-footer);
   --color-gold-fg: var(--color-gold-fg);
 }
 

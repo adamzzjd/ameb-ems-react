@@ -29,6 +29,7 @@ const CentresPage = lazy(() => import('./pages/public/CentresPage').then(m => ({
 const CentreDetailPage = lazy(() => import('./pages/public/CentreDetailPage').then(m => ({ default: m.CentreDetailPage })));
 const NewsPage = lazy(() => import('./pages/public/NewsPage').then(m => ({ default: m.NewsPage })));
 const NewsArticlePage = lazy(() => import('./pages/public/NewsArticlePage').then(m => ({ default: m.NewsArticlePage })));
+const PublicNotFound = lazy(() => import('./pages/public/PublicNotFound').then(m => ({ default: m.PublicNotFound })));
 const Login = lazy(() => import('./pages/Login').then(m => ({ default: m.Login })));
 const ResetPassword = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })));
 const SelfService = lazy(() => import('./pages/SelfService').then(m => ({ default: m.SelfService })));
@@ -112,6 +113,11 @@ export default function App() {
   // bar honest after sign-in (it used to stay on /login) and makes screens
   // bookmarkable.
   const portalPage = /^\/portal\/([a-z-]+)$/.exec(publicPath)?.[1] ?? null;
+  // Anything that is not the landing page, a known public page or a portal
+  // entry gets a real "page not found" screen instead of quietly rendering the
+  // landing page (a typo used to look like the home page).
+  const unknownPublicPath =
+    publicPath !== '/' && !publicPage && !portalEntry && !portalPage;
 
   const {
     employees, loading: empLoading,
@@ -374,6 +380,16 @@ export default function App() {
         return <NotFound message={`Page "${currentPage}" not found.`} onGoHome={() => setCurrentPage('dashboard')} />;
     }
   };
+
+  if (unknownPublicPath) {
+    return (
+      <ErrorBoundary>
+        <Suspense fallback={<LoadingSpinner />}>
+          <PublicNotFound />
+        </Suspense>
+      </ErrorBoundary>
+    );
+  }
 
   if (publicPage) {
     // Declared as real routes so the detail pages can read their `:slug`

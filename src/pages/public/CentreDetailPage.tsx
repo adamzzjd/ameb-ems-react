@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router';
 import { PublicPageHeader, PublicShell } from '@/components/layout/PublicShell';
 import { dbLoadPublicCentres } from '@/supabase/enrolments';
 import { paths, slugify, findBySlug } from '@/lib/slug';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import type { PublicCentre } from '@/types';
 import {
   Building2, ChevronLeft, ChevronRight, MapPin, Phone, UserCheck, Users,
@@ -37,6 +38,14 @@ export function CentreDetailPage() {
     [centres, slug]
   );
 
+  usePageMeta({
+    title: centre?.name ?? 'Learning Centre',
+    description: centre
+      ? `${centre.name} — a learning centre in ${[centre.ward, centre.community, centre.lga].filter(Boolean).join(', ')} under the Adamawa State Mass Education Board.`
+      : 'Find a learning centre in Adamawa State.',
+    path: paths.centre(slug),
+  });
+
   if (loading) {
     return (
       <CentreShell>
@@ -62,7 +71,7 @@ export function CentreDetailPage() {
               : 'This centre may have been renamed or is no longer listed. Browse the directory to find a learning centre near you.'}
           </p>
           <Link to={paths.centres}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-white"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-on-primary"
             style={{ background: 'var(--color-primary)' }}>
             <ChevronLeft size={15} /> All learning centres
           </Link>
@@ -82,7 +91,7 @@ export function CentreDetailPage() {
         <div className="max-w-[900px] mx-auto">
           <div className="rounded-2xl border p-8 md:p-10" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
             <div className="flex items-start gap-4 mb-6">
-              <span className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-white"
+              <span className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 text-on-primary"
                 style={{ background: 'var(--color-primary)' }}>
                 <Building2 size={22} />
               </span>
@@ -149,7 +158,7 @@ export function CentreDetailPage() {
 
             <div className="mt-8 pt-6 border-t flex flex-wrap gap-3" style={{ borderColor: 'var(--color-border)' }}>
               <Link to={paths.centres}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-on-primary transition-all hover:-translate-y-0.5"
                 style={{ background: 'var(--color-primary)' }}>
                 <ChevronLeft size={15} /> All Learning Centres
               </Link>

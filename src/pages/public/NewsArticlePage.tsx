@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router';
 import { useCmsData } from '@/hooks/useCmsData';
 import { PublicPageHeader, PublicShell, RichText } from '@/components/layout/PublicShell';
 import { paths, slugify, findBySlug } from '@/lib/slug';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -18,6 +19,14 @@ export function NewsArticlePage() {
   const { news, loading } = useCmsData();
   const article = findBySlug(news, slug, a => a.title);
 
+  usePageMeta({
+    title: article?.title ?? 'Announcement',
+    description: article?.excerpt,
+    image: article?.image,
+    type: 'article',
+    path: paths.newsArticle(slug),
+  });
+
   if (!loading && !article) {
     return (
       <ArticleShell>
@@ -30,7 +39,7 @@ export function NewsArticlePage() {
             This announcement may have been renamed or removed.
           </p>
           <Link to={paths.news}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-white"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-on-primary"
             style={{ background: 'var(--color-primary)' }}>
             <ChevronLeft size={15} /> All announcements
           </Link>
@@ -58,7 +67,7 @@ export function NewsArticlePage() {
         <div className="max-w-[860px] mx-auto">
           <article className="rounded-2xl border p-8 md:p-10" style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)' }}>
             <div className="flex flex-wrap items-center gap-3 mb-4">
-              <span className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 text-white"
+              <span className="w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 text-on-primary"
                 style={{ background: 'var(--color-primary)' }}>
                 {article.icon || '📰'}
               </span>
@@ -92,7 +101,7 @@ export function NewsArticlePage() {
 
             <div className="mt-8 pt-6 border-t flex flex-wrap items-center justify-between gap-3" style={{ borderColor: 'var(--color-border)' }}>
               <Link to={paths.news}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-white transition-all hover:-translate-y-0.5"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-bold text-on-primary transition-all hover:-translate-y-0.5"
                 style={{ background: 'var(--color-primary)' }}>
                 <ChevronLeft size={15} /> All News
               </Link>

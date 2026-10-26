@@ -39,7 +39,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col" style={{ background: 'var(--color-bg)' }}>
       {/* Government bar */}
       <div className="text-[11px] font-semibold tracking-wide text-white"
-        style={{ background: 'var(--color-primary-dark)' }}>
+        style={{ background: 'var(--color-footer)' }}>
         <div className="max-w-[1200px] mx-auto px-6 py-2 flex items-center justify-between gap-4">
           <span className="truncate">Adamawa State Government · Ministry of Education</span>
           <Link to={paths.selfService} className="shrink-0 inline-flex items-center gap-1.5 hover:underline">
@@ -75,6 +75,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
           <nav className="hidden lg:flex items-center gap-1">
             {NAV_LINKS.map(link => (
               <Link key={link.to} to={link.to}
+                aria-current={isActive(link.to) ? 'page' : undefined}
                 className="px-3 py-2 rounded-lg text-[13px] font-semibold transition-colors hover:bg-surface-warm"
                 style={{
                   color: isActive(link.to) ? 'var(--color-primary)' : 'var(--color-text-secondary)',
@@ -84,7 +85,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
             ))}
             <Link to={paths.login}
               className="ml-2 px-4 py-2 rounded-lg text-[13px] font-bold"
-              style={{ background: 'var(--color-primary)', color: '#fff' }}>
+              style={{ background: 'var(--color-primary)', color: 'var(--color-on-primary)' }}>
               Staff Portal
             </Link>
           </nav>
@@ -117,7 +118,7 @@ export function PublicShell({ children }: { children: ReactNode }) {
       <main className="flex-1">{children}</main>
 
       {/* Footer */}
-      <footer className="mt-16 border-t" style={{ background: 'var(--color-primary-dark)', borderColor: 'transparent' }}>
+      <footer className="mt-16 border-t" style={{ background: 'var(--color-footer)', borderColor: 'transparent' }}>
         <div className="max-w-[1200px] mx-auto px-6 py-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <div className="font-heading text-sm font-bold text-white mb-3">Adamawa State Mass Education Board</div>

@@ -9,6 +9,7 @@ import { supabase } from '../supabase/client';
 import { uploadImageToStorage } from '../supabase/storage';
 import { LGAs, GRADES, CADRE_NAMES, STATIONS } from '../data/constants';
 import { useToast } from '../hooks/useToast';
+import { usePageMeta } from '../hooks/usePageMeta';
 import { GraduationCap, Shield, Search, ArrowLeft, CheckCircle2, X } from 'lucide-react';
 
 interface SelfServiceProps {
@@ -82,6 +83,9 @@ const norm = (v: string | number | null | undefined): string => {
 };
 
 export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
+  // Staff self-service — never index it.
+  usePageMeta({ title: 'Staff Self-Service', path: '/self-service', noindex: true });
+
   const { toast } = useToast();
   const [step, setStep] = useState<Step>({ kind: 'enter' });
   const [psn, setPsn] = useState('');
@@ -326,14 +330,14 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
         {/* Branding */}
         <div className="text-center mb-6">
           <div className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3" style={{ background: 'var(--color-primary)' }}>
-            <GraduationCap size={26} className="text-white" />
+            <GraduationCap size={26} className="text-on-primary" />
           </div>
           <div className="text-[10px] font-bold uppercase tracking-[2.5px] mb-1.5" style={{ color: 'var(--color-primary)' }}>
             Adamawa State Government
           </div>
-          <div className="font-heading text-lg font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
+          <h1 className="font-heading text-lg font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
             Update Your Details
-          </div>
+          </h1>
           <div className="text-[13px] mt-1" style={{ color: 'var(--color-text-muted)' }}>AMEB Staff Self-Service</div>
         </div>
 
@@ -358,7 +362,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
               className="w-full h-12 px-4 rounded-lg border text-[15px] outline-none transition-colors focus:ring-2 focus:ring-ring"
               style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
             <button type="submit" disabled={looking}
-              className="w-full h-12 mt-4 rounded-lg text-[15px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              className="w-full h-12 mt-4 rounded-lg text-[15px] font-bold text-on-primary transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               style={{ background: 'var(--color-primary)', letterSpacing: '0.3px' }}>
               <Search size={16} /> {looking ? 'Looking up…' : 'Find My Details'}
             </button>
@@ -373,7 +377,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
               {form.photo ? (
                 <img src={form.photo} alt="" className="w-11 h-11 rounded-full object-cover border" style={{ borderColor: 'var(--color-border)' }} />
               ) : (
-                <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: 'var(--color-primary)' }}>
+                <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-on-primary" style={{ background: 'var(--color-primary)' }}>
                   {step.emp.name.charAt(0)}
                 </div>
               )}
@@ -398,7 +402,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
                 Back
               </button>
               <button type="button" onClick={goToReview}
-                className="flex-1 h-11 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90"
+                className="flex-1 h-11 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90"
                 style={{ background: 'var(--color-primary)' }}>
                 Review Changes
               </button>
@@ -424,7 +428,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
                 Back
               </button>
               <button type="button" disabled={submitting} onClick={handleSubmit}
-                className="flex-1 h-11 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="flex-1 h-11 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{ background: 'var(--color-primary)' }}>
                 {submitting ? 'Submitting…' : 'Submit — Apply Now'}
               </button>
@@ -442,7 +446,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
               able to update again through this portal.
             </p>
             <button onClick={onBack}
-              className="mt-6 h-11 px-6 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90"
+              className="mt-6 h-11 px-6 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90"
               style={{ background: 'var(--color-primary)' }}>Back to Website</button>
           </div>
         )}
@@ -462,7 +466,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
                 {step.emp.photo ? (
                   <img src={step.emp.photo} alt="" className="w-11 h-11 rounded-full object-cover border" style={{ borderColor: 'var(--color-border)' }} />
                 ) : (
-                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-white" style={{ background: 'var(--color-primary)' }}>
+                  <div className="w-11 h-11 rounded-full flex items-center justify-center text-sm font-bold text-on-primary" style={{ background: 'var(--color-primary)' }}>
                     {step.emp.name.charAt(0)}
                   </div>
                 )}
@@ -494,7 +498,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
               Need a correction? Contact the HR/records unit.
             </p>
             <button onClick={onBack}
-              className="w-full mt-5 h-11 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90"
+              className="w-full mt-5 h-11 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90"
               style={{ background: 'var(--color-primary)' }}>Back to Website</button>
           </div>
         )}
@@ -513,7 +517,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
             </p>
             <div className="flex flex-col gap-2 mt-6">
               <button type="button" onClick={() => setStep({ kind: 'enter' })}
-                className="h-11 rounded-lg text-[14px] font-bold text-white transition-all hover:opacity-90 border-none cursor-pointer"
+                className="h-11 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90 border-none cursor-pointer"
                 style={{ background: 'var(--color-primary)' }}>Try a different PSN</button>
               <button type="button" onClick={onBack}
                 className="h-11 rounded-lg text-[13px] font-semibold border cursor-pointer"

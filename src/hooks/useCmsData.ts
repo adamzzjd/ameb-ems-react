@@ -92,30 +92,10 @@ const defaultData: CmsData = {
       description: 'Collaborative programs with UNICEF, Save the Children, and other development partners to expand educational access across the state.',      details: 'Through strategic partnerships with development organisations such as UNICEF, Save the Children, and other national and international agencies, the Board expands the reach and quality of mass education across Adamawa State.\n\nAreas of collaboration include:\n- Construction and furnishing of learning centres\n- Provision of learning materials, furniture, and solar lighting\n- Training and remuneration of volunteer facilitators\n- Support for vulnerable groups — girls, orphans, persons with disabilities, and conflict-affected communities\n- Monitoring, evaluation, and research on learning outcomes\n\nPartnership projects are implemented with transparent reporting and are aligned to the state education sector plan. The Board welcomes new partnerships with credible organisations and maintains a partner register for coordination.',
     },
   ],
-  news: [
-    {
-      id: 'n1', title: 'Board Announces New Learning Centres', date: 'March 15, 2026', icon: '📰', sort_order: 0,
-      excerpt: 'Five new adult literacy centres to be established in underserved communities across three LGAs.',
-      body: 'The Adamawa State Mass Education Board has approved the establishment of five new adult literacy centres to be located in underserved communities across three Local Government Areas.\n\nThe new centres will bring functional literacy and numeracy classes closer to rural populations, reducing the distance learners currently travel to access classes. Each centre will be equipped with learning materials, furniture, and trained facilitators.\n\nBenefiting communities were selected through a needs assessment conducted by the Board\'s Planning and Statistics Department, which considered population density, existing infrastructure, and enrolment demand.\n\n- Construction and furnishing to begin in the current quarter\n- Facilitators to be recruited and trained before commencement\n- Community sensitisation campaigns to precede formal enrolment\n\nThe Executive Secretary expressed confidence that the expansion will significantly improve access to mass education in the state, in line with the Board\'s mandate to serve all 21 LGAs.',
-    },
-    {
-      id: 'n2', title: 'Staff Verification Exercise', date: 'February 28, 2026', icon: '📋', sort_order: 1,
-      excerpt: 'All staff required to complete biometric verification at designated centres by April 15, 2026.',
-      body: 'The Adamawa State Mass Education Board wishes to inform all staff that the annual biometric verification exercise will commence shortly.\n\nAll permanent and pensionable officers are required to present themselves at designated verification centres with the following documents:\n- Staff identification card\n- Letter of first appointment\n- Last promotion letter\n- Two passport photographs\n\nVerification centres will operate from 9:00 AM to 4:00 PM on weekdays. Staff on transfer or secondment should verify at the centre nearest to their present station.\n\nThe exercise is mandatory and will be used to update the personnel register. Officers who fail to complete verification by April 15, 2026 may have their salary processing paused until compliance is confirmed.\n\nFor further enquiries, contact the Establishment Section at the Board headquarters or your zonal office.',
-    },
-    {
-      id: 'n3', title: 'Vocational Training Graduation', date: 'January 10, 2026', icon: '🎓', sort_order: 2,
-      excerpt: 'Over 200 graduands received certificates in various vocational trades at the annual graduation ceremony.',
-      body: 'Over two hundred graduands received certificates in various vocational trades at the Board\'s annual graduation ceremony held in Yola.\n\nThe graduands completed training in tailoring and fashion design, carpentry, electrical installation, catering, and modern agriculture, among other trades.\n\nSpeaking at the ceremony, the Executive Secretary commended the graduands for their dedication and encouraged them to apply their new skills towards self-employment and community development.\n\n- Graduands were assessed through practical trade tests\n- Certificates are endorsed by the Adamawa State Government\n- Graduates are now eligible for the Board\'s enterprise support scheme\n\nThe ceremony was attended by government officials, development partners, and representatives of the beneficiary communities.',
-    },
-  ],
-  team: [
-    { id: 't1', name: 'Bulus A. Dauda', initials: 'BD', role: 'Executive Secretary', sort_order: 0 },
-    { id: 't2', name: 'Hajara M. Bello', initials: 'HB', role: 'Director, Literacy Education', sort_order: 1 },
-    { id: 't3', name: 'Yusuf I. Musa', initials: 'YM', role: 'Director, Planning & Statistics', sort_order: 2 },
-    { id: 't4', name: 'Grace A. Adamu', initials: 'GA', role: 'Director, Home Economics', sort_order: 3 },
-    { id: 't5', name: 'Ibrahim U. Garba', initials: 'IG', role: 'Director, Finance', sort_order: 4 },
-  ],
+  // No fabricated announcements or officials: if the CMS is unreachable the
+  // public site shows its empty state instead of invented news and staff names.
+  news: [],
+  team: [],
   gallery: [
     { id: 'g1', label: '📸', sort_order: 0, wide: true },
     { id: 'g2', label: '📸', sort_order: 1 },
@@ -124,12 +104,8 @@ const defaultData: CmsData = {
     { id: 'g5', label: '📸', sort_order: 4 },
     { id: 'g6', label: '📸', sort_order: 5 },
   ],
-  downloads: [
-    { id: 'd1', title: 'Staff Registration Form', meta: 'PDF · 245KB · Updated 2026', icon: '📄', sort_order: 0 },
-    { id: 'd2', title: 'Annual Report 2025', meta: 'PDF · 1.2MB · Published Jan 2026', icon: '📄', sort_order: 1 },
-    { id: 'd3', title: 'Learning Centre Guidelines', meta: 'PDF · 480KB · Revised 2025', icon: '📄', sort_order: 2 },
-    { id: 'd4', title: 'Procurement Policy', meta: 'PDF · 320KB · Effective 2025', icon: '📄', sort_order: 3 },
-  ],
+  // Same reasoning: never advertise documents that do not exist.
+  downloads: [],
 };
 
 // ── Cache helpers ──────────────────────────────────────────────────────────────
@@ -181,10 +157,10 @@ export function useCmsData() {
       const fresh: CmsData = {
         site_content: sc.data || defaultContent,
         programs: prog.data || defaultData.programs,
-        news: n.data || defaultData.news,
-        team: t.data || defaultData.team,
+        news: n.data || [],
+        team: t.data || [],
         gallery: g.data || defaultData.gallery,
-        downloads: dl.data || defaultData.downloads,
+        downloads: dl.data || [],
       };
 
       saveCache(fresh);

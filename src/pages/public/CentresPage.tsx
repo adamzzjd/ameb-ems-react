@@ -7,6 +7,7 @@ import { mergeLgas } from '@/data/constants';
 import type { PublicCentre } from '@/types';
 import { ChevronRight, MapPin, Phone, Search, Users } from 'lucide-react';
 import { paths, slugify } from '@/lib/slug';
+import { usePageMeta } from '@/hooks/usePageMeta';
 import { useEffect } from 'react';
 
 /** Public centre directory — a standalone page version of the Landing directory. */
@@ -17,6 +18,12 @@ export function CentresPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [lgaFilter, setLgaFilter] = useState('');
+
+  usePageMeta({
+    title: 'Learning Centres',
+    description: 'Find a learning centre run by the Adamawa State Mass Education Board, local governments and NGO partners across the 21 LGAs of Adamawa State.',
+    path: paths.centres,
+  });
 
   useEffect(() => {
     let active = true;
@@ -73,7 +80,7 @@ export function CentresPage() {
                 className="px-3.5 py-1.5 rounded-full text-[12px] font-bold border transition-colors"
                 style={{
                   background: lgaFilter === '' ? 'var(--color-primary)' : 'var(--color-surface)',
-                  color: lgaFilter === '' ? '#fff' : 'var(--color-text-secondary)',
+                  color: lgaFilter === '' ? 'var(--color-on-primary)' : 'var(--color-text-secondary)',
                   borderColor: 'var(--color-border)',
                 }}>
                 All LGAs
@@ -83,7 +90,7 @@ export function CentresPage() {
                   className="px-3.5 py-1.5 rounded-full text-[12px] font-bold border transition-colors"
                   style={{
                     background: lgaFilter === lga ? 'var(--color-primary)' : 'var(--color-surface)',
-                    color: lgaFilter === lga ? '#fff' : 'var(--color-text-secondary)',
+                    color: lgaFilter === lga ? 'var(--color-on-primary)' : 'var(--color-text-secondary)',
                     borderColor: 'var(--color-border)',
                   }}>
                   {lga}
