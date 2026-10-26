@@ -103,7 +103,11 @@ begin
 end;
 $$;
 
+-- Supabase gives every new function EXECUTE to `anon` through default
+-- privileges, so revoking from PUBLIC alone is not enough. An anon grant on
+-- this helper would let anyone lock an officer's PSN out deliberately.
 revoke all on function public.self_service_note_failure(text) from public;
+revoke execute on function public.self_service_note_failure(text) from anon, authenticated, service_role;
 
 -- ── 5. Step 1 — verify identity, hand back a token ─────────────────────────
 drop function if exists public.self_service_verify(text, text);
@@ -324,6 +328,7 @@ end;
 $$;
 
 revoke all on function public.reset_self_service_lock(text) from public;
+revoke execute on function public.reset_self_service_lock(text) from anon;
 grant execute on function public.reset_self_service_lock(text) to authenticated;
 
 -- ── 8. Retire the anonymous PSN-only endpoints ─────────────────────────────

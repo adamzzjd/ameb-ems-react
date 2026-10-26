@@ -76,6 +76,9 @@ end;
 $$;
 
 revoke all on function public.cms_contacts_guard() from public;
+-- Supabase grants EXECUTE to `anon` on every new function via default
+-- privileges. A trigger function cannot be called directly anyway, but the
+-- grant is removed so the surface stays explicit.
 
 drop trigger if exists cms_contacts_guard on public.cms_contacts;
 create trigger cms_contacts_guard
