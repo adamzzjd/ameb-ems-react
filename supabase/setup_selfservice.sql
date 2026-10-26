@@ -1,195 +1,294 @@
 -- ============================================================================
 -- AMEB EMS — Employee self-service (PSN update portal)
 -- ----------------------------------------------------------------------------
--- Lets an officer manage their own register details using only their staff
--- number (PSN) — no password. One path, per the board's model:
+-- Lets an officer update their own register details using their staff number
+-- (PSN) plus one fact already held on their record, then a short-lived token.
 --
---   EXISTING OFFICER (PSN already in the register)
---     1. self_service_lookup(psn) returns their FULL profile (all editable
---        fields except PSN) + an `already_submitted` flag.
---     2. They edit any field, review, submit.
---     3. submit_self_service_update() validates the fields and applies the
---        changes DIRECTLY to the employees row (no approval), stamps
---        self_service_submitted_at (the one-shot lockout), and writes an
---        audit row. The officer can never submit again.
+--   STEP 1  self_service_verify(psn, factor)
+--           factor = date of birth (YYYYMMDD or DDMMYYYY) OR the last 4 digits
+--           of the phone number on the record. On success returns the profile
+--           and a single-use token valid for 20 minutes.
 --
---   NEW OFFICER (PSN not in the register)
---     Self-registration is CLOSED — a lookup miss shows a "contact the board
---     office" message. New staff are registered by the board office (CSV
---     import or the PSN Tools admin page).
+--   STEP 2  self_service_submit(token, changes)
+--           Applies the validated one-shot DIRECT update to the employee the
+--           token was issued for. No employee id is ever accepted from the
+--           client.
 --
---   ADMIN ESCAPE HATCH
---     reset_self_service_lock(psn) clears the one-shot lockout for one officer
---     (admin+ only, audited) — used for testing and corrections.
+--   ADMIN   reset_self_service_lock(psn) — admin+ only, audited escape hatch.
 --
 -- SECURITY MODEL
---   Anonymous self-service NEVER touches the employees table through RLS —
---   it goes through SECURITY DEFINER functions owned by the table owner that
---   expose a tightly-scoped interface:
---     * self_service_lookup(psn)              — one officer, full editable profile
---     * submit_self_service_update(id, jsonb) — validated one-shot DIRECT update
---     * reset_self_service_lock(psn)          — admin+ only escape hatch (audited)
---   No anonymous write path exists: updates go through the validated function
---   and self-registration is closed.
+--   The previous design accepted a bare PSN: an unauthenticated caller could
+--   read any officer's full profile (DOB, phone, address, photo) and, with the
+--   employee id that came back, apply an update. PSNs are numeric and short, so
+--   the whole register was enumerable.
+--
+--   Now:
+--     * A factor that is not public knowledge (DOB / phone digits) is required
+--       before any profile data is returned.
+--     * Failures are indistinguishable — an unknown PSN and a wrong factor
+--       return the same answer, so the endpoint cannot be used to test whether
+--       a staff number exists.
+--     * Five failed attempts lock that PSN for 15 minutes (server-side, in
+--       self_service_attempts — not in the browser).
+--     * Writes need the token from a successful verify, so an employee id on
+--       its own is useless. Tokens are single-use and expire.
+--     * No anonymous write path exists: self-registration is closed and the
+--       only writer is the validated one-shot function.
 --
 -- HOW TO RUN:
---   1. Open Supabase dashboard → SQL Editor → New query
---   2. Paste this entire file and click "Run"
---   3. (Safe to run multiple times — uses IF NOT EXISTS / DROP POLICY IF EXISTS)
---   4. Run setup_rls.sql afterwards (or re-run it — it is idempotent).
+--   1. Supabase dashboard → SQL Editor → paste → Run (or `node
+--      scripts/run-sql.mjs supabase/setup_selfservice.sql`).
+--   2. Safe to run multiple times.
 -- ============================================================================
 
--- ── 1. New employees columns (idempotent) ─────────────────────────────────
+-- ── 1. Columns used by the portal (idempotent) ─────────────────────────────
 alter table public.employees add column if not exists address text;
 alter table public.employees add column if not exists self_service_submitted_at timestamptz;
 
--- ── 1.5. Superseded designs (pre-production cleanup) ───────────────────────
--- (a) The first draft kept pending changes for existing officers in
---     employee_update_requests — replaced by direct updates.
--- (b) employee_registrations + its functions powered the new-officer
---     self-registration queue. The board later closed self-registration
---     entirely (only existing PSNs use the portal), so both are dropped.
+-- ── 2. Superseded designs (pre-production cleanup) ─────────────────────────
 drop table if exists public.employee_update_requests;
 drop table if exists public.employee_registrations;
 drop function if exists public.check_employee_registration(text);
 drop function if exists public.submit_employee_registration(text, jsonb);
 
--- ── 2. Anonymous self-service functions ──────────────────────────────────────
--- NOTE: each function is DROPPED before being recreated. The first deployed
--- versions had a different return type/signature, and PostgreSQL refuses to
--- `create or replace` a function whose return type changed (42P13) — dropping
--- first makes re-runs of this script always succeed.
+-- ── 3. Bookkeeping tables ──────────────────────────────────────────────────
+-- Failed-attempt counters, one row per PSN (never exposed to clients).
+create table if not exists public.self_service_attempts (
+  psn               text primary key,
+  attempts          integer not null default 0,
+  window_started_at timestamptz not null default now(),
+  locked_until      timestamptz
+);
+alter table public.self_service_attempts enable row level security;
 
--- One officer by exact PSN, full editable profile (everything except PSN and
--- the lockout timestamp, which surfaces as `already_submitted`).
-drop function if exists public.self_service_lookup(text);
-create or replace function public.self_service_lookup(psn text)
-returns table (
-  id                 uuid,
-  psn                text,
-  name               text,
-  gender             text,
-  grade              text,
-  cadre              text,
-  date_first_appt    date,
-  date_present_appt  date,
-  dob                date,
-  phone              text,
-  lga                text,
-  station            text,
-  address            text,
-  photo              text,
-  basic_salary       numeric,
-  step               text,
-  remarks            text,
-  already_submitted  boolean
-)
-language sql
-stable
+-- Short-lived, single-use write tokens issued by a successful verify.
+create table if not exists public.self_service_tokens (
+  token       uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.employees(id) on delete cascade,
+  created_at  timestamptz not null default now(),
+  expires_at  timestamptz not null,
+  used_at     timestamptz
+);
+alter table public.self_service_tokens enable row level security;
+create index if not exists self_service_tokens_employee_idx
+  on public.self_service_tokens (employee_id);
+
+-- ── 4. Attempt bookkeeping helper (internal only) ──────────────────────────
+create or replace function public.self_service_note_failure(p_psn text)
+returns void
+language plpgsql
 security definer
 set search_path = public
 as $$
-  select
-    e.id, e.psn, e.name, e.gender, e.grade, e.cadre,
-    e.date_first_appt, e.date_present_appt, e.dob,
-    e.phone, e.lga, e.station, e.address, e.photo,
-    e.basic_salary, e.step, e.remarks,
-    e.self_service_submitted_at is not null
-  from public.employees e
-  where e.psn = self_service_lookup.psn
-  limit 1;
+declare
+  v_window constant interval := interval '15 minutes';
+  v_limit  constant integer  := 5;
+begin
+  insert into public.self_service_attempts as a (psn, attempts, window_started_at, locked_until)
+  values (p_psn, 1, now(), null)
+  on conflict (psn) do update set
+    attempts = case
+      when a.window_started_at < now() - v_window then 1
+      else a.attempts + 1
+    end,
+    window_started_at = case
+      when a.window_started_at < now() - v_window then now()
+      else a.window_started_at
+    end,
+    locked_until = case
+      when (case when a.window_started_at < now() - v_window then 1 else a.attempts + 1 end) >= v_limit
+        then now() + v_window
+      else null
+    end;
+end;
 $$;
 
-revoke all on function public.self_service_lookup(text) from public;
-grant execute on function public.self_service_lookup(text) to anon;
-grant execute on function public.self_service_lookup(text) to authenticated;
+revoke all on function public.self_service_note_failure(text) from public;
 
--- Apply an existing officer's one-shot DIRECT update. Validates that the
--- employee exists, hasn't already submitted, and that `changes` only contains
--- editable fields (everything except id, psn and the lockout/timestamps).
--- Clears a field when its value is null/empty; stamps the lockout and writes
--- an audit row. Returns { ok, error? }.
-drop function if exists public.submit_self_service_update(uuid, jsonb);
-create or replace function public.submit_self_service_update(employee_id uuid, changes jsonb)
+-- ── 5. Step 1 — verify identity, hand back a token ─────────────────────────
+drop function if exists public.self_service_verify(text, text);
+create or replace function public.self_service_verify(psn text, factor text)
 returns jsonb
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  v_emp        public.employees%rowtype;
-  v_allowed    text[] := array[
+  v_psn      text := upper(trim(coalesce(psn, '')));
+  v_digits   text := regexp_replace(coalesce(factor, ''), '\D', '', 'g');
+  v_emp      public.employees%rowtype;
+  v_locked   timestamptz;
+  v_token    uuid;
+  v_ok       boolean := false;
+  v_last4    text;
+begin
+  -- One uniform answer for every kind of miss, so the endpoint cannot be used
+  -- to test whether a staff number exists.
+  if v_psn = '' then
+    return jsonb_build_object('ok', false, 'error', 'verify_failed');
+  end if;
+
+  -- Table is aliased because the function parameter is also called `psn`;
+  -- an unqualified reference is ambiguous (42702).
+  select a.locked_until into v_locked
+    from public.self_service_attempts a where a.psn = v_psn;
+
+  if v_locked is not null and v_locked > now() then
+    return jsonb_build_object(
+      'ok', false,
+      'error', 'locked',
+      'retry_after_seconds', ceil(extract(epoch from (v_locked - now())))::int
+    );
+  end if;
+
+  select * into v_emp
+    from public.employees e
+   where upper(trim(e.psn)) = v_psn
+   limit 1;
+
+  if found and v_digits <> '' then
+    v_last4 := right(regexp_replace(coalesce(v_emp.phone, ''), '\D', '', 'g'), 4);
+    v_ok :=
+      (v_emp.dob is not null and v_digits in (
+         to_char(v_emp.dob, 'YYYYMMDD'),
+         to_char(v_emp.dob, 'DDMMYYYY')
+      ))
+      or (length(v_last4) = 4 and v_digits = v_last4);
+  end if;
+
+  if not v_ok then
+    perform public.self_service_note_failure(v_psn);
+    return jsonb_build_object('ok', false, 'error', 'verify_failed');
+  end if;
+
+  -- Success clears the counter for this PSN and issues one single-use token.
+  delete from public.self_service_attempts a where a.psn = v_psn;
+  delete from public.self_service_tokens
+   where employee_id = v_emp.id and (used_at is not null or expires_at < now());
+
+  insert into public.self_service_tokens (employee_id, expires_at)
+  values (v_emp.id, now() + interval '20 minutes')
+  returning token into v_token;
+
+  return jsonb_build_object(
+    'ok', true,
+    'token', v_token,
+    'already_submitted', v_emp.self_service_submitted_at is not null,
+    'profile', jsonb_build_object(
+      'id', v_emp.id,
+      'psn', v_emp.psn,
+      'name', v_emp.name,
+      'gender', v_emp.gender,
+      'grade', v_emp.grade,
+      'cadre', v_emp.cadre,
+      'date_first_appt', v_emp.date_first_appt,
+      'date_present_appt', v_emp.date_present_appt,
+      'dob', v_emp.dob,
+      'phone', v_emp.phone,
+      'lga', v_emp.lga,
+      'station', v_emp.station,
+      'address', v_emp.address,
+      'photo', v_emp.photo,
+      'step', v_emp.step,
+      'remarks', v_emp.remarks
+    )
+  );
+end;
+$$;
+
+revoke all on function public.self_service_verify(text, text) from public;
+grant execute on function public.self_service_verify(text, text) to anon;
+grant execute on function public.self_service_verify(text, text) to authenticated;
+
+-- ── 6. Step 2 — apply the one-shot update behind the token ─────────────────
+drop function if exists public.self_service_submit(uuid, jsonb);
+create or replace function public.self_service_submit(p_token uuid, changes jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_emp     public.employees%rowtype;
+  v_token   public.self_service_tokens%rowtype;
+  v_allowed text[] := array[
     'name', 'gender', 'grade', 'cadre',
     'date_first_appt', 'date_present_appt', 'dob',
     'phone', 'lga', 'station', 'address', 'photo',
-    'basic_salary', 'step', 'remarks'
+    'step', 'remarks'
   ];
-  v_key        text;
+  v_key     text;
 begin
-  select * into v_emp from public.employees where id = employee_id;
+  select * into v_token
+    from public.self_service_tokens t
+   where t.token = p_token
+     and t.used_at is null
+     and t.expires_at > now();
+
   if not found then
-    return jsonb_build_object('ok', false, 'error', 'No employee record was found for this PSN.');
+    return jsonb_build_object('ok', false, 'error', 'session_expired');
+  end if;
+
+  select * into v_emp from public.employees where id = v_token.employee_id;
+  if not found then
+    return jsonb_build_object('ok', false, 'error', 'session_expired');
   end if;
 
   if v_emp.self_service_submitted_at is not null then
-    return jsonb_build_object('ok', false, 'error', 'These details have already been submitted.');
+    return jsonb_build_object('ok', false, 'error', 'already_submitted');
   end if;
 
   if jsonb_typeof(changes) <> 'object' then
-    return jsonb_build_object('ok', false, 'error', 'Invalid update payload.');
+    return jsonb_build_object('ok', false, 'error', 'invalid_payload');
   end if;
 
   for v_key in select jsonb_object_keys(changes) loop
     if not (v_key = any (v_allowed)) then
-      return jsonb_build_object('ok', false, 'error', 'Field "' || v_key || '" cannot be updated through self-service.');
+      return jsonb_build_object('ok', false, 'error', 'field_not_allowed', 'field', v_key);
     end if;
-    if v_key = 'basic_salary' then
-      if jsonb_typeof(changes -> v_key) not in ('number', 'string', 'null') then
-        return jsonb_build_object('ok', false, 'error', 'Invalid value for "basic_salary".');
-      end if;
-    elsif jsonb_typeof(changes -> v_key) not in ('string', 'null') then
-      return jsonb_build_object('ok', false, 'error', 'Invalid value for "' || v_key || '".');
+    if jsonb_typeof(changes -> v_key) not in ('string', 'null') then
+      return jsonb_build_object('ok', false, 'error', 'invalid_value', 'field', v_key);
     end if;
   end loop;
 
-  if nullif(changes ->> 'name', '') is null then
-    return jsonb_build_object('ok', false, 'error', 'Name cannot be empty.');
+  if nullif(changes ->> 'name', '') is null and changes ? 'name' then
+    return jsonb_build_object('ok', false, 'error', 'name_required');
   end if;
 
   update public.employees e set
-    name               = case when changes ? 'name'               then changes ->> 'name'               else e.name end,
-    gender             = case when changes ? 'gender'             then nullif(changes ->> 'gender', '') else e.gender end,
-    grade              = case when changes ? 'grade'              then nullif(changes ->> 'grade', '')  else e.grade end,
-    cadre              = case when changes ? 'cadre'              then nullif(changes ->> 'cadre', '')  else e.cadre end,
-    date_first_appt    = case when changes ? 'date_first_appt'    then nullif(changes ->> 'date_first_appt', '')    ::date else e.date_first_appt end,
-    date_present_appt  = case when changes ? 'date_present_appt'  then nullif(changes ->> 'date_present_appt', '')  ::date else e.date_present_appt end,
-    dob                = case when changes ? 'dob'                then nullif(changes ->> 'dob', '')                ::date else e.dob end,
-    phone              = case when changes ? 'phone'              then nullif(changes ->> 'phone', '')      else e.phone end,
-    lga                = case when changes ? 'lga'                then nullif(changes ->> 'lga', '')        else e.lga end,
-    station            = case when changes ? 'station'            then nullif(changes ->> 'station', '')    else e.station end,
-    address            = case when changes ? 'address'            then nullif(changes ->> 'address', '')    else e.address end,
-    photo              = case when changes ? 'photo'              then nullif(changes ->> 'photo', '')      else e.photo end,
-    basic_salary       = case when changes ? 'basic_salary'       then nullif(changes ->> 'basic_salary', '')::numeric else e.basic_salary end,
-    step               = case when changes ? 'step'               then nullif(changes ->> 'step', '')       else e.step end,
-    remarks            = case when changes ? 'remarks'            then nullif(changes ->> 'remarks', '')    else e.remarks end,
-    updated_at             = now(),
+    name              = case when changes ? 'name'              then changes ->> 'name'              else e.name end,
+    gender            = case when changes ? 'gender'            then nullif(changes ->> 'gender', '')            else e.gender end,
+    grade             = case when changes ? 'grade'             then nullif(changes ->> 'grade', '')             else e.grade end,
+    cadre             = case when changes ? 'cadre'             then nullif(changes ->> 'cadre', '')             else e.cadre end,
+    date_first_appt   = case when changes ? 'date_first_appt'   then nullif(changes ->> 'date_first_appt', '')::date   else e.date_first_appt end,
+    date_present_appt = case when changes ? 'date_present_appt' then nullif(changes ->> 'date_present_appt', '')::date else e.date_present_appt end,
+    dob               = case when changes ? 'dob'               then nullif(changes ->> 'dob', '')::date               else e.dob end,
+    phone             = case when changes ? 'phone'             then nullif(changes ->> 'phone', '')             else e.phone end,
+    lga               = case when changes ? 'lga'               then nullif(changes ->> 'lga', '')               else e.lga end,
+    station           = case when changes ? 'station'           then nullif(changes ->> 'station', '')           else e.station end,
+    address           = case when changes ? 'address'           then nullif(changes ->> 'address', '')           else e.address end,
+    photo             = case when changes ? 'photo'             then nullif(changes ->> 'photo', '')             else e.photo end,
+    step              = case when changes ? 'step'              then nullif(changes ->> 'step', '')              else e.step end,
+    remarks           = case when changes ? 'remarks'           then nullif(changes ->> 'remarks', '')           else e.remarks end,
+    updated_at                = now(),
     self_service_submitted_at = now()
-  where e.id = employee_id;
+  where e.id = v_emp.id;
+
+  update public.self_service_tokens set used_at = now() where token = p_token;
 
   insert into public.audit_log (id, user_id, user_email, user_role, action, table_name, row_id, details)
-  values (gen_random_uuid(), null, null, null, 'update', 'employees', employee_id,
+  values (gen_random_uuid(), null, null, null, 'update', 'employees', v_emp.id,
           jsonb_build_object('source', 'self_service', 'changes', changes));
 
   return jsonb_build_object('ok', true);
 end;
 $$;
 
-revoke all on function public.submit_self_service_update(uuid, jsonb) from public;
-grant execute on function public.submit_self_service_update(uuid, jsonb) to anon;
-grant execute on function public.submit_self_service_update(uuid, jsonb) to authenticated;
+revoke all on function public.self_service_submit(uuid, jsonb) from public;
+grant execute on function public.self_service_submit(uuid, jsonb) to anon;
+grant execute on function public.self_service_submit(uuid, jsonb) to authenticated;
 
--- Admin-only escape hatch: clears the one-shot lockout for one officer so
--- they can update again (used for testing / corrections). Audited.
+-- ── 7. Admin escape hatch (unchanged, admin+ only, audited) ────────────────
 drop function if exists public.reset_self_service_lock(text);
 create or replace function public.reset_self_service_lock(psn text)
 returns jsonb
@@ -226,3 +325,9 @@ $$;
 
 revoke all on function public.reset_self_service_lock(text) from public;
 grant execute on function public.reset_self_service_lock(text) to authenticated;
+
+-- ── 8. Retire the anonymous PSN-only endpoints ─────────────────────────────
+-- These exposed a full profile for a bare PSN and accepted a client-supplied
+-- employee id for writes. Run this section only once the new client is live.
+drop function if exists public.self_service_lookup(text);
+drop function if exists public.submit_self_service_update(uuid, jsonb);
