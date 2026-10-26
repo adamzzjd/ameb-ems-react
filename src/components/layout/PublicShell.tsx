@@ -183,9 +183,13 @@ export function PublicPageHeader({ tag, title, sub }: { tag: string; title: stri
 }
 
 /**
- * Render CMS copy safely — plain text with `\n` paragraphs and `- ` bullets.
- * Deliberately does NOT use dangerouslySetInnerHTML: headings are editable by
+ * Render CMS copy safely — plain text with `\n` paragraphs, `- ` bullets, and
+ * clickable links written as `[label](target)` or as a bare http(s) URL.
+ *
+ * Deliberately does NOT use dangerouslySetInnerHTML: copy is editable by
  * admins, and rendering their raw HTML opens an XSS hole on the public site.
+ * For the same reason only http(s)/mailto/tel links and in-site paths become
+ * anchors — anything else (e.g. `javascript:`) is left as plain text.
  */
 export function RichText({ text }: { text: string }) {
   const blocks: ReactNode[] = [];
@@ -195,7 +199,7 @@ export function RichText({ text }: { text: string }) {
     if (!bullets.length) return;
     blocks.push(
       <ul key={key} className="list-disc pl-5 space-y-1.5 mb-4">
-        {bullets.map((b, i) => <li key={i}>{b}</li>)}
+        {bullets.map((b, i) => <li key={i}>{renderInline(b, `li-${key}-${i}`)}</li>)}
       </ul>
     );
     bullets = [];
@@ -206,9 +210,52 @@ export function RichText({ text }: { text: string }) {
     if (!line) { flush(`ul-${i}`); return; }
     if (line.startsWith('- ')) { bullets.push(line.slice(2)); return; }
     flush(`ul-${i}`);
-    blocks.push(<p key={`p-${i}`} className="leading-relaxed mb-4">{line}</p>);
+    blocks.push(<p key={`p-${i}`} className="leading-relaxed mb-4">{renderInline(line, `p-${i}`)}</p>);
   });
   flush('ul-end');
 
   return <div className="text-sm md:text-[15px]" style={{ color: 'var(--color-text-secondary)' }}>{blocks}</div>;
+}
+
+const LINK_PATTERN = /\[([^\]]+)\]\(([^)\s]+)\)|https?:\/\/[^\s<>()]+/g;
+const SAFE_HREF = /^(https?:\/\/|mailto:|tel:|\/)/i;
+const LINK_CLASS = 'font-semibold underline underline-offset-2 hover:opacity-80';
+
+/** Split one line of CMS copy into text and links. */
+function renderInline(text: string, keyPrefix: string): ReactNode[] {
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+
+  for (const match of text.matchAll(LINK_PATTERN)) {
+    const start = match.index ?? 0;
+    const token = match[0];
+    const labelled = /^\[([^\]]+)\]\(([^)\s]+)\)$/.exec(token);
+    const label = labelled ? labelled[1] : token.replace(/[.,;:]+$/, '');
+    const href = labelled ? labelled[2] : label;
+
+    if (start > cursor) nodes.push(text.slice(cursor, start));
+
+    if (!SAFE_HREF.test(href)) {
+      // Not a link we are willing to emit — show exactly what was typed.
+      nodes.push(token);
+    } else if (href.startsWith('/')) {
+      nodes.push(
+        <Link key={`${keyPrefix}-${start}`} to={href} className={LINK_CLASS} style={{ color: 'var(--color-primary)' }}>
+          {label}
+        </Link>
+      );
+    } else {
+      nodes.push(
+        <a key={`${keyPrefix}-${start}`} href={href} className={LINK_CLASS}
+          style={{ color: 'var(--color-primary)' }} target="_blank" rel="noopener noreferrer">
+          {label}
+        </a>
+      );
+    }
+
+    cursor = start + (labelled ? token.length : label.length);
+  }
+
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return nodes;
 }
