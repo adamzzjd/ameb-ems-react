@@ -5,7 +5,10 @@ import {
   getCompletenessStats,
   findMissing,
   findDuplicateOfficers,
+  findStaffIssues,
   type MissingField,
+  type PsnProblem,
+  type GradeProblem,
 } from '../lib/dataQuality';
 import { exportEmployeesCSV } from '../lib/csv';
 
@@ -14,7 +17,19 @@ interface DataQualityProps {
   onEditEmployee: (id: string) => void;
 }
 
-type View = 'missing' | 'duplicates';
+type View = 'missing' | 'duplicates' | 'issues';
+
+const PSN_LABELS: Record<PsnProblem, string> = {
+  missing: 'PSN missing',
+  invalid: 'PSN not valid',
+};
+
+const GRADE_LABELS: Record<GradeProblem, string> = {
+  missing: 'Grade missing',
+  'invalid-grade': 'Grade not GL nn',
+  'embedded-step': 'Step typed inside grade',
+  'invalid-step': 'Step out of range',
+};
 
 const FIELD_LABELS: Record<MissingField, string> = {
   name: 'Name',
@@ -35,14 +50,29 @@ function esc(s: string | null | undefined): string {
 
 export function DataQualityPage({ employees, onEditEmployee }: DataQualityProps) {
   const stats = useMemo(() => getCompletenessStats(employees), [employees]);
+  const staffIssues = useMemo(() => findStaffIssues(employees), [employees]);
   const [view, setView] = useState<View>('missing');
   const [field, setField] = useState<MissingField | 'all'>('all');
 
+  // id → the problems reported for that officer, so the issues view can list
+  // them in the same Issue column as the other views.
+  const issueLabels = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const i of staffIssues) {
+      const labels: string[] = [];
+      if (i.psn) labels.push(PSN_LABELS[i.psn]);
+      if (i.grade) labels.push(GRADE_LABELS[i.grade]);
+      m.set(i.employee.id, labels);
+    }
+    return m;
+  }, [staffIssues]);
+
   const rows = useMemo(() => {
     if (view === 'duplicates') return findDuplicateOfficers(employees);
+    if (view === 'issues') return staffIssues.map(i => i.employee);
     if (field === 'all') return employees.filter(e => !getCompletenessStats([e]).complete);
     return findMissing(employees, field);
-  }, [employees, view, field]);
+  }, [employees, view, field, staffIssues]);
 
   const missingCells = useMemo(
     () => REQUIRED_FIELDS.reduce((s, f) => s + stats.missing[f], 0),
@@ -72,6 +102,7 @@ export function DataQualityPage({ employees, onEditEmployee }: DataQualityProps)
           { label: 'Complete Records', value: stats.complete, icon: '✅' },
           { label: 'Missing Fields', value: missingCells, icon: '⚠️' },
           { label: 'Duplicate Names', value: stats.duplicateCount, icon: '🔁' },
+          { label: 'PSN / Grade Errors', value: staffIssues.length, icon: '🛑' },
         ].map(s => (
           <div key={s.label} style={{ background: '#fff', border: '1px solid var(--color-border)', borderRadius: 12, padding: '13px 15px' }}>
             <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
@@ -86,6 +117,9 @@ export function DataQualityPage({ employees, onEditEmployee }: DataQualityProps)
         <button style={chipStyle(view === 'missing')} onClick={() => setView('missing')}>Missing fields</button>
         <button style={chipStyle(view === 'duplicates')} onClick={() => setView('duplicates')}>
           Duplicates{stats.duplicateCount > 0 ? ` (${stats.duplicateCount})` : ''}
+        </button>
+        <button style={chipStyle(view === 'issues')} onClick={() => setView('issues')}>
+          PSN / Grade errors{staffIssues.length > 0 ? ` (${staffIssues.length})` : ''}
         </button>
       </div>
 
@@ -128,14 +162,20 @@ export function DataQualityPage({ employees, onEditEmployee }: DataQualityProps)
                   <td colSpan={3} style={{ textAlign: 'center', padding: 44 }}>
                     <div style={{ fontSize: 38, marginBottom: 10 }}>🎉</div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text-secondary)' }}>
-                      {view === 'missing' ? 'No officers missing this field.' : 'No duplicate names found.'}
+                      {view === 'missing'
+                        ? 'No officers missing this field.'
+                        : view === 'issues'
+                          ? 'Every PSN and grade looks valid.'
+                          : 'No duplicate names found.'}
                     </div>
                   </td>
                 </tr>
               ) : rows.map((e, i) => {
                 const issues = view === 'duplicates'
                   ? ['Possible duplicate name']
-                  : REQUIRED_FIELDS.filter(f => !e[f]).map(f => FIELD_LABELS[f]);
+                  : view === 'issues'
+                    ? issueLabels.get(e.id) || []
+                    : REQUIRED_FIELDS.filter(f => !e[f]).map(f => FIELD_LABELS[f]);
                 return (
                   <tr key={e.id} style={{ borderBottom: '1px solid var(--color-border)', background: i % 2 === 0 ? 'var(--color-surface)' : 'var(--color-surface-warm)' }}>
                     <td style={{ ...tdStyle, fontWeight: 600, color: 'var(--color-text-primary)' }}>

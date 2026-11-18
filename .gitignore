@@ -51,3 +51,10 @@ docs/
 
 # Test coverage output
 coverage
+
+# Local data snapshots (pre-change table dumps, import scratch space)
+.tmp-verify/
+
+# Staff spreadsheets hold personal data (names, PSNs, dates of birth) —
+# they are working files, not source
+*.xlsx
