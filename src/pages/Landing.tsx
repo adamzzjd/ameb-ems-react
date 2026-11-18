@@ -28,7 +28,7 @@ import {
   GraduationCap, BookOpen, Users, Star, Heart, Wrench,
   MapPin, ClipboardList, Rocket, ChevronRight, ChevronLeft,
   Sun, Moon, Menu, X, Phone, Mail, Clock,
-  Shield, Award, Globe, ArrowDown, Search,
+  Shield, Award, Globe, ArrowDown, Search, Megaphone,
 } from 'lucide-react';
 
 interface LandingProps {
@@ -71,6 +71,8 @@ const enquirySelectStyle = {
 const HEADER_H = 76;      // fixed header height
 const GOVT_BAR_H = 36;    // top government bar (fixed offset of the header)
 const HEADER_OFFSET = GOVT_BAR_H + HEADER_H + 16; // total clearance needed
+// Staff notice popup on the home page. Dated, so a future notice reappears.
+const NOTICE_KEY = 'adsmeb-staff-notice-2026-11-18';
 
 const scrollTo = (id: string) => {
   const el = document.getElementById(id);
@@ -318,6 +320,40 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
   const handleScroll = useCallback(scrollTo, []);
   // PSN entered in the header — jumps straight into the self-service portal.
   const [headerPsn, setHeaderPsn] = useState('');
+  // Board notice — a popup over the home page as soon as it loads, until the
+  // visitor closes it (remembered on this device).
+  const [noticeVisible, setNoticeVisible] = useState(() => {
+    try { return localStorage.getItem(NOTICE_KEY) !== 'dismissed'; } catch { return true; }
+  });
+  const noticeDialogRef = useRef<HTMLDivElement>(null);
+  // The popup waits half a second so the hero paints first — the notice still
+  // greets every staff member on arrival, it just doesn't land on a blank page.
+  const [noticeReady, setNoticeReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setNoticeReady(true), 500);
+    return () => clearTimeout(t);
+  }, []);
+  // Motion stays subtle and switches to a plain fade when the visitor asks
+  // their system to reduce animation.
+  const noticeReduced = useReducedMotion();
+  const dismissNotice = useCallback(() => {
+    try { localStorage.setItem(NOTICE_KEY, 'dismissed'); } catch { /* private mode */ }
+    setNoticeVisible(false);
+  }, []);
+  // Popup behaviour: Escape closes it, the page behind it does not scroll, and
+  // focus moves into the dialog so keyboard and screen-reader users land there.
+  useEffect(() => {
+    if (!noticeVisible || !noticeReady) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') dismissNotice(); };
+    document.addEventListener('keydown', onKey);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    noticeDialogRef.current?.focus();
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [noticeVisible, noticeReady, dismissNotice]);
 
   const handleHeaderPsnSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1057,6 +1093,9 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
                   className="block text-[13px] py-1.5 cursor-pointer transition-colors hover:text-gold"
                   style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>{link.label}</a>
               ))}
+              <Link to="/notice"
+                className="block text-[13px] py-1.5 transition-colors hover:text-gold"
+                style={{ color: 'rgba(255,255,255,0.65)', textDecoration: 'none' }}>Staff Notice (PSN Update)</Link>
             </div>
             {/* Programs */}
             <div>
@@ -1200,6 +1239,99 @@ export function Landing({ onGoToLogin, onGoToSelfService }: LandingProps) {
           </form>
         )}
       </Modal>
+
+      {/* ═══════════ BOARD NOTICE POPUP — opens with the home page ═══════════ */}
+      <AnimatePresence>
+      {noticeVisible && noticeReady && (
+        <motion.div
+          key="board-notice-backdrop"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          style={{ background: 'rgba(9, 26, 17, 0.62)', backdropFilter: 'blur(3px)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) dismissNotice(); }}
+        >
+          <motion.div
+            key="board-notice-dialog"
+            initial={noticeReduced ? { opacity: 0 } : { opacity: 0, y: 28, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={noticeReduced ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.99 }}
+            transition={{ duration: noticeReduced ? 0.15 : 0.34, ease: easeOut }}
+            ref={noticeDialogRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="board-notice-title"
+            aria-describedby="board-notice-body"
+            className="relative w-full max-w-[540px] max-h-[92vh] overflow-y-auto rounded-2xl border outline-none"
+            style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', boxShadow: '0 24px 70px rgba(0,0,0,0.45)' }}
+          >
+            <div style={{ height: 6, background: 'var(--color-gold)' }} />
+            <button
+              onClick={dismissNotice}
+              aria-label="Close board notice"
+              title="Close"
+              className="absolute top-5 right-4 w-9 h-9 rounded-full flex items-center justify-center cursor-pointer transition-colors hover:opacity-80"
+              style={{ background: 'var(--color-surface-warm)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }}
+            >
+              <X size={16} />
+            </button>
+
+            <div className="px-6 sm:px-8 pt-7 pb-8">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-[1.4px] mb-5"
+                style={{ background: 'var(--color-gold)', color: 'var(--color-gold-fg)' }}>
+                <Megaphone size={13} /> Board Notice · 18 November 2026
+              </div>
+
+              <h2 id="board-notice-title" className="font-heading text-[22px] sm:text-[26px] font-bold leading-snug pr-10"
+                style={{ color: 'var(--color-text-primary)' }}>
+                Staff: update your details with your PSN
+              </h2>
+
+              <p id="board-notice-body" className="text-[14px] leading-relaxed mt-3"
+                style={{ color: 'var(--color-text-secondary)' }}>
+                Staff record updates have moved online. Enter your Staff Number (PSN) on this website and confirm it is you with your date of birth or the last four digits of your phone number — no password needed.
+              </p>
+
+              <ul className="mt-5 space-y-2.5">
+                {[
+                  'One update per staff member — changes apply to the register immediately',
+                  'Your PSN itself cannot be changed here',
+                  'Not on the register? The Board Office (EMIS/Records) can add you',
+                ].map(line => (
+                  <li key={line} className="flex items-start gap-2.5 text-[13px] leading-relaxed"
+                    style={{ color: 'var(--color-text-secondary)' }}>
+                    <span className="mt-[7px] w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--color-gold)' }} />
+                    {line}
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex flex-wrap gap-3 mt-7">
+                <Link to="/notice"
+                  className="px-6 py-3 rounded-lg text-[13px] font-bold transition-all hover:-translate-y-0.5"
+                  style={{ background: 'var(--color-primary)', color: 'var(--color-text-inverse)', textDecoration: 'none' }}>
+                  Read the full notice
+                </Link>
+                <button onClick={() => { dismissNotice(); onGoToSelfService?.(); }}
+                  className="px-6 py-3 rounded-lg text-[13px] font-bold border transition-colors hover:border-primary cursor-pointer"
+                  style={{ borderColor: 'var(--color-border)', color: 'var(--color-text-primary)', background: 'var(--color-surface)' }}>
+                  Update now
+                </button>
+              </div>
+
+              <button onClick={dismissNotice}
+                className="mt-5 text-[12px] font-semibold underline underline-offset-2 cursor-pointer"
+                style={{ color: 'var(--color-text-muted)', background: 'none', border: 'none' }}>
+                Continue to the website
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+      </AnimatePresence>
     </div>
   );
 }

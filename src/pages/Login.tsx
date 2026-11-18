@@ -7,6 +7,7 @@ import { useToast } from '../hooks/useToast';
 import { supabase } from '../supabase/client';
 import { syncFaviconFromLogo } from '../lib/favicon';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { Link } from 'react-router';
 import { GraduationCap, Shield } from 'lucide-react';
 
 interface LoginProps {
@@ -188,6 +189,10 @@ export function Login({ onBackToSite, onSelfService }: LoginProps) {
                 className="h-11 px-4 rounded-lg text-[13px] font-bold text-on-primary border-none cursor-pointer"
                 style={{ background: 'var(--color-primary)' }}>Update</button>
             </form>
+            <Link to="/notice" className="inline-block mt-3 text-[11.5px] hover:underline"
+              style={{ color: 'var(--color-primary)' }}>
+              See the Board's notice to staff →
+            </Link>
           </div>
         </div>
 
