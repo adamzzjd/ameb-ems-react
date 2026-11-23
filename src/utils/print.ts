@@ -1,6 +1,9 @@
 /* AMEB EMS — Print utilities
    Professional government document printouts with embedded logo.
-   Salary is intentionally excluded from employee prints (paid by the government). */
+   Confidential details are intentionally excluded from staff-list prints:
+   salary, date of birth, residential address and personal phone numbers.
+   Those stay on screen (and on the single-officer profile sheet) — a register
+   that leaves the office should not carry them. */
 
 import type { Employee, Learner } from '../types';
 import type { LgaAreaOfficer } from '../types';
@@ -97,7 +100,7 @@ function buildHeader(sub: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-//  EMPLOYEE PRINTS (no salary — salaries are paid by the government)
+//  EMPLOYEE PRINTS (no salary / DOB / address / phone — confidential)
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function printEmployees(employees: Employee[], title?: string, subtitle?: string) {
@@ -111,7 +114,6 @@ export function printEmployees(employees: Employee[], title?: string, subtitle?:
       <td>${esc(e.lga || '—')}</td>
       <td>${esc(e.station || '—')}</td>
       <td style="font-size:10px">${fmtDate(e.date_first_appt)}</td>
-      <td>${esc(e.phone || '—')}</td>
     </tr>
   `).join('');
 
@@ -127,7 +129,7 @@ export function printEmployees(employees: Employee[], title?: string, subtitle?:
       <thead><tr>
         <th style="width:30px;text-align:center">#</th>
         <th>Name</th><th>PSN</th><th>Cadre</th><th>Grade</th>
-        <th>LGA</th><th>Station</th><th>First Appt.</th><th>Phone</th>
+        <th>LGA</th><th>Station</th><th>First Appt.</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
