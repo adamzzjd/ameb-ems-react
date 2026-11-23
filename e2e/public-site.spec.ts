@@ -83,6 +83,11 @@ test.describe('Public site', () => {
 
   test('Staff Portal opens the login page and returns to the site', async ({ page }) => {
     await page.goto('/');
+
+    // The dated Board notice opens over the home page and covers the header, so
+    // close it before reaching for the Staff Portal button.
+    await page.getByLabel('Close board notice').click({ timeout: 5_000 }).catch(() => {});
+
     await page.getByText('Staff Portal', { exact: false }).first().click();
 
     // Login form renders (no credentials needed to view it)
