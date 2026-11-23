@@ -11,14 +11,28 @@ import {
 // Date helpers relative to "now" so the tests stay deterministic. Builds the
 // calendar-date string from LOCAL components (toISOString would shift the date
 // across UTC midnight in non-UTC timezones).
-function yearsAgo(years: number, month = 0, day = 1): string {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - years, month, day);
+function toDateString(d: Date): string {
   d.setHours(0, 0, 0, 0);
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
   const dd = String(d.getDate()).padStart(2, '0');
   return `${y}-${m}-${dd}`;
+}
+
+// January 1, `years` years ago — that birthday/anniversary has always passed.
+function yearsAgo(years: number): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - years, 0, 1);
+  return toDateString(d);
+}
+
+// One day short of `years` full years — the anniversary is still ahead, so the
+// age/service stays at `years - 1` whatever today's date is.
+function yearsAgoUnreached(years: number): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - (years - 1));
+  d.setDate(d.getDate() - 1);
+  return toDateString(d);
 }
 
 describe('calcAge', () => {
@@ -31,8 +45,8 @@ describe('calcAge', () => {
   it('computes whole years since birth', () => {
     // Born exactly 30 years ago on Jan 1 → age 30.
     expect(calcAge(yearsAgo(30))).toBe(30);
-    // Birthday later this year (November) → still 29 until it passes.
-    expect(calcAge(yearsAgo(30, 10, 15))).toBe(29);
+    // Anniversary still ahead → still 29 until it passes.
+    expect(calcAge(yearsAgoUnreached(30))).toBe(29);
   });
 });
 
@@ -43,8 +57,8 @@ describe('calcYearsOfService', () => {
 
   it('computes whole years since first appointment', () => {
     expect(calcYearsOfService(yearsAgo(35))).toBe(35);
-    // Anniversary later this year (November) → not reached yet.
-    expect(calcYearsOfService(yearsAgo(10, 10, 20))).toBe(9);
+    // Anniversary still ahead → not reached yet.
+    expect(calcYearsOfService(yearsAgoUnreached(10))).toBe(9);
   });
 });
 
