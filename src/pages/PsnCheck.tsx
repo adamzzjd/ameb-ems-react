@@ -235,9 +235,9 @@ export function PsnCheckPage() {
           <div className="text-[13px] font-bold" style={{ color: 'var(--color-text-primary)' }}>Unlock officer's one-time update</div>
         </div>
         <div className="text-[12px] mb-3" style={{ color: 'var(--color-text-muted)' }}>
-          For testing or corrections: an officer who has already submitted cannot update
-          again. Enter their PSN to clear that lock so they can submit once more (the lock
-          re-applies on their next submit).
+          For testing or corrections: once an officer's self-service update has been
+          approved they cannot submit again. Enter their PSN to clear that lock so
+          they can send another update for review.
         </div>
         <div className="flex flex-wrap gap-2">
           <input value={unlockPsn} onChange={e => setUnlockPsn(e.target.value)}

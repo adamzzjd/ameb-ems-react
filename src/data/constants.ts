@@ -97,6 +97,7 @@ export const PAGE_TITLES: Record<AppPage, PageTitle> = {
   retirement:    { title: '🎓 Retirement & Tenure',   subtitle: 'Age 60 / 35 years of service projections' },
   promotions:    { title: '📈 Promotions & Progression', subtitle: 'Due/overdue officers & promotion history' },
   'psn-check':    { title: '🗂 PSN Tools',               subtitle: 'Check PSNs, register new officers & unlock self-service updates' },
+  'self-service-review': { title: '📥 Record Updates',    subtitle: 'Review and approve staff self-service updates' },
   'data-quality': { title: '🔍 Data Quality',          subtitle: 'Missing fields & duplicate names' },
   stations:      { title: 'Manage Stations',         subtitle: 'Add, edit and delete posting stations' },
   cadres:        { title: 'Manage Cadres',           subtitle: 'Add, edit and delete staff cadres' },

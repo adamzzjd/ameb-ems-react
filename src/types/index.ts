@@ -370,4 +370,5 @@ export type AppPage =
   | 'retirement'
   | 'promotions'
   | 'psn-check'
+  | 'self-service-review'
   | 'data-quality';

@@ -14,6 +14,7 @@ import {
   Newspaper, Image, MessageSquare, CalendarClock, SearchCheck, TrendingUp,
   MapPinned,
   UserPlus,
+  ClipboardCheck,
   ChevronDown,
 } from 'lucide-react';
 
@@ -28,6 +29,8 @@ interface SidebarProps {
   onLogout: () => void;
   employeeCount: number;
   unreadContactCount?: number;
+  /** Self-service updates waiting for review (Record Updates badge). */
+  pendingUpdateCount?: number;
   mobileOpen?: boolean;
   onMobileClose?: () => void;
 }
@@ -67,6 +70,7 @@ const navSections: NavSection[] = [
       { page: 'learners', icon: <GraduationCap size={18} />, label: 'Learners' },
       { page: 'account', icon: <UserCog size={18} />, label: 'My Account' },
       { page: 'psn-check', icon: <UserPlus size={18} />, label: 'PSN Tools', permission: 'employees.import' },
+      { page: 'self-service-review', icon: <ClipboardCheck size={18} />, label: 'Record Updates', permission: 'selfservice.review' },
     ],
   },
   {
@@ -118,6 +122,7 @@ const actions: { icon: React.ReactNode; label: string; key: string; permission: 
 export function Sidebar({
   currentPage, onNavigate, onAddEmployee, onImportCsv, onExportCsv,
   onPrint, onBackup, onLogout, employeeCount, unreadContactCount = 0,
+  pendingUpdateCount = 0,
   mobileOpen, onMobileClose,
 }: SidebarProps) {
   const { user, role, can } = useAuth();
@@ -224,6 +229,15 @@ export function Sidebar({
                         title={`${unreadContactCount} unread message${unreadContactCount !== 1 ? 's' : ''}`}
                       >
                         {unreadContactCount > 99 ? '99+' : unreadContactCount}
+                      </span>
+                    )}
+                    {item.page === 'self-service-review' && pendingUpdateCount > 0 && (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center text-white"
+                        style={{ background: 'var(--color-warning)' }}
+                        title={`${pendingUpdateCount} update${pendingUpdateCount !== 1 ? 's' : ''} waiting for review`}
+                      >
+                        {pendingUpdateCount > 99 ? '99+' : pendingUpdateCount}
                       </span>
                     )}
                     {item.badge && (

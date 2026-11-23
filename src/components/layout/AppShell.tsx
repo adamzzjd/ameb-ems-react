@@ -7,6 +7,7 @@ import { Topbar } from './Topbar';
 import { GovernmentHeaderBar } from './GovernmentHeaderBar';
 import { useAuth } from '../../hooks/useAuth';
 import { useUnreadContacts } from '../../hooks/useUnreadContacts';
+import { usePendingSelfServiceUpdates } from '../../hooks/usePendingSelfServiceUpdates';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -28,12 +29,15 @@ export function AppShell({
   const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { unread, refresh: refreshUnread } = useUnreadContacts();
+  const { pending: pendingUpdates, refresh: refreshPendingUpdates } = usePendingSelfServiceUpdates();
 
-  // Re-check the badge whenever the page changes (e.g. after reading/deleting
-  // messages in the inbox) instead of waiting for the next poll tick.
+  // Re-check the badges whenever the page changes (e.g. after reading/deleting
+  // messages in the inbox, or approving an update) instead of waiting for the
+  // next poll tick.
   useEffect(() => {
     refreshUnread();
-  }, [currentPage, refreshUnread]);
+    refreshPendingUpdates();
+  }, [currentPage, refreshUnread, refreshPendingUpdates]);
 
   const handleLogout = async () => {
     await signOut();
@@ -56,6 +60,7 @@ export function AppShell({
         onLogout={handleLogout}
         employeeCount={employeeCount}
         unreadContactCount={unread}
+        pendingUpdateCount={pendingUpdates}
         mobileOpen={sidebarOpen}
         onMobileClose={closeSidebar}
       />

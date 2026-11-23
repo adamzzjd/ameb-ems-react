@@ -1,54 +1,31 @@
 /* Restyled from scratch - Adamawa State Mass Education Board
    Employee self-service — update your register details with your PSN (no
-   password). The officer confirms the PSN with a fact already on their record
-   (date of birth or the last 4 digits of their phone), receives a single-use
-   token, then applies one DIRECT update of all fields except PSN. Nothing is
-   read or written from a staff number alone — see supabase/setup_selfservice.sql. */
+   password). The PSN loads the officer's record; the changes are queued for an
+   administrator to review and approve. Nothing is written to the register from
+   this screen — see supabase/setup_selfservice.sql. */
 
 import { useEffect, useState } from 'react';
-import { verifyIdentity, submitUpdate, type SelfServiceProfile } from '../supabase/selfService';
+import { lookupProfile, submitUpdate, type SelfServiceProfile } from '../supabase/selfService';
 import { uploadImageToStorage } from '../supabase/storage';
-import { LGAs, GRADES, CADRE_NAMES, STATIONS } from '../data/constants';
+import { SELF_SERVICE_FIELDS, type SelfServiceFieldDef } from '../lib/selfServiceFields';
 import { useToast } from '../hooks/useToast';
 import { usePageMeta } from '../hooks/usePageMeta';
-import { GraduationCap, Shield, Search, ArrowLeft, CheckCircle2, X } from 'lucide-react';
+import { GraduationCap, Shield, Search, ArrowLeft, CheckCircle2, Clock, X } from 'lucide-react';
 
 interface SelfServiceProps {
   onBack: () => void;
-  /** PSN entered in the site header — prefilled into the lookup box. */
+  /** PSN entered in the site header — loaded straight away. */
   initialPsn?: string;
 }
 
-interface FieldDef {
-  key: string;
-  label: string;
-  type: 'text' | 'date' | 'number' | 'select' | 'textarea';
-  options?: readonly string[];
-  placeholder?: string;
-}
-
-const FIELDS: readonly FieldDef[] = [
-  { key: 'name', label: 'Full Name', type: 'text', placeholder: 'e.g. Aisha Bello' },
-  { key: 'gender', label: 'Gender', type: 'select', options: ['Male', 'Female'] },
-  { key: 'grade', label: 'Grade Level', type: 'select', options: GRADES },
-  { key: 'cadre', label: 'Cadre', type: 'select', options: CADRE_NAMES },
-  { key: 'date_first_appt', label: 'Date of First Appointment', type: 'date' },
-  { key: 'date_present_appt', label: 'Date of Present Appointment', type: 'date' },
-  { key: 'dob', label: 'Date of Birth', type: 'date' },
-  { key: 'phone', label: 'Phone Number', type: 'text', placeholder: 'e.g. 0803 123 4567' },
-  { key: 'lga', label: 'LGA of Origin', type: 'select', options: LGAs },
-  { key: 'station', label: 'Present Station', type: 'select', options: STATIONS },
-  { key: 'address', label: 'Residential Address', type: 'text', placeholder: 'e.g. 15 Ahmadu Bello Way, Yola' },
-  { key: 'step', label: 'Salary Step', type: 'text', placeholder: 'e.g. 1' },
-  { key: 'remarks', label: 'Remarks / Notes', type: 'textarea', placeholder: 'Optional notes…' },
-];
+const FIELDS: readonly SelfServiceFieldDef[] = SELF_SERVICE_FIELDS;
 
 type Step =
   | { kind: 'enter' }
-  | { kind: 'verify'; psn: string }
-  | { kind: 'edit'; emp: SelfServiceProfile; token: string }
-  | { kind: 'review'; emp: SelfServiceProfile; token: string; changed: ChangedField[] }
+  | { kind: 'edit'; emp: SelfServiceProfile }
+  | { kind: 'review'; emp: SelfServiceProfile; changed: ChangedField[] }
   | { kind: 'done' }
+  | { kind: 'pending'; emp: SelfServiceProfile }
   | { kind: 'already'; emp: SelfServiceProfile };
 
 interface ChangedField {
@@ -70,18 +47,8 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
   const { toast } = useToast();
   const [step, setStep] = useState<Step>({ kind: 'enter' });
   const [psn, setPsn] = useState('');
-
-  // Prefill the PSN box when the officer came from the site header or login
-  // page. They still have to confirm it is them before anything is shown.
-  useEffect(() => {
-    if (initialPsn) {
-      setPsn(initialPsn);
-      setStep({ kind: 'verify', psn: initialPsn });
-    }
-  }, [initialPsn]);
   const [looking, setLooking] = useState(false);
   const [error, setError] = useState('');
-  const [factor, setFactor] = useState('');
 
   // Form state — one string per field.
   const [form, setForm] = useState<Record<string, string>>({});
@@ -109,32 +76,35 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
     });
   };
 
-  // Step 1 only records the PSN. Nothing is fetched until step 2 proves the
-  // caller knows something already on the record.
-  const handleLookup = (e: React.FormEvent) => {
-    e.preventDefault();
-    const v = psn.trim();
+  // PSN only: if it is in the register, the record is loaded for editing.
+  const load = async (value: string) => {
+    const v = value.trim();
     if (!v) { setError('Enter your staff number (PSN) to continue.'); return; }
+    setPsn(v);
     setError('');
-    setFactor('');
-    setStep({ kind: 'verify', psn: v });
-  };
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const value = factor.trim();
-    if (!value) { setError('Enter your date of birth or the last 4 digits of your phone number.'); return; }
     setLooking(true);
-    setError('');
-
-    const res = await verifyIdentity(psn, value);
+    const res = await lookupProfile(v);
     setLooking(false);
 
     if (!res.ok) { setError(res.message); return; }
-
+    if (res.pending) { setStep({ kind: 'pending', emp: res.profile }); return; }
     if (res.alreadySubmitted) { setStep({ kind: 'already', emp: res.profile }); return; }
     fillForm(res.profile);
-    setStep({ kind: 'edit', emp: res.profile, token: res.token });
+    setStep({ kind: 'edit', emp: res.profile });
+  };
+
+  // Prefill the PSN box when the officer came from the site header or login
+  // page, and load the record straight away.
+  useEffect(() => {
+    if (initialPsn) {
+      setPsn(initialPsn);
+      void load(initialPsn);
+    }
+  }, [initialPsn]);
+
+  const handleLookup = (e: React.FormEvent) => {
+    e.preventDefault();
+    void load(psn);
   };
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -148,10 +118,10 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
     toast('✓ Photo attached.');
   };
 
-  /** Diff the form against the current record (existing officers). */
+  /** Diff the form against the current record. */
   const goToReview = () => {
     if (step.kind !== 'edit') return;
-    const { emp, token } = step;
+    const { emp } = step;
     const changed: ChangedField[] = [];
     for (const f of FIELDS) {
       const before = norm((emp as unknown as Record<string, string | number | null>)[f.key]);
@@ -168,31 +138,31 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
     }
     if (changed.length === 0) { setError('No changes made — update a field first.'); return; }
     setError('');
-    setStep({ kind: 'review', emp, token, changed });
+    setStep({ kind: 'review', emp, changed });
   };
 
-  const buildChanges = (): Record<string, string | null> => {
+  /** Only the fields the officer actually changed are sent for review. */
+  const buildChanges = (emp: SelfServiceProfile): Record<string, string | null> => {
     const out: Record<string, string | null> = {};
     for (const f of FIELDS) {
-      out[f.key] = form[f.key] ?? null;
+      const before = norm((emp as unknown as Record<string, string | number | null>)[f.key]);
+      const after = norm(form[f.key]);
+      if (after !== before) out[f.key] = form[f.key] ?? '';
     }
-    // `photo` has its own uploader (not a FIELDS entry) — send it explicitly so
-    // an uploaded photo actually reaches the register.
-    out.photo = form.photo || null;
+    if (norm(form.photo) !== norm(emp.photo)) out.photo = form.photo || '';
     return out;
   };
 
   const handleSubmit = async () => {
     if (step.kind !== 'review') return;
     setSubmitting(true);
-    // The token — not an employee id — identifies whose record is written.
-    const res = await submitUpdate(step.token, buildChanges());
+    const res = await submitUpdate(step.emp.psn || psn, buildChanges(step.emp));
     setSubmitting(false);
     if (res.ok) { setStep({ kind: 'done' }); return; }
     setError(res.message);
   };
 
-  const renderField = (f: FieldDef) => {
+  const renderField = (f: SelfServiceFieldDef) => {
     const base: React.CSSProperties = {
       width: '100%', height: f.type === 'textarea' ? undefined : 40, minHeight: f.type === 'textarea' ? 64 : undefined,
       padding: f.type === 'textarea' ? '9px 12px' : '0 12px', borderRadius: 8, border: '1px solid var(--color-border)',
@@ -327,9 +297,9 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
         {step.kind === 'enter' && (
           <form onSubmit={handleLookup}>
             <div className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-              Enter your staff number (PSN) to view and update your details. Changes
-              apply <strong>directly</strong> — you can update once, so please make sure
-              everything is correct before submitting.
+              Enter your staff number (PSN) to load and update your details. Your
+              changes are sent to the Board Office for approval — the register is
+              updated once an administrator reviews them.
             </div>
             <label className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
               Staff Number (PSN)
@@ -340,52 +310,12 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
             <button type="submit" disabled={looking}
               className="w-full h-12 mt-4 rounded-lg text-[15px] font-bold text-on-primary transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               style={{ background: 'var(--color-primary)', letterSpacing: '0.3px' }}>
-              <Search size={16} /> Continue
+              <Search size={16} /> {looking ? 'Loading…' : 'Continue'}
             </button>
           </form>
         )}
 
-        {/* ── Step 2: confirm identity before anything is shown ── */}
-        {step.kind === 'verify' && (
-          <form onSubmit={handleVerify}>
-            <div className="text-[13px] leading-relaxed mb-4" style={{ color: 'var(--color-text-secondary)' }}>
-              To protect your record, confirm it is you. Enter the{' '}
-              <strong>date of birth</strong> on your file, or the <strong>last 4 digits</strong>{' '}
-              of the phone number on your file.
-            </div>
-
-            <div className="rounded-lg border px-3.5 py-2.5 mb-4 flex items-center gap-2"
-              style={{ background: 'var(--color-surface-warm)', borderColor: 'var(--color-border)' }}>
-              <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--color-text-muted)' }}>PSN</span>
-              <span className="text-[13px] font-semibold" style={{ color: 'var(--color-text-primary)' }}>{step.psn}</span>
-              <button type="button" onClick={() => { setError(''); setStep({ kind: 'enter' }); }}
-                className="ml-auto text-[11.5px] font-semibold cursor-pointer bg-transparent border-none"
-                style={{ color: 'var(--color-primary)' }}>Change</button>
-            </div>
-
-            <label htmlFor="ss-factor" className="text-xs font-semibold block mb-1.5" style={{ color: 'var(--color-text-secondary)' }}>
-              Date of birth or last 4 digits of phone
-            </label>
-            <input id="ss-factor" value={factor} onChange={e => setFactor(e.target.value)}
-              placeholder="e.g. 17/05/1990 or 4567" inputMode="numeric" autoFocus
-              autoComplete="off"
-              className="w-full h-12 px-4 rounded-lg border text-[15px] outline-none transition-colors focus:ring-2 focus:ring-ring"
-              style={{ background: 'var(--color-surface)', borderColor: 'var(--color-border)', color: 'var(--color-text-primary)' }} />
-
-            <button type="submit" disabled={looking}
-              className="w-full h-12 mt-4 rounded-lg text-[15px] font-bold text-on-primary transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
-              style={{ background: 'var(--color-primary)', letterSpacing: '0.3px' }}>
-              <Shield size={16} /> {looking ? 'Checking…' : 'Confirm and Continue'}
-            </button>
-
-            <p className="text-[11.5px] mt-4 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              Not in the register yet? Self-registration is closed — contact the{' '}
-              <strong>Board Office / HR unit</strong> so your record can be added.
-            </p>
-          </form>
-        )}
-
-        {/* ── Step 3: edit (verified officer, all fields) ── */}
+        {/* ── Step 2: edit every field on the loaded record ── */}
         {step.kind === 'edit' && (
           <div>
             <div className="mb-4 p-3.5 rounded-lg border flex items-center gap-3"
@@ -407,12 +337,12 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
               Your details — update what needs changing
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-              {FIELDS.map(f => f.key === 'photo' ? null : <div key={f.key}>{renderField(f)}</div>)}
+              {FIELDS.map(f => <div key={f.key}>{renderField(f)}</div>)}
             </div>
             <div className="mt-3.5">{renderPhotoField()}</div>
 
             <div className="flex gap-2 mt-6">
-              <button type="button" onClick={() => setStep({ kind: 'enter' })}
+              <button type="button" onClick={() => { setError(''); setStep({ kind: 'enter' }); }}
                 className="h-11 px-4 rounded-lg text-[13px] font-semibold border cursor-pointer"
                 style={{ background: 'transparent', borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
                 Back
@@ -426,19 +356,21 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
           </div>
         )}
 
-        {/* ── Step 3: review + direct submit (existing) ── */}
+        {/* ── Step 3: review, then send for approval ── */}
         {step.kind === 'review' && (
           <div>
             <div className="text-[13px] font-bold mb-1" style={{ color: 'var(--color-text-primary)' }}>Review your changes — {step.emp.name}</div>
             <div className="text-[12px] mb-3" style={{ color: 'var(--color-text-muted)' }}>
-              These will be applied to the register <strong>immediately</strong> — no approval needed.
+              These changes will be sent to the <strong>Board Office for approval</strong>.
+              Your record is updated only after an administrator reviews them.
             </div>
             {renderReviewList(step.changed)}
             <div className="text-[11.5px] mt-3 leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              You can only update your details once. After submitting, they take effect right away.
+              You can track this by contacting the Board Office. One update at a time
+              is sent for review.
             </div>
             <div className="flex gap-2 mt-5">
-              <button type="button" disabled={submitting} onClick={() => { setStep({ kind: 'edit', emp: step.emp, token: step.token }); }}
+              <button type="button" disabled={submitting} onClick={() => { setError(''); setStep({ kind: 'edit', emp: step.emp }); }}
                 className="h-11 px-4 rounded-lg text-[13px] font-semibold border cursor-pointer"
                 style={{ background: 'transparent', borderColor: 'var(--color-border)', color: 'var(--color-text-secondary)' }}>
                 Back
@@ -446,20 +378,20 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
               <button type="button" disabled={submitting} onClick={handleSubmit}
                 className="flex-1 h-11 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{ background: 'var(--color-primary)' }}>
-                {submitting ? 'Submitting…' : 'Submit — Apply Now'}
+                {submitting ? 'Submitting…' : 'Submit for Approval'}
               </button>
             </div>
           </div>
         )}
 
-        {/* ── Done (direct update applied) ── */}
+        {/* ── Done (queued for review) ── */}
         {step.kind === 'done' && (
           <div className="text-center py-4">
             <div className="text-5xl mb-4"><CheckCircle2 size={52} style={{ color: '#16a34a' }} /></div>
-            <div className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Your details are updated</div>
+            <div className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Sent for approval</div>
             <p className="text-[13.5px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-              Thank you! Your changes have been applied to the register. You won't be
-              able to update again through this portal.
+              Thank you! Your changes have been sent to the Board Office. Your staff
+              record will be updated once an administrator reviews and approves them.
             </p>
             <button onClick={onBack}
               className="mt-6 h-11 px-6 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90"
@@ -467,14 +399,30 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
           </div>
         )}
 
-        {/* ── Already submitted (read-only preview) ── */}
+        {/* ── Update waiting for review ── */}
+        {step.kind === 'pending' && (
+          <div className="text-center py-4">
+            <div className="text-5xl mb-4"><Clock size={52} style={{ color: 'var(--color-warning)' }} /></div>
+            <div className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Update awaiting approval</div>
+            <p className="text-[13.5px] mt-2 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
+              Your details update for <strong>{step.emp.name}</strong> (PSN {step.emp.psn}) is
+              already waiting for the Board Office to review it. You'll be able to
+              submit again only after it has been reviewed.
+            </p>
+            <button onClick={onBack}
+              className="mt-6 h-11 px-6 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90"
+              style={{ background: 'var(--color-primary)' }}>Back to Website</button>
+          </div>
+        )}
+
+        {/* ── Already approved (read-only preview) ── */}
         {step.kind === 'already' && (
           <div className="py-2">
             <div className="text-center mb-5">
               <div className="text-4xl mb-3">✅</div>
               <div className="text-lg font-bold" style={{ color: 'var(--color-text-primary)' }}>Details already updated</div>
               <p className="text-[13px] mt-1.5 leading-relaxed" style={{ color: 'var(--color-text-secondary)' }}>
-                You've already used your one-time update. This is what's on file:
+                Your update has been reviewed and approved. This is what's on file:
               </p>
             </div>
             <div className="rounded-xl border overflow-hidden mb-2" style={{ borderColor: 'var(--color-border)' }}>
@@ -511,7 +459,7 @@ export function SelfService({ onBack, initialPsn }: SelfServiceProps) {
               ))}
             </div>
             <p className="text-[12px] text-center leading-relaxed" style={{ color: 'var(--color-text-muted)' }}>
-              Need a correction? Contact the HR/records unit.
+              Need another correction? Contact the HR/records unit.
             </p>
             <button onClick={onBack}
               className="w-full mt-5 h-11 rounded-lg text-[14px] font-bold text-on-primary transition-all hover:opacity-90"
